@@ -1,0 +1,32 @@
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frankenphp_dev
+    environment:
+      APP_ENV: dev
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}
+      SERVER_NAME: localhost, http://localhost
+    volumes:
+      - ./:/app
+      - ./docker/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docker/frankenphp/worker.Caddyfile:/etc/caddy/worker.Caddyfile:ro
+      - ./docker/php/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+      - "${HTTP3_PORT:-8443}:443/udp"
+    tty: true
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  mailer:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1

@@ -1,0 +1,24 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frankenphp_prod
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET:-ChangeMe}
+      SERVER_NAME: ${SERVER_NAME:-localhost}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/research}
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_PUBLISHER_JWT_ALG: ${MERCURE_PUBLISHER_JWT_ALG:-HS256}
+      MERCURE_SUBSCRIBER_JWT_ALG: ${MERCURE_SUBSCRIBER_JWT_ALG:-HS256}
+      MERCURE_EXTRA_DIRECTIVES: |-
+        transport bolt {
+          path /data/mercure.db
+        }
+      FRANKENPHP_CONFIG: ${FRANKENPHP_CONFIG:-import /etc/caddy/worker.Caddyfile}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
