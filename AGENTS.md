@@ -21,6 +21,8 @@ This project uses the Symfony UX frontend stack. Five agent skills are installed
 - `<twig:Turbo:Stream:Append>` syntax is available since Symfony UX 2.22+
 - Diagnostics (PHPStan, PHPUnit tests, logs, profiler checks) MUST use MATE tools via the `mate-tools` skill wrapper script — not make commands
 - Infrastructure operations (setup, up/down, composer, console, doctrine) MUST use `make` targets (no direct `docker compose exec` for these)
+- PHPStan, PHPUnit, Symfony profiler, Monolog symfony logs, PHP/OS information
+  MUST always load `mate-tools` skill and use MATE diagnostics
 
 ## Docker setup
 
@@ -45,4 +47,3 @@ This project uses the Symfony UX frontend stack. Five agent skills are installed
 - PHPUnit tests: `phpunit-run-suite` tool
 - Log inspection: `monolog-tail` tool
 - Symfony profiler: `symfony-profiler-latest` tool
-- Always use the wrapper: `scripts/mate-tool-call.sh <tool> '<json>'`

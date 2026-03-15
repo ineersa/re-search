@@ -36,3 +36,4 @@ See the specialized references for detailed tool documentation:
 - **[PHPStan tools](phpstan.md)** — `phpstan-analyse`, `phpstan-analyse-file`, `phpstan-clear-cache`
 - **[PHPUnit tools](phpunit.md)** — `phpunit-list-tests`, `phpunit-run-suite`, `phpunit-run-file`, `phpunit-run-method`
 - **[Observability tools](observability.md)** — Monolog logs and Symfony profiler introspection
+- **[Composer tools](composer-tools.md)** — `composer-install`, `composer-require`, `composer-update`, `composer-why`, `composer-why-not` (requires optional extension)

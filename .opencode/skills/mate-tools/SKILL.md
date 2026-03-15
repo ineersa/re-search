@@ -64,6 +64,27 @@ scripts/mate-tool-call.sh monolog-tail '{"lines":50}'
 scripts/mate-tool-call.sh symfony-profiler-latest '{}'
 ```
 
+## Composer Tools (Optional Extension)
+
+When `matesofmate/composer-extension` is installed, additional Composer dependency management tools become available:
+
+```bash
+# Install dependencies
+scripts/mate-tool-call.sh composer-install '{}'
+
+# Add a new package
+scripts/mate-tool-call.sh composer-require '{"package":"symfony/console","version":"^6.4"}'
+
+# Update dependencies
+scripts/mate-tool-call.sh composer-update '{"mode":"summary"}'
+
+# Investigate package dependencies
+scripts/mate-tool-call.sh composer-why '{"package":"psr/log"}'
+scripts/mate-tool-call.sh composer-why-not '{"package":"php","version":"7.4"}'
+```
+
+**Note**: The composer-extension requires `symfony/ai-mate ^0.3 || ^0.4`. This project uses `symfony/ai-mate ^0.6`, so the extension cannot be installed until a compatible version is released.
+
 ## References
 
 - Tool invocation wrapper and examples: [references/command-wrapper.md](references/command-wrapper.md)
@@ -71,3 +92,4 @@ scripts/mate-tool-call.sh symfony-profiler-latest '{}'
 - PHPStan usage patterns: [references/phpstan.md](references/phpstan.md)
 - PHPUnit usage patterns: [references/phpunit.md](references/phpunit.md)
 - Monolog and Symfony diagnostics: [references/observability.md](references/observability.md)
+- Composer dependency tools: [references/composer-tools.md](references/composer-tools.md)
