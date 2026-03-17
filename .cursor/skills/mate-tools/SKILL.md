@@ -64,9 +64,9 @@ scripts/mate-tool-call.sh monolog-tail '{"lines":50}'
 scripts/mate-tool-call.sh symfony-profiler-latest '{}'
 ```
 
-## Composer Tools (Optional Extension)
+## Composer Tools
 
-When `matesofmate/composer-extension` is installed, additional Composer dependency management tools become available:
+Composer dependency management via `matesofmate/composer-extension`:
 
 ```bash
 # Install dependencies
@@ -75,6 +75,9 @@ scripts/mate-tool-call.sh composer-install '{}'
 # Add a new package
 scripts/mate-tool-call.sh composer-require '{"package":"symfony/console","version":"^6.4"}'
 
+# Remove a package
+scripts/mate-tool-call.sh composer-remove '{"package":"symfony/debug-bundle","dev":true}'
+
 # Update dependencies
 scripts/mate-tool-call.sh composer-update '{"mode":"summary"}'
 
@@ -82,8 +85,6 @@ scripts/mate-tool-call.sh composer-update '{"mode":"summary"}'
 scripts/mate-tool-call.sh composer-why '{"package":"psr/log"}'
 scripts/mate-tool-call.sh composer-why-not '{"package":"php","version":"7.4"}'
 ```
-
-**Note**: The composer-extension requires `symfony/ai-mate ^0.3 || ^0.4`. This project uses `symfony/ai-mate ^0.6`, so the extension cannot be installed until a compatible version is released.
 
 ## References
 

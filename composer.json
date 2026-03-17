@@ -98,7 +98,6 @@
             "require": "8.0.*"
         },
         "ai-mate": {
-            "extension": false,
             "scan-dirs": [
                 "mate/src"
             ],
@@ -110,6 +109,7 @@
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.94.2",
         "matesofmate/common": "dev-main",
+        "matesofmate/composer-extension": "dev-main",
         "matesofmate/phpstan-extension": "dev-main",
         "matesofmate/phpunit-extension": "dev-main",
         "phpstan/phpstan": "^2.1.40",

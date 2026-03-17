@@ -2,8 +2,6 @@
 
 Composer dependency management tools from `matesofmate/composer-extension`.
 
-**Extension Status**: This extension is not currently installed due to version constraints. It requires `symfony/ai-mate ^0.3 || ^0.4`, but this project uses `symfony/ai-mate ^0.6`. Monitor the [composer-extension repository](https://github.com/MatesOfMate/composer-extension) for updates.
-
 ## Available Tools
 
 ### `composer-install`
@@ -110,6 +108,26 @@ Show why a specific package version cannot be installed.
 
 ```bash
 scripts/mate-tool-call.sh composer-why-not '{"package":"php","version":"7.4"}'
+```
+
+---
+
+### `composer-remove`
+
+Remove a package from `composer.json`.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `package` | `string` | required | Package name to remove |
+| `dev` | `bool` | `false` | Remove from dev dependencies |
+| `mode` | `string` | `'default'` | Output format mode |
+
+**Example:**
+
+```bash
+scripts/mate-tool-call.sh composer-remove '{"package":"symfony/debug-bundle","dev":true}'
 ```
 
 ## Available Resources

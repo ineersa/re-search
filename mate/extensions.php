@@ -4,6 +4,7 @@
 // You can manually edit to enable/disable extensions
 
 return [
+    'matesofmate/composer-extension' => ['enabled' => true],
     'matesofmate/phpstan-extension' => ['enabled' => true],
     'matesofmate/phpunit-extension' => ['enabled' => true],
     'symfony/ai-mate' => ['enabled' => true],

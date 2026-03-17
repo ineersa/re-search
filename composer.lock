@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a7d0aa678c7b6e68569c54431ff09987",
+    "content-hash": "730f3aeab5885254d0459b791903543e",
     "packages": [
         {
             "name": "composer/semver",
@@ -8099,6 +8099,82 @@
             "time": "2026-01-26T20:37:54+00:00"
         },
         {
+            "name": "matesofmate/composer-extension",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/MatesOfMate/composer-extension.git",
+                "reference": "f70284bb4b073be02f092d1a4e536a49ff36fcd6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/MatesOfMate/composer-extension/zipball/f70284bb4b073be02f092d1a4e536a49ff36fcd6",
+                "reference": "f70284bb4b073be02f092d1a4e536a49ff36fcd6",
+                "shasum": ""
+            },
+            "require": {
+                "helgesverre/toon": "^1.0",
+                "matesofmate/common": "^0.2@dev",
+                "php": ">=8.2",
+                "symfony/ai-mate": "^0.3 || ^0.4 || ^0.5 || ^0.6@dev",
+                "symfony/finder": "^5.4|^6.4|^7.3|^8.0",
+                "symfony/process": "^5.4|^6.4|^7.3|^8.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.0",
+                "phpstan/phpstan": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpunit/phpunit": "^10.0",
+                "rector/rector": "^2.0"
+            },
+            "default-branch": true,
+            "type": "symfony-ai-mate",
+            "extra": {
+                "ai-mate": {
+                    "includes": [
+                        "config/config.php"
+                    ],
+                    "scan-dirs": [
+                        "src/Capability"
+                    ],
+                    "instructions": "INSTRUCTIONS.md"
+                },
+                "branch-alias": {
+                    "dev-main": "0.2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "MatesOfMate\\ComposerExtension\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Johannes Wachter",
+                    "email": "johannes@sulu.io"
+                }
+            ],
+            "description": "MCP extension providing Composer dependency management tools for AI assistants",
+            "keywords": [
+                "ai",
+                "ai-mate",
+                "composer",
+                "dependency-management",
+                "mcp",
+                "symfony",
+                "toon"
+            ],
+            "support": {
+                "issues": "https://github.com/MatesOfMate/composer-extension/issues",
+                "source": "https://github.com/MatesOfMate/composer-extension/tree/main"
+            },
+            "time": "2026-03-02T07:31:58+00:00"
+        },
+        {
             "name": "matesofmate/phpstan-extension",
             "version": "dev-main",
             "source": {
@@ -12320,6 +12396,7 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "matesofmate/common": 20,
+        "matesofmate/composer-extension": 20,
         "matesofmate/phpstan-extension": 20,
         "matesofmate/phpunit-extension": 20
     },
