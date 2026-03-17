@@ -21,3 +21,13 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Symfony AI llama.cpp Platform
+    app.llama_cpp.platform:
+        class: Symfony\AI\Platform\Platform
+        factory: ['App\Platform\LlamaCpp\PlatformFactory', 'create']
+        arguments:
+            $baseUrl: '%env(LLAMACPP_BASE_URL)%'
+            $apiKey: '%env(LLAMACPP_API_KEY)%'
+
+    Symfony\AI\Platform\Platform $llamaCppPlatform: '@app.llama_cpp.platform'

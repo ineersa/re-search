@@ -14,6 +14,10 @@ services:
       - ./docker/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./docker/frankenphp/worker.Caddyfile:/etc/caddy/worker.Caddyfile:ro
       - ./docker/php/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro
+      # Mount /tmp to allow PHP CS Fixer extension (junstyle.php-cs-fixer) to work.
+      # The extension creates temp files in /tmp/pcf-tmp*/ which need to be accessible
+      # inside the container when running fixer via Docker.
+      - /tmp:/tmp:delegated
     ports:
       - "${HTTP_PORT:-8080}:80"
       - "${HTTPS_PORT:-8443}:443"

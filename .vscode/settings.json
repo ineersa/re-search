@@ -69,12 +69,13 @@
     "php-cs-fixer.documentFormattingProvider": true,
 
     // PHPStan (Static Analysis) - Runs via Docker
-    "phpstan.binPath": "vendor/bin/phpstan",
-    "phpstan.configFile": "phpstan.dist.neon",
+    // Using binCommand for Docker exec instead of binPath + dockerContainerName
+    // This fixes the "Unhandled method phpstan.configResolve" error
     "phpstan.enabled": true,
+    "phpstan.binCommand": ["${workspaceFolder}/.vscode/phpstan-docker.sh"],
+    "phpstan.configFile": "phpstan.dist.neon",
     "phpstan.showTypeOnHover": false,
     "phpstan.enableStatusBar": true,
-    "phpstan.dockerContainerName": "re-search-php-1",
     "phpstan.paths": {
         "${workspaceFolder}": "/app"
     },
