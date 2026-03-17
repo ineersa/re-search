@@ -28,6 +28,8 @@ This project uses the Symfony UX frontend stack. Six agent skills are installed 
 - For browser testing and UI verification, ALWAYS use Task tool with `subagent_type: "playwright-cli"`
 - PHPStan, PHPUnit, Symfony profiler, Monolog symfony logs, PHP/OS information
   MUST always load `mate-tools` skill and use MATE diagnostics
+- NEVER compile assets in development environment; the `make tailwind-watch` process handles this automatically
+- DO NOT run `make assets-compile` during development; only do this in production builds
 
 ## Docker setup
 

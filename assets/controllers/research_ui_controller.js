@@ -15,7 +15,13 @@ export default class extends Controller {
         'history',
         'tabs',
         'results',
+        'sidebar',
+        'sidebarOverlay',
     ];
+
+    sidebarOpen = false;
+    historyPage = 0;
+    historyItemsPerPage = 5;
 
     connect() {
         this.timer = null;
@@ -131,15 +137,15 @@ export default class extends Controller {
         this.stepIndex += 1;
 
         const row = document.createElement('article');
-        row.className = `border border-[#8da8d638] bg-[#0f1521e6] p-3`;
+        row.className = `border border-[#333] bg-[#1a1a1a] p-3`;
         if (step.type === 'tool') {
             row.classList.add('border-gray-500');
         }
         const safeLabel = this.escapeHtml(step.label);
         const safeMessage = this.escapeHtml(step.message);
         row.innerHTML = `
-            <p class="m-0 text-xs uppercase tracking-wider text-[#95a1b9]">${safeLabel}</p>
-            <p class="mt-1 leading-relaxed">${safeMessage}</p>
+            <p class="m-0 text-xs uppercase tracking-wider text-gray-500">${safeLabel}</p>
+            <p class="mt-1 leading-relaxed text-gray-300">${safeMessage}</p>
         `;
         this.streamTarget.appendChild(row);
         this.streamTarget.scrollTop = this.streamTarget.scrollHeight;
@@ -170,6 +176,7 @@ export default class extends Controller {
 
         this.historyItems.unshift({ query, time: 'just now' });
         this.historyItems = this.historyItems.slice(0, 10);
+        this.historyPage = 0;
         this.renderHistory();
     }
 
@@ -189,11 +196,11 @@ export default class extends Controller {
                     const safeLink = this.escapeHtml(call.link ?? '#');
 
                     return `
-                <article class="border border-[#8da8d638] bg-[#0f1521e6] p-3">
-                    <p class="m-0 text-xs uppercase tracking-wider text-[#95a1b9]">#${index + 1} ${safeLabel}</p>
-                    <p class="mt-1 leading-relaxed">${safeMessage}</p>
-                    <p class="mt-1 leading-relaxed">Path: ${safePath}</p>
-                    <a class="mt-2 inline-block text-sm text-blue-400 no-underline hover:underline" href="${safeLink}" target="_blank" rel="noreferrer">${safeLink}</a>
+                <article class="border border-[#333] bg-[#1a1a1a] p-3">
+                    <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} ${safeLabel}</p>
+                    <p class="mt-1 leading-relaxed text-gray-300">${safeMessage}</p>
+                    <p class="mt-1 leading-relaxed text-gray-400">Path: ${safePath}</p>
+                    <a class="mt-2 inline-block text-sm text-blue-400 no-underline hover:text-blue-300 hover:underline transition-colors" href="${safeLink}" target="_blank" rel="noreferrer">${safeLink}</a>
                 </article>
             `;
                 },
@@ -204,23 +211,60 @@ export default class extends Controller {
     }
 
     renderHistory() {
-        const items = this.historyItems
+        const totalPages = Math.ceil(this.historyItems.length / this.historyItemsPerPage);
+        const start = this.historyPage * this.historyItemsPerPage;
+        const end = start + this.historyItemsPerPage;
+        const itemsToShow = this.historyItems.slice(start, end);
+
+        const items = itemsToShow
             .map(
                 (item) => {
                     const safeQuery = this.escapeHtml(item.query);
                     const safeTime = this.escapeHtml(item.time);
 
                     return `
-                <article class="cursor-pointer border border-transparent bg-[#0f1420bf] p-3 transition-all hover:translate-x-[2px] hover:border-[#8da8d638] history-row" data-action="click->research-ui#loadHistoryItem" data-query="${safeQuery}">
-                    <p class="m-0 text-sm leading-tight">${safeQuery}</p>
-                    <p class="mt-1 text-xs text-[#95a1b9]">${safeTime}</p>
+                <article class="cursor-pointer border border-transparent bg-[#141414] p-3 transition-all hover:translate-x-[2px] hover:border-[#444] history-row" data-action="click->research-ui#loadHistoryItem" data-query="${safeQuery}">
+                    <p class="m-0 text-sm leading-tight text-gray-200">${safeQuery}</p>
+                    <p class="mt-1 text-xs text-gray-500">${safeTime}</p>
                 </article>
             `;
                 },
             )
             .join('');
 
-        this.historyTarget.innerHTML = items;
+        let pagination = '';
+        if (this.historyItems.length > this.historyItemsPerPage) {
+            const prevDisabled = this.historyPage === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:text-white';
+            const nextDisabled = this.historyPage >= totalPages - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:text-white';
+            const prevPage = this.historyPage > 0 ? this.historyPage - 1 : 0;
+            const nextPage = this.historyPage < totalPages - 1 ? this.historyPage + 1 : totalPages - 1;
+
+            pagination = `
+                <div class="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-[#222]">
+                    <button class="text-gray-500 transition ${prevDisabled}" data-action="click->research-ui#changePage" data-page="${prevPage}" ${this.historyPage === 0 ? 'disabled' : ''}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <span class="text-xs text-gray-500">${this.historyPage + 1} / ${totalPages}</span>
+                    <button class="text-gray-500 transition ${nextDisabled}" data-action="click->research-ui#changePage" data-page="${nextPage}" ${this.historyPage >= totalPages - 1 ? 'disabled' : ''}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            `;
+        }
+
+        this.historyTarget.innerHTML = items + pagination;
+    }
+
+    changePage(event) {
+        const newPage = parseInt(event.currentTarget.dataset.page, 10);
+        if (newPage !== this.historyPage) {
+            this.historyPage = newPage;
+            this.renderHistory();
+        }
     }
 
     loadHistoryItem(event) {
@@ -288,12 +332,26 @@ export default class extends Controller {
         buttons.forEach((btn) => {
             if (btn.dataset.tab === this.activeTab) {
                 btn.classList.add('text-white', 'border-white');
-                btn.classList.remove('text-[#95a1b9]', 'border-transparent');
+                btn.classList.remove('text-gray-500', 'border-transparent');
             } else {
-                btn.classList.add('text-[#95a1b9]', 'border-transparent');
+                btn.classList.add('text-gray-500', 'border-transparent');
                 btn.classList.remove('text-white', 'border-white');
             }
         });
+    }
+
+    toggleSidebar() {
+        this.sidebarOpen = !this.sidebarOpen;
+
+        if (this.sidebarOpen) {
+            this.sidebarTarget.classList.remove('-translate-x-full');
+            this.sidebarTarget.classList.add('translate-x-0');
+            this.sidebarOverlayTarget.classList.remove('hidden');
+        } else {
+            this.sidebarTarget.classList.add('-translate-x-full');
+            this.sidebarTarget.classList.remove('translate-x-0');
+            this.sidebarOverlayTarget.classList.add('hidden');
+        }
     }
 
     cancelRun() {

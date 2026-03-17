@@ -1,8 +1,10 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
     --bg: #0b0d12;
     --text: #e8edf7;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', monospace;
 }
 
 body {
@@ -11,4 +13,8 @@ body {
     color: var(--text);
     font-family: 'Space Grotesk', 'Manrope', sans-serif;
     background: var(--bg);
+}
+
+code, pre, kbd, samp, tt, .font-mono {
+    font-family: var(--font-mono);
 }
