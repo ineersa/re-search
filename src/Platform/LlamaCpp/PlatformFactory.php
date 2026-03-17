@@ -24,6 +24,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class PlatformFactory
 {
+    /** @phpstan-ignore shipmonk.deadMethod */
     public static function create(
         string $baseUrl = 'http://localhost:8052',
         #[\SensitiveParameter] ?string $apiKey = null,
