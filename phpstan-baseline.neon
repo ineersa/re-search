@@ -1,0 +1,697 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:getContent$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:getCreatedAt$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:getId$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:getRole$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:getRun$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:getSequence$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:setContent$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:setRole$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchMessage\:\:setSequence$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchMessage.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:addMessage$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:addStep$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:getClientKey$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:getFailureReason$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:getMercureTopic$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:getMessages$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:getQueryHash$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:getTokenBudgetHardCap$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:getUpdatedAt$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:isAnswerOnlyTriggered$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:isTokenBudgetEstimated$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setAnswerOnlyTriggered$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setClientKey$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setCompletedAt$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setFailureReason$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setFinalAnswerMarkdown$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setLoopDetected$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setMercureTopic$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setQuery$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setQueryHash$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setStatus$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setTokenBudgetEstimated$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setTokenBudgetHardCap$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchRun\:\:setTokenBudgetUsed$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchRun.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:getCreatedAt$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:getId$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:getSnippet$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:getStep$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:getTitle$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:getUrl$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:setSnippet$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:setTitle$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchSource\:\:setUrl$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchSource.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:addSource$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:getCompletionTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:getPromptTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:getRun$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:getSources$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:getToolArgumentsJson$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:getToolSignature$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:getTotalTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:isEstimatedTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setCompletionTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setEstimatedTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setPayloadJson$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setPromptTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setSequence$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setSummary$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setToolArgumentsJson$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setToolName$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setToolSignature$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setTotalTokens$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setTurnNumber$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchStep\:\:setType$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Method App\\Platform\\LlamaCpp\\Contract\\ToolCallNormalizer\:\:normalize\(\) should return array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: array\<string, mixed\>\}\} but returns array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: non\-empty\-string\|false\}\}\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Platform/LlamaCpp/Contract/ToolCallNormalizer.php
+
+		-
+			message: '#^Parameter \#1 \$data \(Symfony\\AI\\Platform\\Result\\ToolCall\) of method App\\Platform\\LlamaCpp\\Contract\\ToolCallNormalizer\:\:normalize\(\) should be contravariant with parameter \$data \(mixed\) of method Symfony\\Component\\Serializer\\Normalizer\\NormalizerInterface\:\:normalize\(\)$#'
+			identifier: method.childParameterType
+			count: 1
+			path: src/Platform/LlamaCpp/Contract/ToolCallNormalizer.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\EventPublisherInterface\:\:publishActivity$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/EventPublisherInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\EventPublisherInterface\:\:publishAnswer$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/EventPublisherInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\EventPublisherInterface\:\:publishBudget$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/EventPublisherInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\EventPublisherInterface\:\:publishComplete$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/EventPublisherInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\NullEventPublisher\:\:publishActivity$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/NullEventPublisher.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\NullEventPublisher\:\:publishAnswer$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/NullEventPublisher.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\NullEventPublisher\:\:publishBudget$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/NullEventPublisher.php
+
+		-
+			message: '#^Unused App\\Research\\Event\\NullEventPublisher\:\:publishComplete$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Event/NullEventPublisher.php
+
+		-
+			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcer\:\:afterToolCall$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Guardrail/ResearchBudgetEnforcer.php
+
+		-
+			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcer\:\:beforeToolCall$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Guardrail/ResearchBudgetEnforcer.php
+
+		-
+			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcerInterface\:\:afterToolCall$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Guardrail/ResearchBudgetEnforcerInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcerInterface\:\:beforeToolCall$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Guardrail/ResearchBudgetEnforcerInterface.php
+
+		-
+			message: '#^Unused App\\Research\\History\\HistoryLoader\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/History/HistoryLoader.php
+
+		-
+			message: '#^Unused App\\Research\\History\\HistoryLoader\:\:loadRecent$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/History/HistoryLoader.php
+
+		-
+			message: '#^Unused App\\Research\\History\\HistoryLoader\:\:loadRun$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/History/HistoryLoader.php
+
+		-
+			message: '#^Unused App\\Research\\History\\HistoryLoaderInterface\:\:loadRecent$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/History/HistoryLoaderInterface.php
+
+		-
+			message: '#^Unused App\\Research\\History\\HistoryLoaderInterface\:\:loadRun$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/History/HistoryLoaderInterface.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\BudgetState\:\:\$answerOnly is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/BudgetState.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\BudgetState\:\:\$hardCapTokens is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/BudgetState.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\BudgetState\:\:\$nextNoticeAt is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/BudgetState.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\BudgetState\:\:\$remainingTokens is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/BudgetState.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\BudgetState\:\:\$usedTokens is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/BudgetState.php
+
+		-
+			message: '#^Unused App\\Research\\Orchestration\\Dto\\BudgetState\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Orchestration/Dto/BudgetState.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:\$answerOnly is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:\$budget is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:\$forcedInstruction is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:\$messages is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:\$runId is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:\$turnNumber is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
+
+		-
+			message: '#^Unused App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$assistantText is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$completionTokens is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$isFinal is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$promptTokens is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$rawMetadata is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$toolCalls is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$totalTokens is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Unused App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ToolCallDecision\:\:\$arguments is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ToolCallDecision.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ToolCallDecision\:\:\$name is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ToolCallDecision.php
+
+		-
+			message: '#^Property App\\Research\\Orchestration\\Dto\\ToolCallDecision\:\:\$normalizedSignature is never read$#'
+			identifier: shipmonk.deadProperty.neverRead
+			count: 1
+			path: src/Research/Orchestration/Dto/ToolCallDecision.php
+
+		-
+			message: '#^Unused App\\Research\\Orchestration\\Dto\\ToolCallDecision\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Orchestration/Dto/ToolCallDecision.php
+
+		-
+			message: '#^Unused App\\Research\\Persistence\\ResearchRunRepository\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Persistence/ResearchRunRepository.php
+
+		-
+			message: '#^Unused App\\Research\\ResearchBriefBuilder\:\:build$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/ResearchBriefBuilder.php
+
+		-
+			message: '#^Unused App\\Research\\ResearchBriefBuilderInterface\:\:build$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/ResearchBriefBuilderInterface.php
+
+		-
+			message: '#^Unused App\\Research\\ResearchRunService\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/ResearchRunService.php
+
+		-
+			message: '#^Unused App\\Research\\ResearchRunService\:\:execute$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/ResearchRunService.php

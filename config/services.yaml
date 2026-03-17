@@ -31,3 +31,7 @@ services:
             $apiKey: '%env(LLAMACPP_API_KEY)%'
 
     Symfony\AI\Platform\Platform $llamaCppPlatform: '@app.llama_cpp.platform'
+
+    # Research domain - interface bindings
+    App\Research\Event\EventPublisherInterface: '@App\Research\Event\NullEventPublisher'
+    App\Research\Persistence\ResearchRunRepositoryInterface: '@App\Research\Persistence\ResearchRunRepository'
