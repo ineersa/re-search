@@ -463,18 +463,6 @@ parameters:
 			path: src/Research/Event/NullEventPublisher.php
 
 		-
-			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcer\:\:afterToolCall$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Guardrail/ResearchBudgetEnforcer.php
-
-		-
-			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcer\:\:beforeToolCall$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Guardrail/ResearchBudgetEnforcer.php
-
-		-
 			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcerInterface\:\:afterToolCall$#'
 			identifier: shipmonk.deadMethod
 			count: 1
@@ -485,6 +473,18 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/Guardrail/ResearchBudgetEnforcerInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Guardrail\\ResearchBudgetEnforcerInterface\:\:recordTokenUsage$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Guardrail/ResearchBudgetEnforcerInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Throttle\\ResearchThrottle\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Throttle/ResearchThrottle.php
 
 		-
 			message: '#^Unused App\\Research\\History\\HistoryLoader\:\:__construct$#'
@@ -695,3 +695,4 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/ResearchRunService.php
+

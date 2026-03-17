@@ -1,0 +1,17 @@
+# Research submit throttling: IP + session identity
+# 1 request per 10 minutes, 5 requests per day
+framework:
+    rate_limiter:
+        research_per_10min:
+            policy: 'sliding_window'
+            limit: 1
+            interval: '10 minutes'
+        research_per_day:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 day'
+        research_submit:
+            policy: 'compound'
+            limiters:
+                - research_per_10min
+                - research_per_day

@@ -10,6 +10,11 @@ namespace App\Research\Guardrail;
 interface ResearchBudgetEnforcerInterface
 {
     /**
+     * Record token usage for a run. Called by the orchestrator after each turn.
+     */
+    public function recordTokenUsage(string $runId, int $tokens): void;
+
+    /**
      * Called before each tool call. Throws if over budget or loop detected.
      *
      * @param array<string, mixed> $arguments
@@ -20,7 +25,6 @@ interface ResearchBudgetEnforcerInterface
      * Called after each tool call to record usage.
      *
      * @param array<string, mixed> $arguments
-     * @param mixed                $result
      */
     public function afterToolCall(string $runId, string $toolName, array $arguments, mixed $result): void;
 }

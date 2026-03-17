@@ -12,7 +12,7 @@ final class ResearchBriefBuilder implements ResearchBriefBuilderInterface
 {
     public function build(string $rawQuery): string
     {
-        return sprintf(
+        return \sprintf(
             "Research goal:\n- %s\n\nRequired behavior:\n- verify claims from sources\n- cite every non-trivial factual claim\n- return markdown",
             $rawQuery
         );

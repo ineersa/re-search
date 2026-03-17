@@ -28,7 +28,7 @@ final class ResearchRunRepository implements ResearchRunRepositoryInterface
         );
 
         return array_map(
-            fn (ResearchRun $run) => [
+            static fn (ResearchRun $run) => [
                 'id' => $run->getId()->toRfc4122(),
                 'query' => $run->getQuery(),
                 'status' => $run->getStatus(),
@@ -52,7 +52,7 @@ final class ResearchRunRepository implements ResearchRunRepositoryInterface
         }
 
         $steps = array_map(
-            fn (ResearchStep $step) => [
+            static fn (ResearchStep $step) => [
                 'id' => $step->getId()->toRfc4122(),
                 'sequence' => $step->getSequence(),
                 'type' => $step->getType(),
