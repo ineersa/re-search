@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     file \
     gettext \
     git \
+    watchman \
     && rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
@@ -36,9 +37,18 @@ RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 RUN set -eux; \
     install-php-extensions xdebug
 
-COPY docker/php/conf.d/app.dev.ini /usr/local/etc/php/conf.d/app.dev.ini
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    inotify-tools \
+    && rm -rf /var/lib/apt/lists/*
 
-CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile", "--watch"]
+COPY docker/php/conf.d/app.dev.ini /usr/local/etc/php/conf.d/app.dev.ini
+COPY docker/frankenphp/watch-and-restart.sh /usr/local/bin/watch-and-restart.sh
+RUN chmod +x /usr/local/bin/watch-and-restart.sh
+
+COPY docker/frankenphp/docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint-dev.sh"]
 
 FROM frankenphp_base AS frankenphp_prod
 

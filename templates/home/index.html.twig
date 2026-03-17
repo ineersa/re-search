@@ -1,0 +1,68 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}re-search{% endblock %}
+
+{% block body %}
+    <div class="grid min-h-screen grid-cols-1 lg:grid-cols-[290px_1fr]" data-controller="research-ui">
+        <aside class="border-b lg:border-b-0 lg:border-r border-[#8da8d638] bg-[#0e121c] p-5 backdrop-blur-md">
+            <a href="/" class="inline-block no-underline text-white font-medium text-[0.93rem] tracking-widest">re-search</a>
+            <p class="mt-5 mb-2 text-xs uppercase tracking-wider text-[#95a1b9]">History</p>
+            <div class="grid gap-2" data-research-ui-target="history"></div>
+        </aside>
+
+        <main class="grid grid-rows-[auto_auto_1fr] gap-4 p-4 pt-5 lg:p-[2.5rem_clamp(1rem,3.5vw,3rem)]">
+            <header class="mx-auto mt-4 mb-8 max-w-[820px] text-center transition-all duration-300 lg:mt-[15vh]" data-research-ui-target="hero">
+                <h1 class="m-0 text-[clamp(1.6rem,3.5vw,2.4rem)] tracking-tight">re-search</h1>
+                <p class="mt-2 text-base text-[#95a1b9]">Ask, trace, verify.</p>
+            </header>
+
+            <section class="mx-auto w-full max-w-[820px] transition-transform duration-300 query-area">
+                <form class="border border-[#8da8d638] bg-[#121723] p-4 shadow-[0_18px_54px_rgba(4,8,16,0.45)]" data-research-ui-target="form" data-action="submit->research-ui#submit">
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:gap-3 sm:items-center">
+                        <input
+                            id="query"
+                            class="w-full border border-[#98a8cb40] bg-[#0e131e] p-3 text-[#e8edf7] outline-none focus:border-white focus:ring-1 focus:ring-white"
+                            type="text"
+                            placeholder="Ask anything..."
+                            data-research-ui-target="input"
+                        >
+                        <button class="flex cursor-pointer items-center justify-center border-none bg-white p-3 font-semibold text-black transition-colors hover:bg-gray-200" type="submit" aria-label="Search">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="mx-auto w-full max-w-[1020px] overflow-hidden border border-[#8da8d638] bg-[#0e121cdb] backdrop-blur-md results" data-research-ui-target="results" hidden>
+                <div class="flex flex-col gap-4 border-b border-[#8da8d638] p-3 sm:flex-row sm:justify-between sm:p-4">
+                    <p class="m-0 text-sm" data-research-ui-target="queryLine">No active query yet.</p>
+                    <p class="m-0 text-sm text-gray-400" data-research-ui-target="status">Waiting for input</p>
+                </div>
+
+                <div class="flex gap-4 border-b border-[#8da8d638] px-4 pt-4" data-research-ui-target="tabs" data-active-tab="answer">
+                    <button class="border-none bg-transparent pb-3 font-semibold text-white border-b-2 border-white cursor-pointer tab-btn" type="button" data-tab="answer" data-action="click->research-ui#switchTab">Answer</button>
+                    <button class="border-none bg-transparent pb-3 font-semibold text-[#95a1b9] border-b-2 border-transparent hover:text-white cursor-pointer tab-btn" type="button" data-tab="trace" data-action="click->research-ui#switchTab">Trace</button>
+                </div>
+
+                <article class="max-h-[56vh] overflow-auto p-3 sm:p-4" data-research-ui-target="answer">
+                    <div class="grid gap-2" data-research-ui-target="stream">
+                        <article class="border border-[#8da8d638] bg-[#0f1521e6] p-3 stream-row">
+                            <p class="m-0 text-xs uppercase tracking-wider text-[#95a1b9]">intro</p>
+                            <p class="mt-1 leading-relaxed">Tool activity appears here while the agent runs.</p>
+                        </article>
+                    </div>
+                    <div class="grid gap-2 answer-body" data-research-ui-target="answerBody"></div>
+                </article>
+
+                <article class="max-h-[56vh] overflow-auto p-3 sm:p-4" data-research-ui-target="trace" hidden>
+                    <div class="grid gap-2" data-research-ui-target="traceBody">
+                        <p class="m-0 text-[#95a1b9]">No tool calls yet.</p>
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+{% endblock %}

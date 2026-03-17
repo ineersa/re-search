@@ -10,7 +10,7 @@ services:
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       SERVER_NAME: localhost, http://localhost
     volumes:
-      - ./:/app
+      - ./:/app:delegated
       - ./docker/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./docker/frankenphp/worker.Caddyfile:/etc/caddy/worker.Caddyfile:ro
       - ./docker/php/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro

@@ -1,6 +1,6 @@
 # re-search
 
-This project uses the Symfony UX frontend stack. Five agent skills are installed to help you work with it.
+This project uses the Symfony UX frontend stack. Six agent skills are installed to help you work with it.
 
 ## Which tool to use
 
@@ -9,6 +9,7 @@ This project uses the Symfony UX frontend stack. Five agent skills are installed
 - **Reusable static UI component** -- use the `twig-component` skill
 - **Reactive component that re-renders on user input** -- use the `live-component` skill
 - **Not sure which one fits** -- use the `symfony-ux` skill (orchestrator / decision tree)
+- **Browser automation / UI testing** -- use the `playwright-cli` skill via Task tool with `subagent_type: "playwright-cli"`
 
 ## Key rules
 
@@ -21,6 +22,10 @@ This project uses the Symfony UX frontend stack. Five agent skills are installed
 - `<twig:Turbo:Stream:Append>` syntax is available since Symfony UX 2.22+
 - Diagnostics (PHPStan, PHPUnit tests, logs, profiler checks) MUST use MATE tools via the `mate-tools` skill wrapper script — not make commands
 - Infrastructure operations (setup, up/down, composer, console, doctrine) MUST use `make` targets (no direct `docker compose exec` for these)
+- NEVER run Composer on the host machine; Composer MUST run inside the container only
+- NEVER run PHP on the host machine; all PHP commands MUST run inside the container
+- Preferred Composer workflow: always load the `mate-tools` skill and execute Composer tasks via MATE
+- For browser testing and UI verification, ALWAYS use Task tool with `subagent_type: "playwright-cli"`
 - PHPStan, PHPUnit, Symfony profiler, Monolog symfony logs, PHP/OS information
   MUST always load `mate-tools` skill and use MATE diagnostics
 

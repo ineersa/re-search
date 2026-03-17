@@ -9,7 +9,8 @@ PHP_SERVICE := php
 	ps ps-prod logs logs-prod logs-php logs-mailer pull prune \
 	sh root-sh composer composer-install composer-update \
 	console cc cache-warmup doctrine-migrate doctrine-diff doctrine-status \
-	test cs-fix phpstan quality check config config-prod stop stop-prod
+	test cs-fix phpstan quality check config config-prod stop stop-prod \
+	tailwind-setup tailwind-init tailwind-watch tailwind-build assets-compile
 
 help: ## Show all available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "\nUsage:\n  make <target>\n\nTargets:\n"} /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -130,3 +131,17 @@ config: ## Validate local compose configuration
 
 config-prod: ## Validate production compose configuration
 	@$(COMPOSE_PROD) config
+
+tailwind-setup: tailwind-init tailwind-build ## Bootstrap Tailwind and run initial build
+
+tailwind-init: ## Initialize Tailwind config/assets in container
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console tailwind:init
+
+tailwind-watch: ## Run Tailwind build in watch mode in container
+	@$(COMPOSE_DEV) exec $(PHP_SERVICE) php bin/console tailwind:build --watch
+
+tailwind-build: ## Build Tailwind CSS once in container
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console tailwind:build
+
+assets-compile: tailwind-build ## Compile AssetMapper assets after Tailwind build
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console asset-map:compile
