@@ -19,6 +19,19 @@ final class ResearchRunRepository implements ResearchRunRepositoryInterface
     ) {
     }
 
+    public function findEntity(string $runId): ?ResearchRun
+    {
+        try {
+            $uuid = Uuid::fromString($runId);
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+
+        $run = $this->doctrineRepository->find($uuid);
+
+        return $run instanceof ResearchRun ? $run : null;
+    }
+
     public function findRecentByClientKey(string $clientKey, int $limit = 20): array
     {
         $runs = $this->doctrineRepository->findBy(

@@ -2,11 +2,15 @@ ai:
     platform:
         # Inference Platform configuration
         # see https://github.com/symfony/ai/tree/main/src/platform#platform-bridges
+        #
+        # Platform selected via AI_PLATFORM env; ResearchPlatformFactory resolves
+        # from container. llama=app.llama_cpp.platform, generic=ai.platform.generic.default
 
         # openai:
         #    api_key: '%env(OPENAI_API_KEY)%'
 
     agent:
+        # web_research: thin agent for tool wiring; real orchestration in RunOrchestrator (Option B)
         # Agent configuration
         # see https://symfony.com/doc/current/ai/bundles/ai-bundle.html
 

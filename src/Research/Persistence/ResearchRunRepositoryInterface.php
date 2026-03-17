@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace App\Research\Persistence;
 
+use App\Entity\ResearchRun;
+
 /**
  * Repository interface for research run queries.
  */
 interface ResearchRunRepositoryInterface
 {
+    /**
+     * Find a run entity by ID for orchestration and persistence.
+     */
+    public function findEntity(string $runId): ?ResearchRun;
+
     /**
      * Find recent runs for the given client key.
      *
