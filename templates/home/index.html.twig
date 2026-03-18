@@ -14,6 +14,7 @@
         data-research-ui-history-url-value="{{ path('app_research_list') }}"
         data-research-ui-run-url-value="{{ path('app_research_show', { id: '__ID__' }) }}"
         data-research-ui-mercure-auth-url-value="{{ path('app_research_mercure_auth', { id: '__ID__' }) }}"
+        {% if inspectUrl %}data-research-ui-inspect-url-value="{{ inspectUrl }}"{% endif %}
     >
         <div class="flex-1 flex flex-col lg:flex-row">
             {# Mobile sidebar toggle #}

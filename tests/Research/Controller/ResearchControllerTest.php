@@ -40,4 +40,11 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(400);
     }
 
+    public function testInspectReturns404WhenNotDev(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/research/runs/some-uuid/inspect');
+
+        self::assertResponseStatusCodeSame(404);
+    }
 }

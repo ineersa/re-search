@@ -38,6 +38,7 @@ export default class extends Controller {
         historyUrl: { type: String, default: '/research/runs' },
         runUrl: { type: String, default: '' },
         mercureAuthUrl: { type: String, default: '' },
+        inspectUrl: { type: String, default: '' },
     };
 
     sidebarOpen = false;
@@ -487,12 +488,21 @@ export default class extends Controller {
                     const safeTime = this.formatTimeAgo(item.completedAt || item.createdAt);
                     const safeStatus = this.escapeHtml(this.formatStatus(item));
                     const safeMeta = this.escapeHtml(this.formatBudgetMeta(item));
+                    const inspectHref = this.hasInspectUrlValue && this.inspectUrlValue
+                        ? this.inspectUrlValue.replace('__ID__', this.escapeHtml(item.id))
+                        : null;
+                    const inspectLink = inspectHref
+                        ? `<a href="${inspectHref}" target="_blank" rel="noopener" class="shrink-0 text-xs text-gray-500 hover:text-gray-300 transition-colors" data-action="click->research-ui#stopPropagation">Inspect</a>`
+                        : '';
 
                     return `
-                <article class="cursor-pointer border border-transparent bg-[#141414] p-3 transition-all hover:translate-x-[2px] hover:border-[#444] history-row" data-action="click->research-ui#loadHistoryItem" data-run-id="${this.escapeHtml(item.id)}">
-                    <p class="m-0 text-sm leading-tight text-gray-200">${safeQuery}</p>
-                    <p class="mt-1 text-xs text-gray-500">${safeTime}</p>
-                    <p class="mt-0.5 text-xs text-gray-600">${safeStatus}${safeMeta ? ` · ${safeMeta}` : ''}</p>
+                <article class="flex items-start justify-between gap-2 cursor-pointer border border-transparent bg-[#141414] p-3 transition-all hover:translate-x-[2px] hover:border-[#444] history-row" data-action="click->research-ui#loadHistoryItem" data-run-id="${this.escapeHtml(item.id)}">
+                    <div class="min-w-0 flex-1">
+                        <p class="m-0 text-sm leading-tight text-gray-200">${safeQuery}</p>
+                        <p class="mt-1 text-xs text-gray-500">${safeTime}</p>
+                        <p class="mt-0.5 text-xs text-gray-600">${safeStatus}${safeMeta ? ` · ${safeMeta}` : ''}</p>
+                    </div>
+                    ${inspectLink}
                 </article>
             `;
                 },
@@ -532,6 +542,10 @@ export default class extends Controller {
             this.historyPage = newPage;
             this.renderHistory();
         }
+    }
+
+    stopPropagation(event) {
+        event.stopPropagation();
     }
 
     async loadHistoryItem(event) {

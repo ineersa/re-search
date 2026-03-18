@@ -20,14 +20,11 @@ This project uses the Symfony UX frontend stack. Six agent skills are installed 
 - Turbo Frame IDs must match between the page and the server response
 - Use Turbo Streams when updating multiple page sections; use Frames for a single section
 - `<twig:Turbo:Stream:Append>` syntax is available since Symfony UX 2.22+
-- Diagnostics (PHPStan, PHPUnit tests, logs, profiler checks) MUST use MATE tools via the `mate-tools` skill wrapper script — not make commands
-- Infrastructure operations (setup, up/down, composer, console, doctrine) MUST use `make` targets (no direct `docker compose exec` for these)
-- NEVER run Composer on the host machine; Composer MUST run inside the container only
-- NEVER run PHP on the host machine; all PHP commands MUST run inside the container
-- Preferred Composer workflow: always load the `mate-tools` skill and execute Composer tasks via MATE
+- **MATE tools (mandatory)**: Logs, profiler, PHPStan, PHPUnit, and Composer MUST use the `mate-tools` skill and its wrapper script (`.cursor/skills/mate-tools/scripts/mate-tool-call.sh`). NEVER use `make test`, `make phpstan`, or direct `vendor/bin` commands for these.
+- Infrastructure operations (setup, up/down, console, doctrine) MUST use `make` targets (no direct `docker compose exec` for these)
+- **NEVER run Composer on the host** — Composer MUST run inside the Docker container only (via `make composer-*` or MATE `composer-*` tools)
+- **NEVER run PHP on the host** — All PHP commands (phpunit, phpstan, console, etc.) MUST run inside the container
 - For browser testing and UI verification, ALWAYS use Task tool with `subagent_type: "playwright-cli"`
-- PHPStan, PHPUnit, Symfony profiler, Monolog symfony logs, PHP/OS information
-  MUST always load `mate-tools` skill and use MATE diagnostics
 - NEVER compile assets in development environment; the `make tailwind-watch` process handles this automatically
 - DO NOT run `make assets-compile` during development; only do this in production builds
 
@@ -50,7 +47,10 @@ This project uses the Symfony UX frontend stack. Six agent skills are installed 
 
 ## MATE diagnostics (use `mate-tools` skill)
 
-- PHPStan analysis: `phpstan-analyse` tool
-- PHPUnit tests: `phpunit-run-suite` tool
-- Log inspection: `monolog-tail` tool
-- Symfony profiler: `symfony-profiler-latest` tool
+Agents MUST use these MATE tools — do not use `make` or direct `vendor/bin` for them:
+
+- PHPStan: `phpstan-analyse` tool
+- PHPUnit: `phpunit-run-suite` tool
+- Logs: `monolog-tail`, `monolog-search`, `monolog-by-level` tools
+- Profiler: `symfony-profiler-latest`, `symfony-profiler-search` tools
+- Composer: `composer-install`, `composer-require`, `composer-update` tools

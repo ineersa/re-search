@@ -25,7 +25,7 @@ This project runs Mate from the Docker `php` service. Tool execution should ther
 **MANDATORY**: All Mate MCP tool invocations MUST use the provided wrapper script:
 
 ```bash
-scripts/mate-tool-call.sh <tool-name> '<json-input>'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh <tool-name> '<json-input>'
 ```
 
 **NEVER** call `docker compose exec ... vendor/bin/mate` directly. The wrapper ensures:
@@ -33,6 +33,30 @@ scripts/mate-tool-call.sh <tool-name> '<json-input>'
 - TOON format output for LLM efficiency
 - Proper stderr suppression of bootstrap noise
 - Consistent environment across all tool calls
+
+### Why this wrapper exists
+
+- Keeps all tool calls inside the `php` container.
+- Avoids repeating long commands.
+- Standardizes TOON output format for LLM efficiency.
+
+### Usage
+
+- `<tool-name>`: Mate MCP tool name, e.g. `php-version`, `phpstan-analyse`.
+- `<json-input>`: JSON object string, e.g. `'{}'`, `'{"mode":"summary"}'`.
+
+Run from repo root (where `compose.yaml` lives). JSON must be valid. Use single quotes around the JSON string in shell. If Docker stack is down, start it first (`make up`).
+
+### Discovering available tools
+
+```bash
+docker compose exec -T php php vendor/bin/mate mcp:tools:list --format=toon
+```
+
+### Debugging
+
+- Wrapper hides Mate bootstrap `[INFO]` lines by default by redirecting stderr.
+- To keep bootstrap logs visible: `MATE_TOOL_CALL_SHOW_BOOT_LOGS=1 .cursor/skills/mate-tools/scripts/mate-tool-call.sh ...`.
 
 ## Operating rules
 
@@ -42,26 +66,45 @@ scripts/mate-tool-call.sh <tool-name> '<json-input>'
 - Use concise modes first (`summary`/default), then increase detail only when needed.
 - For direct shell-based quality tasks in this repo, follow project policy and prefer `make` targets.
 - Keep JSON input explicit and valid; pass `{}` when a tool expects an object with no required fields.
-- Mate bootstrap `[INFO]` lines are emitted on stderr; suppress with `2>/dev/null` when you need clean payload output.
+
+## Tool catalog
+
+Tool names below are the Mate MCP names used with `mcp:tools:call`.
+
+### Runtime / Environment
+
+| Tool | Input | Description |
+|------|-------|-------------|
+| `php-version` | `{}` | Active PHP version used by Mate runtime |
+| `operating-system` | `{}` | OS name where Mate is running |
+| `operating-system-family` | `{}` | OS family |
+| `php-extensions` | `{}` | Loaded PHP extensions |
+
+### Tool categories (see references for parameters)
+
+- **PHPStan** — `phpstan-analyse`, `phpstan-analyse-file`, `phpstan-clear-cache` — [references/phpstan.md](references/phpstan.md)
+- **PHPUnit** — `phpunit-list-tests`, `phpunit-run-suite`, `phpunit-run-file`, `phpunit-run-method` — [references/phpunit.md](references/phpunit.md)
+- **Observability** — Monolog logs and Symfony profiler — [references/observability.md](references/observability.md)
+- **Composer** — `composer-install`, `composer-require`, `composer-update`, `composer-why`, `composer-why-not` — [references/composer-tools.md](references/composer-tools.md)
 
 ## Quick start
 
 ```bash
 # Check runtime identity
-scripts/mate-tool-call.sh php-version '{}'
-scripts/mate-tool-call.sh operating-system '{}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh php-version '{}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh operating-system '{}'
 
 # Code health
-scripts/mate-tool-call.sh phpstan-analyse '{"mode":"summary"}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh phpstan-analyse '{"mode":"summary"}'
 
 # Tests
-scripts/mate-tool-call.sh phpunit-run-suite '{"mode":"summary"}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh phpunit-run-suite '{"mode":"summary"}'
 
 # Logs
-scripts/mate-tool-call.sh monolog-tail '{"lines":50}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh monolog-tail '{"lines":50}'
 
 # Symfony profiler
-scripts/mate-tool-call.sh symfony-profiler-latest '{}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh symfony-profiler-latest '{}'
 ```
 
 ## Composer Tools
@@ -70,27 +113,25 @@ Composer dependency management via `matesofmate/composer-extension`:
 
 ```bash
 # Install dependencies
-scripts/mate-tool-call.sh composer-install '{}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh composer-install '{}'
 
 # Add a new package
-scripts/mate-tool-call.sh composer-require '{"package":"symfony/console","version":"^6.4"}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh composer-require '{"package":"symfony/console","version":"^6.4"}'
 
 # Remove a package
-scripts/mate-tool-call.sh composer-remove '{"package":"symfony/debug-bundle","dev":true}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh composer-remove '{"package":"symfony/debug-bundle","dev":true}'
 
 # Update dependencies
-scripts/mate-tool-call.sh composer-update '{"mode":"summary"}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh composer-update '{"mode":"summary"}'
 
 # Investigate package dependencies
-scripts/mate-tool-call.sh composer-why '{"package":"psr/log"}'
-scripts/mate-tool-call.sh composer-why-not '{"package":"php","version":"7.4"}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh composer-why '{"package":"psr/log"}'
+.cursor/skills/mate-tools/scripts/mate-tool-call.sh composer-why-not '{"package":"php","version":"7.4"}'
 ```
 
 ## References
 
-- Tool invocation wrapper and examples: [references/command-wrapper.md](references/command-wrapper.md)
-- Complete tool catalog and parameters: [references/tool-reference.md](references/tool-reference.md)
-- PHPStan usage patterns: [references/phpstan.md](references/phpstan.md)
-- PHPUnit usage patterns: [references/phpunit.md](references/phpunit.md)
-- Monolog and Symfony diagnostics: [references/observability.md](references/observability.md)
-- Composer dependency tools: [references/composer-tools.md](references/composer-tools.md)
+- [references/phpstan.md](references/phpstan.md) — PHPStan usage patterns
+- [references/phpunit.md](references/phpunit.md) — PHPUnit usage patterns
+- [references/observability.md](references/observability.md) — Monolog and Symfony profiler diagnostics
+- [references/composer-tools.md](references/composer-tools.md) — Composer dependency tools
