@@ -35,6 +35,8 @@ export default class extends Controller {
     static values = {
         mercureHubUrl: { type: String, default: '' },
         submitUrl: { type: String, default: '/research/runs' },
+        historyUrl: { type: String, default: '/research/runs' },
+        runUrl: { type: String, default: '' },
         mercureAuthUrl: { type: String, default: '' },
     };
 
@@ -49,20 +51,9 @@ export default class extends Controller {
         this.eventSource = null;
         this.activeTab = 'answer';
         this.toolCalls = [];
-        this.historyItems = [
-            { query: 'How to setup Symfony UX Turbo with Mercure?', time: '2m ago' },
-            { query: 'Tailwind with AssetMapper deployment steps', time: '9m ago' },
-            { query: 'Best strategy for LiveComponent form validation', time: '24m ago' },
-            { query: 'SQLite migration rollback in Symfony', time: '36m ago' },
-            { query: 'Difference between Turbo Frames and Streams', time: '52m ago' },
-            { query: 'How to debug Stimulus disconnect leaks', time: '1h ago' },
-            { query: 'Secure API key storage in Docker Symfony apps', time: '2h ago' },
-            { query: 'Implement skeleton loaders in Twig components', time: '3h ago' },
-            { query: 'AssetMapper vs Vite tradeoffs in 2026', time: '5h ago' },
-            { query: 'Profiler timeline for slow Doctrine queries', time: '7h ago' },
-        ];
+        this.historyItems = [];
 
-        this.renderHistory();
+        this.fetchHistory();
         this.showAnswerTab();
     }
 
@@ -280,11 +271,7 @@ export default class extends Controller {
         this.streamTarget.innerHTML = '';
         this.showAnswerTab();
 
-        const query = this.queryLineTarget?.textContent || '';
-        this.historyItems.unshift({ query, time: 'just now' });
-        this.historyItems = this.historyItems.slice(0, 10);
-        this.historyPage = 0;
-        this.renderHistory();
+        this.fetchHistory();
     }
 
     handleMercureError() {
@@ -374,7 +361,30 @@ export default class extends Controller {
         this.traceBodyTarget.innerHTML = items;
     }
 
+    async fetchHistory() {
+        const historyUrl = this.historyUrlValue || '/research/runs';
+        try {
+            const response = await fetch(historyUrl, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+            const data = await response.json();
+            this.historyItems = data.runs || [];
+        } catch {
+            this.historyItems = [];
+        }
+        this.historyPage = 0;
+        this.renderHistory();
+    }
+
     renderHistory() {
+        if (this.historyItems.length === 0) {
+            this.historyTarget.innerHTML = '<p class="m-0 text-sm text-gray-600">No runs yet.</p>';
+
+            return;
+        }
+
         const totalPages = Math.ceil(this.historyItems.length / this.historyItemsPerPage);
         const start = this.historyPage * this.historyItemsPerPage;
         const end = start + this.historyItemsPerPage;
@@ -384,12 +394,15 @@ export default class extends Controller {
             .map(
                 (item) => {
                     const safeQuery = this.escapeHtml(item.query);
-                    const safeTime = this.escapeHtml(item.time);
+                    const safeTime = this.formatTimeAgo(item.completedAt || item.createdAt);
+                    const safeStatus = this.escapeHtml(this.formatStatus(item));
+                    const safeMeta = this.escapeHtml(this.formatBudgetMeta(item));
 
                     return `
-                <article class="cursor-pointer border border-transparent bg-[#141414] p-3 transition-all hover:translate-x-[2px] hover:border-[#444] history-row" data-action="click->research-ui#loadHistoryItem" data-query="${safeQuery}">
+                <article class="cursor-pointer border border-transparent bg-[#141414] p-3 transition-all hover:translate-x-[2px] hover:border-[#444] history-row" data-action="click->research-ui#loadHistoryItem" data-run-id="${this.escapeHtml(item.id)}">
                     <p class="m-0 text-sm leading-tight text-gray-200">${safeQuery}</p>
                     <p class="mt-1 text-xs text-gray-500">${safeTime}</p>
+                    <p class="mt-0.5 text-xs text-gray-600">${safeStatus}${safeMeta ? ` · ${safeMeta}` : ''}</p>
                 </article>
             `;
                 },
@@ -431,51 +444,143 @@ export default class extends Controller {
         }
     }
 
-    loadHistoryItem(event) {
-        const query = event.currentTarget.dataset.query;
-        this.inputTarget.value = query;
-        this.accumulatedMarkdown = '';
-        this.renderMode = 'rendered';
-        this.queryLineTarget.textContent = query;
-        this.heroTarget.style.display = 'none';
+    async loadHistoryItem(event) {
+        const runId = event.currentTarget.dataset.runId;
+        if (!runId) {
+            return;
+        }
 
-        this.toolCalls = [
-            {
-                label: 'database.query',
-                message: 'Loading previous research trace from memory.',
-                path: 'cache -> history',
-                link: '#',
-            },
-            {
-                label: 'agent.reasoning',
-                message: 'Verifying past responses are still relevant.',
-                path: 'eval -> check',
-                link: '#',
-            },
-            {
-                label: 'result.render',
-                message: 'Formatting historical data for current view.',
-                path: 'ui -> render',
-                link: '#',
-            },
-        ];
-        this.renderTrace();
+        const template = this.runUrlValue || `/research/runs/${runId}`;
+        const runUrl = template.replace('__ID__', runId);
 
-        this.element.classList.remove('is-searching');
-        this.element.classList.add('is-complete');
-        this.statusTarget.classList.remove('text-gray-400');
-        this.statusTarget.classList.add('text-white');
-        this.statusTarget.textContent = 'Loaded from history';
-        this.streamTarget.innerHTML = '';
-        this.answerBodyTarget.innerHTML = `
-            <h2 class="m-0 text-lg">Retrieved from cache</h2>
-            <p class="mt-1 leading-relaxed">This is a historical view of your query: <strong>${this.escapeHtml(query)}</strong></p>
-            <p class="mt-1 leading-relaxed">The agent has successfully restored the final answer and the corresponding tool execution trace. You can view the original process in the Trace tab.</p>
+        try {
+            const response = await fetch(runUrl, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                this.setError('Failed to load run');
+                return;
+            }
+
+            const data = await response.json();
+            const { run, steps } = data;
+
+            this.inputTarget.value = run.query;
+            this.accumulatedMarkdown = run.finalAnswerMarkdown || '';
+            this.renderMode = 'rendered';
+            this.queryLineTarget.textContent = run.query;
+            this.heroTarget.style.display = 'none';
+
+            this.toolCalls = steps.map((step) => {
+                const meta = step.payloadJson ? (() => {
+                    try {
+                        return JSON.parse(step.payloadJson);
+                    } catch {
+                        return {};
+                    }
+                })() : {};
+                const args = meta.arguments || {};
+                const url = args.url || args.link || null;
+
+                return {
+                    label: step.toolName || step.type,
+                    message: step.summary || '',
+                    path: step.type,
+                    link: url || '#',
+                };
+            });
+            this.renderTrace();
+
+            this.element.classList.remove('is-searching');
+            this.element.classList.add('is-complete');
+            this.statusTarget.classList.remove('text-gray-400');
+            this.statusTarget.classList.add('text-white');
+            this.statusTarget.textContent = this.formatStatus(run);
+
+            this.streamTarget.innerHTML = '';
+            if (run.finalAnswerMarkdown) {
+                this.renderAnswerBody();
+                this.updateRenderModeToggleVisibility(true);
+            } else {
+                this.answerBodyTarget.innerHTML = this.buildNoAnswerHtml(run);
+                this.updateRenderModeToggleVisibility(false);
+            }
+            this.resultsTarget.hidden = false;
+            this.showAnswerTab();
+        } catch (err) {
+            this.setError(err.message || 'Failed to load run');
+        }
+    }
+
+    formatTimeAgo(isoString) {
+        if (!isoString) {
+            return '';
+        }
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHr = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHr / 24);
+
+        if (diffSec < 60) {
+            return 'just now';
+        }
+        if (diffMin < 60) {
+            return `${diffMin}m ago`;
+        }
+        if (diffHr < 24) {
+            return `${diffHr}h ago`;
+        }
+        if (diffDay < 7) {
+            return `${diffDay}d ago`;
+        }
+        return date.toLocaleDateString();
+    }
+
+    formatStatus(run) {
+        const status = run.status || 'unknown';
+        const statusLabels = {
+            completed: 'Complete',
+            running: 'Running',
+            queued: 'Queued',
+            answer_only: 'Answer only',
+            budget_exhausted: 'Budget exhausted',
+            loop_stopped: 'Loop stopped',
+            failed: 'Failed',
+            timed_out: 'Timed out',
+        };
+        return statusLabels[status] || status;
+    }
+
+    formatBudgetMeta(run) {
+        const parts = [];
+        if (run.tokenBudgetUsed != null && run.tokenBudgetHardCap != null) {
+            parts.push(`${(run.tokenBudgetUsed / 1000).toFixed(1)}k / ${(run.tokenBudgetHardCap / 1000).toFixed(0)}k tokens`);
+        }
+        if (run.loopDetected) {
+            parts.push('loop');
+        }
+        if (run.answerOnlyTriggered) {
+            parts.push('answer-only');
+        }
+        return parts.join(', ');
+    }
+
+    buildNoAnswerHtml(run) {
+        const status = this.formatStatus(run);
+        const reason = run.failureReason ? this.escapeHtml(run.failureReason) : '';
+        const meta = this.formatBudgetMeta(run);
+
+        return `
+            <p class="m-0 text-gray-500">No answer produced. Status: ${this.escapeHtml(status)}</p>
+            ${reason ? `<p class="mt-1 text-sm text-gray-600">${reason}</p>` : ''}
+            ${meta ? `<p class="mt-1 text-xs text-gray-600">${this.escapeHtml(meta)}</p>` : ''}
         `;
-
-        this.resultsTarget.hidden = false;
-        this.updateRenderModeToggleVisibility(false);
-        this.showAnswerTab();
     }
 
     showAnswerTab() {

@@ -19,7 +19,7 @@ interface ResearchRunRepositoryInterface
     /**
      * Find recent runs for the given client key.
      *
-     * @return list<array{id: string, query: string, status: string, createdAt: \DateTimeImmutable}>
+     * @return list<array{id: string, query: string, status: string, createdAt: \DateTimeImmutable, completedAt: \DateTimeImmutable|null, tokenBudgetUsed: int, tokenBudgetHardCap: int, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null}>
      */
     public function findRecentByClientKey(string $clientKey, int $limit = 20): array;
 
@@ -29,4 +29,11 @@ interface ResearchRunRepositoryInterface
      * @return array{run: array<string, mixed>, steps: list<array<string, mixed>>}|null
      */
     public function findRunWithSteps(string $runId): ?array;
+
+    /**
+     * Find a run with its steps for replay, only if it belongs to the given client.
+     *
+     * @return array{run: array<string, mixed>, steps: list<array<string, mixed>>}|null
+     */
+    public function findRunWithStepsForClient(string $runId, string $clientKey): ?array;
 }

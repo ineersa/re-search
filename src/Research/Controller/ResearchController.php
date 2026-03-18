@@ -7,6 +7,7 @@ namespace App\Research\Controller;
 use App\Entity\ResearchRun;
 use App\Research\Mercure\ResearchTopicFactory;
 use App\Research\Message\ExecuteResearchRun;
+use App\Research\Persistence\ResearchRunRepositoryInterface;
 use App\Research\Throttle\ResearchThrottle;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,6 +19,62 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class ResearchController extends AbstractController
 {
+    #[Route('/research/runs', name: 'app_research_list', methods: ['GET'])]
+    public function list(
+        Request $request,
+        ResearchRunRepositoryInterface $runRepository,
+    ): Response {
+        $clientKey = $this->buildClientKey($request);
+        $runs = $runRepository->findRecentByClientKey($clientKey, 20);
+
+        $items = array_map(
+            static function (array $run): array {
+                $createdAt = $run['createdAt'];
+                $completedAt = $run['completedAt'];
+
+                return [
+                    'id' => $run['id'],
+                    'query' => $run['query'],
+                    'status' => $run['status'],
+                    'createdAt' => $createdAt->format(\DateTimeInterface::ATOM),
+                    'completedAt' => $completedAt?->format(\DateTimeInterface::ATOM),
+                    'tokenBudgetUsed' => $run['tokenBudgetUsed'],
+                    'tokenBudgetHardCap' => $run['tokenBudgetHardCap'],
+                    'loopDetected' => $run['loopDetected'],
+                    'answerOnlyTriggered' => $run['answerOnlyTriggered'],
+                    'failureReason' => $run['failureReason'],
+                ];
+            },
+            $runs
+        );
+
+        return new JsonResponse(['runs' => $items]);
+    }
+
+    #[Route('/research/runs/{id}', name: 'app_research_show', methods: ['GET'])]
+    public function show(
+        string $id,
+        Request $request,
+        ResearchRunRepositoryInterface $runRepository,
+    ): Response {
+        $clientKey = $this->buildClientKey($request);
+        $data = $runRepository->findRunWithStepsForClient($id, $clientKey);
+
+        if (null === $data) {
+            throw $this->createNotFoundException('Research run not found.');
+        }
+
+        $run = $data['run'];
+        $run['createdAt'] = $run['createdAt']->format(\DateTimeInterface::ATOM);
+        $run['completedAt'] = $run['completedAt']?->format(\DateTimeInterface::ATOM);
+
+        foreach ($data['steps'] as &$step) {
+            $step['createdAt'] = $step['createdAt']->format(\DateTimeInterface::ATOM);
+        }
+
+        return new JsonResponse($data);
+    }
+
     #[Route('/research/runs', name: 'app_research_submit', methods: ['POST'])]
     public function submit(
         Request $request,
