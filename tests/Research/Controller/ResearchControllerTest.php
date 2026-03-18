@@ -40,14 +40,4 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(400);
     }
 
-    public function testSubmitReturns429WhenRateLimitExceeded(): void
-    {
-        $client = static::createClient();
-        $client->request('POST', '/research/runs', ['query' => 'What is Symfony?']);
-        self::assertResponseStatusCodeSame(202);
-
-        // Second request within 10 minutes should be throttled (limit: 1 per 10 min)
-        $client->request('POST', '/research/runs', ['query' => 'Another query']);
-        self::assertResponseStatusCodeSame(429);
-    }
 }

@@ -12,6 +12,7 @@ use App\Research\Guardrail\Exception\LoopDetectedException;
 use App\Research\Guardrail\ResearchBudgetEnforcerInterface;
 use App\Research\Orchestration\Dto\ResearchTurnResult;
 use App\Research\Orchestration\Dto\ToolCallDecision;
+use App\Research\Persistence\LlmInvocationTraceSerializer;
 use App\Research\Persistence\ResearchRunRepository;
 use App\Research\ResearchBriefBuilder;
 use Doctrine\ORM\EntityManagerInterface;
@@ -55,6 +56,7 @@ final class RunOrchestrator
         private readonly ResearchRunRepository $runRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
+        private readonly LlmInvocationTraceSerializer $traceSerializer,
         private readonly ToolResultConverter $toolResultConverter = new ToolResultConverter(),
     ) {
     }
@@ -148,6 +150,8 @@ final class RunOrchestrator
                     'toolCallsCount' => \count($turnResult->toolCalls),
                     'assistantTextLength' => \strlen($turnResult->assistantText),
                 ]);
+
+                $this->persistLlmInvocation($run, ++$sequence, $turn, $messages, $options, $turnResult);
 
                 $tokensThisTurn = $this->extractTokens($result);
                 $tokenBudgetUsed += $tokensThisTurn;
@@ -397,6 +401,32 @@ final class RunOrchestrator
         }
 
         return 0;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    private function persistLlmInvocation(
+        ResearchRun $run,
+        int $sequence,
+        int $turnNumber,
+        MessageBag $messages,
+        array $options,
+        ResearchTurnResult $turnResult,
+    ): void {
+        $payload = $this->traceSerializer->buildPayload($this->model, $messages, $options, $turnResult);
+        $payloadJson = json_encode($payload, \JSON_THROW_ON_ERROR);
+        $summary = \sprintf('LLM invocation turn %d', $turnNumber);
+
+        $step = new ResearchStep();
+        $step->setRun($run);
+        $step->setSequence($sequence);
+        $step->setType('llm_invocation');
+        $step->setTurnNumber($turnNumber);
+        $step->setSummary($summary);
+        $step->setPayloadJson($payloadJson);
+        $run->addStep($step);
+        $this->entityManager->persist($step);
     }
 
     private function persistTokenSnapshot(
