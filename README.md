@@ -5,6 +5,42 @@ Project documentation lives in `docs/`.
 - Setup guide: `docs/setup.md`
 - Mercure streaming: see [Mercure](#mercure) below
 
+## Testing the Orchestrator
+
+You can test the research orchestrator loop synchronously using the console command. This bypasses the background worker and runs the loop directly in your terminal, making it easier to debug.
+
+```bash
+make console cmd="app:research:test 'Who was the 16th president of the united states?' -vvv"
+```
+
+### Recording and Mocking Tool Calls
+
+You can record the MCP web search tool responses to a JSON fixture file and replay them later. This is incredibly useful for testing the AI prompt changes without hitting external search services or using tokens for repeated web requests.
+
+1. **Record a fixture:**
+```bash
+make console cmd="app:research:test 'Who was the 16th president of the united states?' --record=data/fixture.json -vvv"
+```
+
+2. **Replay/mock from a fixture:**
+```bash
+make console cmd="app:research:test 'Who was the 16th president of the united states?' --mock=data/fixture.json -vvv"
+```
+
+### Testing the UI (Frontend) without the AI Model
+
+If you want to test the frontend UI transitions (loaders, budget updates, markdown rendering) without running the real AI orchestrator, you can use the UI test command. 
+
+This command will push a simulated sequence of events (with artificial delays) to the Mercure topic for any given Run ID.
+
+1. Start a new research run in your browser.
+2. Look at the URL to get the `runId` (e.g., `http://localhost/run/1234-5678...`).
+3. Run the UI test command with that ID:
+```bash
+make console cmd="app:research:test-ui <runId>"
+```
+The browser will immediately start receiving the simulated events and rendering the UI as if a real model was processing it.
+
 ## Mercure
 
 This project uses [Mercure](https://mercure.rocks/) for real-time streaming of research run events. The Mercure hub is built into FrankenPHP/Caddy.

@@ -7,7 +7,6 @@ namespace App\Research\Persistence;
 use App\Entity\ResearchRun;
 use App\Entity\ResearchStep;
 use App\Repository\ResearchRunRepository as DoctrineResearchRunRepository;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * Doctrine-backed implementation of research run queries.
@@ -19,15 +18,9 @@ final class ResearchRunRepository
     ) {
     }
 
-    public function findEntity(string $runId): ?ResearchRun
+    public function findEntity(string $runUuid): ?ResearchRun
     {
-        try {
-            $uuid = Uuid::fromString($runId);
-        } catch (\InvalidArgumentException) {
-            return null;
-        }
-
-        $run = $this->doctrineRepository->find($uuid);
+        $run = $this->doctrineRepository->findOneBy(['runUuid' => $runUuid]);
 
         return $run instanceof ResearchRun ? $run : null;
     }
@@ -45,7 +38,7 @@ final class ResearchRunRepository
 
         return array_map(
             static fn (ResearchRun $run) => [
-                'id' => $run->getId()->toRfc4122(),
+                'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
                 'status' => $run->getStatus(),
                 'createdAt' => $run->getCreatedAt(),
@@ -61,28 +54,23 @@ final class ResearchRunRepository
     }
 
     /**
-     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: string, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
+     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: int|null, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
      */
-    public function findRunWithSteps(string $runId): ?array
+    public function findRunWithSteps(string $runUuid): ?array
     {
-        try {
-            $uuid = Uuid::fromString($runId);
-        } catch (\InvalidArgumentException) {
-            return null;
-        }
-
-        $run = $this->doctrineRepository->find($uuid);
+        $run = $this->doctrineRepository->findOneBy(['runUuid' => $runUuid]);
         if (!$run instanceof ResearchRun) {
             return null;
         }
 
         $steps = array_map(
             static fn (ResearchStep $step) => [
-                'id' => $step->getId()->toRfc4122(),
+                'id' => $step->getId(),
                 'sequence' => $step->getSequence(),
                 'type' => $step->getType(),
                 'turnNumber' => $step->getTurnNumber(),
                 'toolName' => $step->getToolName(),
+                'toolArgumentsJson' => $step->getToolArgumentsJson(),
                 'summary' => $step->getSummary(),
                 'payloadJson' => $step->getPayloadJson(),
                 'createdAt' => $step->getCreatedAt(),
@@ -92,7 +80,7 @@ final class ResearchRunRepository
 
         return [
             'run' => [
-                'id' => $run->getId()->toRfc4122(),
+                'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
                 'status' => $run->getStatus(),
                 'finalAnswerMarkdown' => $run->getFinalAnswerMarkdown(),
@@ -110,28 +98,23 @@ final class ResearchRunRepository
     }
 
     /**
-     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: string, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
+     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: int|null, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
      */
-    public function findRunWithStepsForClient(string $runId, string $clientKey): ?array
+    public function findRunWithStepsForClient(string $runUuid, string $clientKey): ?array
     {
-        try {
-            $uuid = Uuid::fromString($runId);
-        } catch (\InvalidArgumentException) {
-            return null;
-        }
-
-        $run = $this->doctrineRepository->findOneBy(['id' => $uuid, 'clientKey' => $clientKey]);
+        $run = $this->doctrineRepository->findOneBy(['runUuid' => $runUuid, 'clientKey' => $clientKey]);
         if (!$run instanceof ResearchRun) {
             return null;
         }
 
         $steps = array_map(
             static fn (ResearchStep $step) => [
-                'id' => $step->getId()->toRfc4122(),
+                'id' => $step->getId(),
                 'sequence' => $step->getSequence(),
                 'type' => $step->getType(),
                 'turnNumber' => $step->getTurnNumber(),
                 'toolName' => $step->getToolName(),
+                'toolArgumentsJson' => $step->getToolArgumentsJson(),
                 'summary' => $step->getSummary(),
                 'payloadJson' => $step->getPayloadJson(),
                 'createdAt' => $step->getCreatedAt(),
@@ -141,7 +124,7 @@ final class ResearchRunRepository
 
         return [
             'run' => [
-                'id' => $run->getId()->toRfc4122(),
+                'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
                 'status' => $run->getStatus(),
                 'finalAnswerMarkdown' => $run->getFinalAnswerMarkdown(),

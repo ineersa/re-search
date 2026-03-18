@@ -1,79 +1,7 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:getContent$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:getCreatedAt$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:getId$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:getRole$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:getRun$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:getSequence$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:setContent$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:setRole$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchMessage\:\:setSequence$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchMessage.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:addMessage$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
 			message: '#^Unused App\\Entity\\ResearchRun\:\:getClientKey$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:getMessages$#'
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Entity/ResearchRun.php
@@ -103,72 +31,6 @@ parameters:
 			path: src/Entity/ResearchRun.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:getCreatedAt$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:getId$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:getSnippet$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:getStep$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:getTitle$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:getUrl$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:setSnippet$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:setTitle$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchSource\:\:setUrl$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchSource.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:addSource$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
 			message: '#^Unused App\\Entity\\ResearchStep\:\:getCompletionTokens$#'
 			identifier: shipmonk.deadMethod
 			count: 1
@@ -182,12 +44,6 @@ parameters:
 
 		-
 			message: '#^Unused App\\Entity\\ResearchStep\:\:getRun$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:getSources$#'
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Entity/ResearchStep.php

@@ -26,6 +26,7 @@ use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
 use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Owns the research turn loop: model turns, budget injection, tool execution,
@@ -36,11 +37,13 @@ use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
 final class RunOrchestrator
 {
     private const HARD_CAP_TOKENS = 75_000;
-    private const BUDGET_NOTICE_THRESHOLD = 5_000;
-    private const ANSWER_ONLY_THRESHOLD = 2_000;
+    private const BUDGET_NOTICE_THRESHOLD = 10_000;
+    private const ANSWER_ONLY_THRESHOLD = 5_000;
     private const MAX_TURNS = 75;
     private const WALL_CLOCK_TIMEOUT_SECONDS = 900;
     private const MAX_CONSECUTIVE_TOOL_FAILURES = 3;
+    /** Max chars per tool result sent to model (~4K tokens) to avoid context overflow */
+    private const MAX_TOOL_RESULT_CHARS = 16_000;
 
     public function __construct(
         private readonly PlatformInterface $platform,
@@ -51,6 +54,7 @@ final class RunOrchestrator
         private readonly EventPublisherInterface $eventPublisher,
         private readonly ResearchRunRepository $runRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly LoggerInterface $logger,
         private readonly ToolResultConverter $toolResultConverter = new ToolResultConverter(),
     ) {
     }
@@ -120,22 +124,31 @@ final class RunOrchestrator
                 $forcedInstruction = null;
                 if ($answerOnly) {
                     $forcedInstruction = 'Do not use any tools. Provide only your best final answer from the evidence gathered so far. Do not make further tool calls.';
-                    $messages = $messages->with(Message::forSystem($forcedInstruction));
+                    $messages = $messages->with(Message::ofUser($forcedInstruction));
                 } elseif (null !== $budgetNotice) {
-                    $messages = $messages->with(Message::forSystem($budgetNotice));
+                    $messages = $messages->with(Message::ofUser($budgetNotice));
                 }
 
                 $this->persistStep($run, ++$sequence, 'turn_started', $turn, \sprintf('Turn %d', $turn), null);
 
+                $this->logger->info('Invoking AI platform', ['turn' => $turn, 'model' => $this->model, 'messagesCount' => \count($messages->getMessages())]);
                 $deferred = $this->platform->invoke($this->model, $messages, $options);
                 $result = $deferred->getResult();
 
                 $assistantTextBeforeTools = '';
                 if ($result instanceof StreamResult) {
+                    $this->logger->info('Consuming stream from AI platform', ['turn' => $turn]);
                     [$result, $assistantTextBeforeTools] = $this->consumeStream($result);
                 }
 
                 $turnResult = $this->normalizeResult($result, $turn, $assistantTextBeforeTools);
+                $this->logger->info('Received AI platform result', [
+                    'turn' => $turn,
+                    'isFinal' => $turnResult->isFinal,
+                    'toolCallsCount' => \count($turnResult->toolCalls),
+                    'assistantTextLength' => \strlen($turnResult->assistantText),
+                ]);
+
                 $tokensThisTurn = $this->extractTokens($result);
                 $tokenBudgetUsed += $tokensThisTurn;
                 $this->budgetEnforcer->recordTokenUsage($runId, $tokensThisTurn);
@@ -160,7 +173,7 @@ final class RunOrchestrator
                     if ($answerOnly) {
                         $messages = $messages->with(Message::ofAssistant($turnResult->assistantText));
                         $forcedInstruction = 'You requested tools but answer-only mode is active. Provide your best final answer from the evidence gathered. No tool calls allowed.';
-                        $messages = $messages->with(Message::forSystem($forcedInstruction));
+                        $messages = $messages->with(Message::ofUser($forcedInstruction));
                         continue;
                     }
 
@@ -196,7 +209,7 @@ final class RunOrchestrator
                             $this->eventPublisher->publishActivity($runId, 'answer_only_enabled', 'Switching to answer-only mode: budget exhausted', []);
 
                             $forcedInstruction = 'Budget exhausted. Do not use any tools. Provide only your best final answer from the evidence gathered so far.';
-                            $messages = $messages->with(Message::forSystem($forcedInstruction));
+                            $messages = $messages->with(Message::ofUser($forcedInstruction));
                             $this->persistStep($run, ++$sequence, 'answer_only_enabled', $turn, 'Budget exhausted, requesting final answer', null);
 
                             break;
@@ -210,11 +223,14 @@ final class RunOrchestrator
 
                             $consecutiveToolFailures = 0;
                             $summary = \sprintf('Executed %s', $decision->name);
-                            $payload = json_encode(['arguments' => $decision->arguments, 'result_preview' => \strlen($content) > 200 ? substr($content, 0, 200).'...' : $content], \JSON_THROW_ON_ERROR);
+                            $payload = json_encode(['arguments' => $decision->arguments, 'result_preview' => \strlen($content) > 200 ? substr($content, 0, 200).'...' : $content, 'result' => $content], \JSON_THROW_ON_ERROR);
                             $this->persistStep($run, ++$sequence, 'tool_succeeded', $turn, $summary, $payload, $decision->name, json_encode($decision->arguments, \JSON_THROW_ON_ERROR), $decision->normalizedSignature);
-                            $this->eventPublisher->publishActivity($runId, 'tool_succeeded', $summary, ['tool' => $decision->name]);
+                            $this->eventPublisher->publishActivity($runId, 'tool_succeeded', $summary, ['tool' => $decision->name, 'arguments' => $decision->arguments, 'result' => $content]);
 
-                            $messages = $messages->with(Message::ofToolCall($toolCall, $content));
+                            $contentForModel = \strlen($content) > self::MAX_TOOL_RESULT_CHARS
+                                ? substr($content, 0, self::MAX_TOOL_RESULT_CHARS)."\n\n[... truncated, ".\strlen($content)." chars total — use websearch_find to extract specific parts ...]"
+                                : $content;
+                            $messages = $messages->with(Message::ofToolCall($toolCall, $contentForModel));
                         } catch (\Throwable $toolError) {
                             $errorMsg = $toolError->getMessage();
                             $payload = json_encode(['arguments' => $decision->arguments, 'error' => $errorMsg], \JSON_THROW_ON_ERROR);

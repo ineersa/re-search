@@ -17,8 +17,12 @@ use Symfony\Component\Uid\Uuid;
 class ResearchRun
 {
     #[ORM\Id]
-    #[ORM\Column(type: 'uuid', unique: true)]
-    private Uuid $id;
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $id = null;
+
+    #[ORM\Column(type: Types::STRING, length: 36, unique: true)]
+    private string $runUuid;
 
     #[ORM\Column(type: Types::TEXT)]
     private string $query;
@@ -74,25 +78,22 @@ class ResearchRun
     #[ORM\OrderBy(['sequence' => 'ASC'])]
     private Collection $steps;
 
-    /**
-     * @var Collection<int, ResearchMessage>
-     */
-    #[ORM\OneToMany(targetEntity: ResearchMessage::class, mappedBy: 'run', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['sequence' => 'ASC'])]
-    private Collection $messages;
-
     public function __construct()
     {
-        $this->id = Uuid::v4();
+        $this->runUuid = Uuid::v4()->toRfc4122();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
         $this->steps = new ArrayCollection();
-        $this->messages = new ArrayCollection();
     }
 
-    public function getId(): Uuid
+    public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getRunUuid(): string
+    {
+        return $this->runUuid;
     }
 
     public function getQuery(): string
@@ -274,24 +275,6 @@ class ResearchRun
         if (!$this->steps->contains($step)) {
             $this->steps->add($step);
             $step->setRun($this);
-        }
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, ResearchMessage>
-     */
-    public function getMessages(): Collection
-    {
-        return $this->messages;
-    }
-
-    public function addMessage(ResearchMessage $message): static
-    {
-        if (!$this->messages->contains($message)) {
-            $this->messages->add($message);
-            $message->setRun($this);
         }
 
         return $this;

@@ -198,8 +198,8 @@ export default class extends Controller {
     appendActivity(payload) {
         const { stepType, summary, meta = {} } = payload;
         const toolName = meta.tool || stepType;
+        const args = meta.arguments || {};
         const link = meta.url || meta.link || null;
-        const path = meta.path || '';
 
         const row = document.createElement('article');
         row.className = 'border border-[#333] bg-[#1a1a1a] p-3';
@@ -219,12 +219,9 @@ export default class extends Controller {
         this.streamTarget.appendChild(row);
         this.streamTarget.scrollTop = this.streamTarget.scrollHeight;
 
-        this.toolCalls.push({
-            label: toolName,
-            message: summary || '',
-            path: path || 'n/a',
-            link: link || '#',
-        });
+        const result = meta.result ?? null;
+        const traceItem = this.buildTraceItem(stepType, toolName, summary, args, link, result);
+        this.toolCalls.push(traceItem);
         this.renderTrace();
     }
 
@@ -346,6 +343,24 @@ export default class extends Controller {
         this.statusTarget.classList.add('text-red-400');
     }
 
+    buildTraceItem(stepType, toolName, summary, args, link, result = null) {
+        const isRunStarted = stepType === 'run_started';
+        const url = args.url || link || null;
+        const query = args.query ?? null;
+        const filter = args.query ?? args.selector ?? null;
+
+        return {
+            type: isRunStarted ? 'run_started' : 'tool',
+            label: toolName,
+            message: summary || '',
+            arguments: args,
+            query,
+            url,
+            filter,
+            result: result ?? null,
+        };
+    }
+
     renderTrace() {
         if (this.toolCalls.length === 0) {
             this.traceBodyTarget.innerHTML = '<p class="trace-empty">No tool calls yet.</p>';
@@ -356,24 +371,84 @@ export default class extends Controller {
         const items = this.toolCalls
             .map(
                 (call, index) => {
-                    const safeLabel = this.escapeHtml(call.label);
-                    const safeMessage = this.escapeHtml(call.message);
-                    const safePath = this.escapeHtml(call.path ?? 'n/a');
-                    const safeLink = this.escapeHtml(call.link ?? '#');
+                    if (call.type === 'run_started') {
+                        return this.renderTraceRunStarted(index, call);
+                    }
 
-                    return `
-                <article class="border border-[#333] bg-[#1a1a1a] p-3">
-                    <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} ${safeLabel}</p>
-                    <p class="mt-1 leading-relaxed text-gray-300">${safeMessage}</p>
-                    <p class="mt-1 leading-relaxed text-gray-400">Path: ${safePath}</p>
-                    <a class="mt-2 inline-block text-sm text-blue-400 no-underline hover:text-blue-300 hover:underline transition-colors" href="${safeLink}" target="_blank" rel="noreferrer">${safeLink}</a>
-                </article>
-            `;
+                    return this.renderTraceToolCall(index, call);
                 },
             )
             .join('');
 
         this.traceBodyTarget.innerHTML = items;
+        this.attachTraceClickHandlers();
+    }
+
+    renderTraceRunStarted(index, call) {
+        const safeLabel = this.escapeHtml(call.label);
+        const safeMessage = this.escapeHtml(call.message);
+
+        return `
+            <article class="border border-[#333] bg-[#1a1a1a] p-3 trace-card" data-trace-index="${index}">
+                <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} ${safeLabel}</p>
+                <p class="mt-1 leading-relaxed text-gray-300">${safeMessage}</p>
+            </article>
+        `;
+    }
+
+    renderTraceToolCall(index, call) {
+        const safeLabel = this.escapeHtml(call.label);
+        let primaryText = '';
+        if (call.label === 'websearch_search' && call.query) {
+            primaryText = this.escapeHtml(call.query);
+        } else if (call.label === 'websearch_open' && call.url) {
+            primaryText = this.escapeHtml(call.url);
+        } else if (call.label === 'websearch_find' && (call.url || call.filter)) {
+            primaryText = [call.url, call.filter].filter(Boolean).map((s) => this.escapeHtml(s)).join(' · ');
+        } else {
+            primaryText = this.escapeHtml(call.message);
+        }
+
+        const hasParams = Object.keys(call.arguments || {}).length > 0;
+        const paramsJson = hasParams ? this.escapeHtml(JSON.stringify(call.arguments, null, 2)) : '';
+        const hasResult = typeof call.result === 'string' && call.result.length > 0;
+        const resultText = hasResult ? this.escapeHtml(call.result) : '';
+
+        return `
+            <article class="border border-[#333] bg-[#1a1a1a] p-3 trace-card hover:border-gray-500 transition-colors" data-trace-index="${index}">
+                <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} ${safeLabel}</p>
+                <p class="mt-1 leading-relaxed text-gray-300 break-all">${primaryText}</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    ${hasParams ? `<button type="button" class="trace-toggle-params text-xs text-gray-500 hover:text-gray-300 border border-[#444] px-2 py-1 rounded bg-transparent cursor-pointer">Show params</button>` : ''}
+                    ${hasResult ? `<button type="button" class="trace-toggle-result text-xs text-gray-500 hover:text-gray-300 border border-[#444] px-2 py-1 rounded bg-transparent cursor-pointer">Open result</button>` : ''}
+                </div>
+                ${hasParams ? `<pre class="trace-params mt-2 p-2 bg-[#0a0a0a] text-xs text-gray-400 rounded hidden overflow-x-auto max-h-48" data-trace-params>${paramsJson}</pre>` : ''}
+                ${hasResult ? `<pre class="trace-result mt-2 p-2 bg-[#0a0a0a] text-xs text-gray-400 rounded hidden overflow-auto max-h-96 whitespace-pre-wrap break-words" data-trace-result>${resultText}</pre>` : ''}
+            </article>
+        `;
+    }
+
+    attachTraceClickHandlers() {
+        this.traceBodyTarget.querySelectorAll('.trace-card').forEach((card) => {
+            const paramsEl = card.querySelector('[data-trace-params]');
+            const paramsBtn = card.querySelector('.trace-toggle-params');
+            if (paramsEl && paramsBtn) {
+                paramsBtn.addEventListener('click', () => {
+                    const isHidden = paramsEl.classList.contains('hidden');
+                    paramsEl.classList.toggle('hidden');
+                    paramsBtn.textContent = isHidden ? 'Hide params' : 'Show params';
+                });
+            }
+            const resultEl = card.querySelector('[data-trace-result]');
+            const resultBtn = card.querySelector('.trace-toggle-result');
+            if (resultEl && resultBtn) {
+                resultBtn.addEventListener('click', () => {
+                    const isHidden = resultEl.classList.contains('hidden');
+                    resultEl.classList.toggle('hidden');
+                    resultBtn.textContent = isHidden ? 'Close result' : 'Open result';
+                });
+            }
+        });
     }
 
     async fetchHistory() {
@@ -489,24 +564,29 @@ export default class extends Controller {
             this.queryLineTarget.textContent = run.query;
             this.heroTarget.style.display = 'none';
 
-            this.toolCalls = steps.map((step) => {
-                const meta = step.payloadJson ? (() => {
-                    try {
-                        return JSON.parse(step.payloadJson);
-                    } catch {
-                        return {};
+            this.toolCalls = steps
+                .filter((step) => step.type === 'run_started' || step.type === 'tool_succeeded')
+                .map((step) => {
+                    const meta = step.payloadJson ? (() => {
+                        try {
+                            return JSON.parse(step.payloadJson);
+                        } catch {
+                            return {};
+                        }
+                    })() : {};
+                    let args = meta.arguments || {};
+                    if (step.toolArgumentsJson) {
+                        try {
+                            args = JSON.parse(step.toolArgumentsJson);
+                        } catch {
+                            // keep meta.arguments
+                        }
                     }
-                })() : {};
-                const args = meta.arguments || {};
-                const url = args.url || args.link || null;
+                    const url = args.url || args.link || null;
+                    const result = meta.result ?? meta.result_preview ?? null;
 
-                return {
-                    label: step.toolName || step.type,
-                    message: step.summary || '',
-                    path: step.type,
-                    link: url || '#',
-                };
-            });
+                    return this.buildTraceItem(step.type, step.toolName || step.type, step.summary || '', args, url, result);
+                });
             this.renderTrace();
 
             this.element.classList.remove('is-searching');

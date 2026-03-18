@@ -22,6 +22,6 @@ final class ResearchBriefBuilderTest extends TestCase
         self::assertStringContainsString('Nothing found in reviewed sources', $brief);
         self::assertStringContainsString('Impossible to verify from available sources', $brief);
         self::assertStringContainsString('75000', $brief);
-        self::assertStringContainsString('5000', $brief);
+        self::assertStringContainsString('10000', $brief);
     }
 }

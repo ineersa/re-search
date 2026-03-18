@@ -45,10 +45,11 @@ Output contract:
 - Cite every non-trivial factual claim.
 - Use markdown for formatting.
 
-Budget:
+Budget and constraints:
 - Hard token cap: 75000
-- Soft reminder every 5000 tokens.
-- When instructed to stop (answer-only mode), provide the best final answer from gathered evidence and do not use tools.
+- Soft reminder every 10000 tokens.
+- Mid-flight budget updates and stopping rules (answer-only mode) will be injected as new User messages.
+- When you receive a User message about budget updates or instructing you to stop (answer-only mode), you MUST immediately provide your best final answer based on the evidence gathered so far and STOP making tool calls. Do not explain the budget exhaustion, just answer the question.
 BRIEF;
     }
 }

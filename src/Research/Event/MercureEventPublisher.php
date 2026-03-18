@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Event;
 
 use App\Research\Mercure\ResearchTopicFactory;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
 
@@ -17,6 +18,7 @@ final class MercureEventPublisher implements EventPublisherInterface
     public function __construct(
         private readonly HubInterface $hub,
         private readonly ResearchTopicFactory $topicFactory,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -77,6 +79,8 @@ final class MercureEventPublisher implements EventPublisherInterface
      */
     private function publish(string $runId, array $payload): void
     {
+        $this->logger->info('Publishing event to Mercure', ['runId' => $runId, 'payload' => $payload]);
+
         $topic = $this->topicFactory->forRun($runId);
         $update = new Update(
             $topic,

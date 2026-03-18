@@ -5,19 +5,17 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\ResearchStepRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: ResearchStepRepository::class)]
 #[ORM\Table(name: 'research_step')]
 class ResearchStep
 {
     #[ORM\Id]
-    #[ORM\Column(type: 'uuid', unique: true)]
-    private Uuid $id;
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: ResearchRun::class, inversedBy: 'steps')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -62,20 +60,12 @@ class ResearchStep
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
-    /**
-     * @var Collection<int, ResearchSource>
-     */
-    #[ORM\OneToMany(targetEntity: ResearchSource::class, mappedBy: 'step', cascade: ['persist'], orphanRemoval: true)]
-    private Collection $sources;
-
     public function __construct()
     {
-        $this->id = Uuid::v4();
         $this->createdAt = new \DateTimeImmutable();
-        $this->sources = new ArrayCollection();
     }
 
-    public function getId(): Uuid
+    public function getId(): ?int
     {
         return $this->id;
     }
@@ -239,23 +229,5 @@ class ResearchStep
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
-    }
-
-    /**
-     * @return Collection<int, ResearchSource>
-     */
-    public function getSources(): Collection
-    {
-        return $this->sources;
-    }
-
-    public function addSource(ResearchSource $source): static
-    {
-        if (!$this->sources->contains($source)) {
-            $this->sources->add($source);
-            $source->setStep($this);
-        }
-
-        return $this;
     }
 }

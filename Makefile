@@ -77,10 +77,10 @@ prune: ## Remove local stack and orphan containers
 	@$(COMPOSE_DEV) down --remove-orphans
 
 sh: ## Open shell in PHP container as current user
-	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) sh
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) bash
 
 root-sh: ## Open root shell in PHP container
-	@$(COMPOSE_DEV) exec $(PHP_SERVICE) sh
+	@$(COMPOSE_DEV) exec $(PHP_SERVICE) bash
 
 composer: ## Run composer command: make composer cmd='require symfony/mercure-bundle'
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) composer $(cmd)
