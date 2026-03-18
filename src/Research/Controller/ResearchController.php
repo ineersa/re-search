@@ -83,14 +83,35 @@ final class ResearchController extends AbstractController
         MessageBusInterface $bus,
         EntityManagerInterface $entityManager,
     ): Response {
-        $throttle->consume($request);
-
         $query = $request->request->getString('query');
+        $clientKey = $this->buildClientKey($request);
+
+        try {
+            $throttle->consume($request);
+        } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException $e) {
+            $run = new ResearchRun();
+            $run->setQuery($query ?: '(throttled)');
+            $run->setQueryHash($query ? hash('sha256', $query) : '');
+            $run->setClientKey($clientKey);
+            $run->setStatus('throttled');
+            $run->setFailureReason('Rate limit exceeded. Please try again later.');
+            $entityManager->persist($run);
+            $entityManager->flush();
+
+            $retryAfter = $e->getHeaders()['Retry-After'] ?? 600;
+
+            return new JsonResponse([
+                'status' => 'throttled',
+                'runId' => $run->getId()->toRfc4122(),
+                'retryAfter' => (int) $retryAfter,
+            ], Response::HTTP_TOO_MANY_REQUESTS, [
+                'Retry-After' => (string) $retryAfter,
+            ]);
+        }
+
         if ('' === $query) {
             return new JsonResponse(['error' => 'Missing or empty query'], Response::HTTP_BAD_REQUEST);
         }
-
-        $clientKey = $this->buildClientKey($request);
 
         $run = new ResearchRun();
         $run->setQuery($query);

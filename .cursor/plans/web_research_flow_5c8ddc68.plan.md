@@ -2,27 +2,27 @@
 name: web research flow
 overview: Implement the first web research workflow in `/home/ineersa/projects/re-search` by pairing the existing research UI with a new backend orchestration layer, streamed run events, SQLite-backed history, and rate/budget guardrails. Keep the core design transport-agnostic, but start with Symfony SSE/EventStreamResponse for v1 and leave Mercure as a replaceable publisher later.
 todos:
-  - id: research-domain
-    content: Create `src/Research/` service skeletons and DTOs for run orchestration, brief building, event publishing, and history loading.
-    status: pending
-  - id: research-persistence
-    content: Add SQLite entities and Doctrine migrations for runs, steps, and persisted answers/traces.
-    status: pending
-  - id: research-limits
-    content: Configure Symfony RateLimiter for IP+session and add runtime research-budget/duplicate-call guardrails.
-    status: pending
-  - id: research-agent
-    content: Implement the web research orchestration service and PHP-based prompt/brief classes, keeping prompt text out of YAML.
-    status: pending
-  - id: research-streaming
-    content: Add submit + SSE endpoints and stream activity/answer events to the frontend through an event publisher abstraction.
-    status: pending
-  - id: research-ui
-    content: Replace the stub Stimulus script with live SSE consumption, markdown rendering, raw/rendered toggle, and persisted history loading.
-    status: pending
-  - id: research-hardening
-    content: Add error states, timeout handling, incomplete-run recovery, and a later Mercure adapter decision point.
-    status: pending
+    - id: research-domain
+      content: Create `src/Research/` service skeletons and DTOs for run orchestration, brief building, event publishing, and history loading.
+      status: pending
+    - id: research-persistence
+      content: Add SQLite entities and Doctrine migrations for runs, steps, and persisted answers/traces.
+      status: pending
+    - id: research-limits
+      content: Configure Symfony RateLimiter for IP+session and add runtime research-budget/duplicate-call guardrails.
+      status: pending
+    - id: research-agent
+      content: Implement the web research orchestration service and PHP-based prompt/brief classes, keeping prompt text out of YAML.
+      status: pending
+    - id: research-streaming
+      content: Add submit + SSE endpoints and stream activity/answer events to the frontend through an event publisher abstraction.
+      status: pending
+    - id: research-ui
+      content: Replace the stub Stimulus script with live SSE consumption, markdown rendering, raw/rendered toggle, and persisted history loading.
+      status: pending
+    - id: research-hardening
+      content: Add error states, timeout handling, incomplete-run recovery, and a later Mercure adapter decision point.
+      status: pending
 isProject: false
 ---
 
@@ -64,21 +64,19 @@ flowchart LR
     Browser --> SseStream
 ```
 
-
-
 ## Implementation Notes
 
 - Keep YAML limited to platform/service wiring. Put research instructions in PHP classes such as `ResearchBriefBuilder`, `ResearchPromptFactory`, and `ResearchRunService`.
 - Model two output channels from the backend:
-  - `activity` events for tool calls, reasoning summaries, budget counters, and warnings
-  - `answer` events for incremental/final markdown
+    - `activity` events for tool calls, reasoning summaries, budget counters, and warnings
+    - `answer` events for incremental/final markdown
 - Store one run plus many steps/messages in SQLite so history can reload both final answer and trace.
 - Guardrails should be explicit runtime logic, not only prompt text:
-  - primary and only research budget: `75_000` total tokens per run
-  - estimate tokens with `characters / 3.75` when provider token usage is unavailable
-  - global step cap, e.g. `75`
-  - repeated normalized tool-call signature cap: allow the same call twice, stop on the third identical call
-  - optional wall-clock timeout, e.g. `2-3 minutes`
+    - primary and only research budget: `75_000` total tokens per run
+    - estimate tokens with `characters / 3.75` when provider token usage is unavailable
+    - global step cap, e.g. `75`
+    - repeated normalized tool-call signature cap: allow the same call twice, stop on the third identical call
+    - optional wall-clock timeout, e.g. `2-3 minutes`
 - For nested/deep research, prefer budget caps plus duplicate-call detection over "deep recursion" tracking alone. In v1, avoid recursive subagent chains entirely: one orchestrated research run, one web-research subagent.
 - Render final markdown in both raw and rendered modes; add `highlight.js` only after live markdown rendering is stable.
 - Symfony AI can persist message history through the Chat component and pluggable message stores, but this feature still needs custom Doctrine persistence for `ResearchRun` and `ResearchStep` because we need tool traces, budget counters, Mercure replay metadata, and run-level audit fields.
@@ -89,14 +87,14 @@ flowchart LR
 
 - We are explicitly choosing `Option B`.
 - That means:
-  - do **not** treat `ai.agent.web_research` as the main runtime loop
-  - do use Symfony AI primitives for model calls, tools, messages, metadata, and result handling
-  - do build our own `ResearchOrchestrator` that controls each research turn
+    - do **not** treat `ai.agent.web_research` as the main runtime loop
+    - do use Symfony AI primitives for model calls, tools, messages, metadata, and result handling
+    - do build our own `ResearchOrchestrator` that controls each research turn
 - Reason:
-  - we need mid-flight budget injection
-  - we need to switch to answer-only mode before budget exhaustion
-  - we need duplicate-call loop control at the orchestration layer
-  - we want predictable Mercure event emission around every turn
+    - we need mid-flight budget injection
+    - we need to switch to answer-only mode before budget exhaustion
+    - we need duplicate-call loop control at the orchestration layer
+    - we want predictable Mercure event emission around every turn
 
 ### Exact ResearchOrchestrator Algorithm
 
@@ -386,30 +384,30 @@ Suggested step types:
 ### Exact Responsibilities By File
 
 - `ResearchRunService`
-Application entry point for a run. Loads entities, delegates runtime behavior to the orchestrator, and commits final state.
+  Application entry point for a run. Loads entities, delegates runtime behavior to the orchestrator, and commits final state.
 - `ResearchOrchestrator`
-Owns the loop, budget reminders, answer-only mode, and per-turn control.
+  Owns the loop, budget reminders, answer-only mode, and per-turn control.
 - `ResearchAgentFactory`
-Creates the model-facing callable/runtime object used on each turn.
+  Creates the model-facing callable/runtime object used on each turn.
 - `WebSearchTool`
-Executes only MCP-backed web search actions and returns normalized tool payloads.
+  Executes only MCP-backed web search actions and returns normalized tool payloads.
 - `ResearchToolEventSubscriber`
-Converts Symfony AI tool lifecycle events into persisted steps plus Mercure events.
+  Converts Symfony AI tool lifecycle events into persisted steps plus Mercure events.
 - `MercureEventPublisher`
-Publishes `activity`, `answer`, `budget`, and `complete` events.
+  Publishes `activity`, `answer`, `budget`, and `complete` events.
 - `TokenUsageTracker`
-Computes cumulative token usage from metadata or estimator.
+  Computes cumulative token usage from metadata or estimator.
 - `ResearchRun`
-Stores run-level state and final outputs.
+  Stores run-level state and final outputs.
 - `ResearchStep`
-Stores per-turn and per-tool timeline for replay and auditing.
+  Stores per-turn and per-tool timeline for replay and auditing.
 
 ### What Stays In YAML
 
 - `config/packages/ai.yaml`
-Define only the platform and the top-level research agent service wiring.
+  Define only the platform and the top-level research agent service wiring.
 - `config/services.yaml`
-Register the PHP services that own prompt building, tool wrapping, guardrails, event publishing, and persistence.
+  Register the PHP services that own prompt building, tool wrapping, guardrails, event publishing, and persistence.
 
 Example target shape:
 
@@ -448,74 +446,74 @@ ai:
 ### PHP File Layout
 
 - `src/Research/Controller/ResearchController.php`
-Accepts submit/history requests and returns run metadata.
+  Accepts submit/history requests and returns run metadata.
 - `src/Research/Controller/ResearchMercureController.php`
-Returns Mercure authorization for a specific run topic or sets the run-scoped auth cookie.
+  Returns Mercure authorization for a specific run topic or sets the run-scoped auth cookie.
 - `src/Research/ResearchRunService.php`
-Main application service. Creates a run, builds the brief, executes the agent, persists steps, and publishes stream events.
+  Main application service. Creates a run, builds the brief, executes the agent, persists steps, and publishes stream events.
 - `src/Research/Orchestration/ResearchOrchestrator.php`
-Custom turn-by-turn runtime loop. Decides when to call the model, when to allow tools, when to inject budget reminders, and when to force final answer mode.
+  Custom turn-by-turn runtime loop. Decides when to call the model, when to allow tools, when to inject budget reminders, and when to force final answer mode.
 - `src/Research/ResearchBriefBuilder.php`
-Deterministically reformats the user query into the research brief: current date, output contract, citation rules, table preference, goals, subquestions, and stop conditions.
+  Deterministically reformats the user query into the research brief: current date, output contract, citation rules, table preference, goals, subquestions, and stop conditions.
 - `src/Research/Query/QueryRefiner.php`
-Optional semantic query reframing layer. It can stay rule-based at first and become a small dedicated agent later if needed.
+  Optional semantic query reframing layer. It can stay rule-based at first and become a small dedicated agent later if needed.
 - `src/Research/ResearchAgentFactory.php`
-Factory for the model-facing agent/runtime pieces used by the orchestrator, with per-turn prompt injection and custom processor wiring.
+  Factory for the model-facing agent/runtime pieces used by the orchestrator, with per-turn prompt injection and custom processor wiring.
 - `src/Research/Tool/WebSearchTool.php`
-Thin Symfony AI tool adapter exposing `search()`, `open()`, and `find()` methods. Internally calls the MCP web search server over the configured streamable HTTP client.
+  Thin Symfony AI tool adapter exposing `search()`, `open()`, and `find()` methods. Internally calls the MCP web search server over the configured streamable HTTP client.
 - `src/Research/Toolbox/ResearchToolEventSubscriber.php`
-Listens to Symfony AI tool lifecycle events and converts them into persisted `ResearchStep` records plus streamed `activity` events.
+  Listens to Symfony AI tool lifecycle events and converts them into persisted `ResearchStep` records plus streamed `activity` events.
 - `src/Research/Guardrail/ResearchBudget.php`
-Tracks per-run token usage, total steps, duplicate signatures, and timeout state.
+  Tracks per-run token usage, total steps, duplicate signatures, and timeout state.
 - `src/Research/Guardrail/ResearchBudgetEnforcer.php`
-Called before/after each tool invocation to reject over-budget or looping behavior.
+  Called before/after each tool invocation to reject over-budget or looping behavior.
 - `src/Research/Token/TokenUsageTracker.php`
-Reads Symfony AI `token_usage` metadata when available and otherwise falls back to approximate token estimation with `characters / 3.75`.
+  Reads Symfony AI `token_usage` metadata when available and otherwise falls back to approximate token estimation with `characters / 3.75`.
 - `src/Research/Event/EventPublisherInterface.php`
-App-level abstraction for pushing `activity`/`answer` events.
+  App-level abstraction for pushing `activity`/`answer` events.
 - `src/Research/Event/MercureEventPublisher.php`
-First transport implementation publishing `activity`, `answer`, `budget`, and `complete` events to a private run topic.
+  First transport implementation publishing `activity`, `answer`, `budget`, and `complete` events to a private run topic.
 - `src/Research/Mercure/ResearchTopicFactory.php`
-Builds one Mercure topic per run.
+  Builds one Mercure topic per run.
 - `src/Research/Persistence/ResearchRunRepository.php`
-Query helpers for sidebar history and run replay.
+  Query helpers for sidebar history and run replay.
 - `src/Entity/ResearchRun.php`
-One record per user request.
+  One record per user request.
 - `src/Entity/ResearchStep.php`
-One record per tool call, reasoning summary, warning, or lifecycle step.
+  One record per tool call, reasoning summary, warning, or lifecycle step.
 
 ### How Symfony AI Agent/Toolbox Fits
 
 - We should use Symfony AI's **platform/message/result/tooling primitives** and the **toolbox as the MCP adapter layer**.
 - The orchestrator responsibility moves into our app code.
 - The top-level run flow would be:
-  1. `ResearchRunService` receives raw user query.
-  2. `ResearchBriefBuilder` creates the structured system brief.
-  3. The app creates a `MessageBag` with:
-  - system message from the brief builder
-  - user message with the original query
-  1. `ResearchOrchestrator` runs a controlled loop:
-  - call model
-  - inspect result/tool intent
-  - inject budget updates
-  - allow or stop tools
-  - request final answer when needed
-  1. Symfony AI tools execute through the toolbox layer.
-  2. Tool lifecycle events are observed and mirrored into:
-  - Mercure `activity` events
-  - `ResearchStep` persistence rows
-  1. Final markdown is stored on `ResearchRun` and emitted as the terminal `answer` event.
+    1. `ResearchRunService` receives raw user query.
+    2. `ResearchBriefBuilder` creates the structured system brief.
+    3. The app creates a `MessageBag` with:
+    - system message from the brief builder
+    - user message with the original query
+    1. `ResearchOrchestrator` runs a controlled loop:
+    - call model
+    - inspect result/tool intent
+    - inject budget updates
+    - allow or stop tools
+    - request final answer when needed
+    1. Symfony AI tools execute through the toolbox layer.
+    2. Tool lifecycle events are observed and mirrored into:
+    - Mercure `activity` events
+    - `ResearchStep` persistence rows
+    1. Final markdown is stored on `ResearchRun` and emitted as the terminal `answer` event.
 
 ### How The Brief Builder Reformats The Query
 
 - Yes, `ResearchBriefBuilder` can reformat the raw user query.
 - It does this deterministically by turning the input into a stable research brief, for example:
-  - preserve the original user wording
-  - derive a research goal
-  - split out explicit verification targets
-  - inject current date
-  - inject citation and output rules
-  - inject budget and stopping rules
+    - preserve the original user wording
+    - derive a research goal
+    - split out explicit verification targets
+    - inject current date
+    - inject citation and output rules
+    - inject budget and stopping rules
 - This gives the main research agent a much better system message without keeping a giant prompt in YAML.
 
 Example shaped brief:
@@ -545,16 +543,16 @@ Budget:
 
 - We do not depend on the YAML prompt for the real research instructions.
 - `ResearchRunService` should build the `MessageBag` like this:
-  - `Message::forSystem($researchBrief)`
-  - `Message::ofUser($rawUserQuery)`
+    - `Message::forSystem($researchBrief)`
+    - `Message::ofUser($rawUserQuery)`
 - The YAML prompt stays minimal; the real per-run research prompt comes from PHP.
 - In `Option B`, this happens not only at the start of the run, but also between turns when the orchestrator appends budget updates or switches the model into answer-only mode.
 - That lets us inject:
-  - current date
-  - source/citation rules
-  - output format
-  - remaining budget or stop conditions
-  - future per-user or per-run policy changes
+    - current date
+    - source/citation rules
+    - output format
+    - remaining budget or stop conditions
+    - future per-user or per-run policy changes
 
 ### Why Use Symfony AI Tools Instead Of Calling MCP Directly From The Run Service
 
@@ -568,14 +566,14 @@ Budget:
 
 - `WebSearchTool` should not contain prompt logic.
 - It should only:
-  - call MCP `search`
-  - call MCP `open`
-  - call MCP `find`
-  - normalize responses into compact arrays/DTOs safe for the model
-  - attach enough metadata for persistence and trace rendering
+    - call MCP `search`
+    - call MCP `open`
+    - call MCP `find`
+    - normalize responses into compact arrays/DTOs safe for the model
+    - attach enough metadata for persistence and trace rendering
 - Budget enforcement should happen before and after delegating to MCP.
 - Duplicate detection should normalize a tool signature like:
-  - `toolName + normalized args + normalized url/query`
+    - `toolName + normalized args + normalized url/query`
 
 Example responsibilities:
 
@@ -605,14 +603,14 @@ final class WebSearchTool
 
 - Symfony AI tool lifecycle listeners are the cleanest place to feed the UI trace.
 - The subscriber should listen for:
-  - tool arguments resolved
-  - tool executed
-  - tool succeeded
-  - tool failed
+    - tool arguments resolved
+    - tool executed
+    - tool succeeded
+    - tool failed
 - On each event it should:
-  - append a `ResearchStep`
-  - publish an `activity` Mercure payload
-  - update run status if needed
+    - append a `ResearchStep`
+    - publish an `activity` Mercure payload
+    - update run status if needed
 
 Payload shape to stream to the frontend:
 
@@ -632,9 +630,9 @@ Payload shape to stream to the frontend:
 
 - Do not rely on full hidden chain-of-thought exposure.
 - Instead, stream **app-generated reasoning summaries** such as:
-  - `Planning search strategy`
-  - `Comparing official docs with secondary source`
-  - `Stopping because duplicate search detected`
+    - `Planning search strategy`
+    - `Comparing official docs with secondary source`
+    - `Stopping because duplicate search detected`
 - These summaries should be emitted by our orchestration layer and guardrail layer, not by asking the model to reveal raw internal reasoning.
 
 ### Symfony AI Persistence
@@ -643,40 +641,40 @@ Payload shape to stream to the frontend:
 - The built-in pattern is `Chat` + `AgentInterface` + `MessageStoreInterface`.
 - Documented message store options include in-memory, cache, Doctrine DBAL, session, Redis, and others.
 - That is useful for storing conversation history, but it is not enough by itself for this feature because we also need:
-  - tool activity timeline
-  - run status
-  - Mercure topic/replay metadata
-  - token budget snapshots
-  - loop/budget failure reasons
+    - tool activity timeline
+    - run status
+    - Mercure topic/replay metadata
+    - token budget snapshots
+    - loop/budget failure reasons
 - So the plan should use:
-  - Symfony AI message store if we want ongoing chat continuity
-  - custom `ResearchRun` and `ResearchStep` entities for research auditing and replay
+    - Symfony AI message store if we want ongoing chat continuity
+    - custom `ResearchRun` and `ResearchStep` entities for research auditing and replay
 
 ### Token Budgeting
 
 - Token budget is the only research budget in this design.
 - Symfony AI result metadata can carry:
-  - prompt tokens
-  - completion tokens
-  - total tokens
-  - remaining tokens
-  - cached tokens
-  - thinking tokens
+    - prompt tokens
+    - completion tokens
+    - total tokens
+    - remaining tokens
+    - cached tokens
+    - thinking tokens
 - Important caveat:
-  - this depends on the platform bridge/provider response
-  - when token usage is missing from the current llama/generic path, we fall back to approximate counting with `characters / 3.75`
+    - this depends on the platform bridge/provider response
+    - when token usage is missing from the current llama/generic path, we fall back to approximate counting with `characters / 3.75`
 - Recommended policy:
-  - hard stop at `75_000` cumulative total tokens
-  - soft notices every `5_000` tokens
-  - duplicate-call loop detection remains independent of token budget
+    - hard stop at `75_000` cumulative total tokens
+    - soft notices every `5_000` tokens
+    - duplicate-call loop detection remains independent of token budget
 
 ### How Token Budget Notices Reach The Agent
 
 - A reminder like `<X tokens left>` is feasible, but it should be injected by our orchestration layer, not hard-coded in YAML.
 - Required design:
-  - after each model/tool cycle, the orchestrator checks whether a `5_000` token threshold was crossed
-  - if yes, the next model turn gets a short budget reminder appended to the working system context
-  - when remaining budget is too low for another research step, the orchestrator switches the next turn into answer-only mode and explicitly forbids more tool use
+    - after each model/tool cycle, the orchestrator checks whether a `5_000` token threshold was crossed
+    - if yes, the next model turn gets a short budget reminder appended to the working system context
+    - when remaining budget is too low for another research step, the orchestrator switches the next turn into answer-only mode and explicitly forbids more tool use
 
 Example reminder:
 
@@ -696,25 +694,25 @@ Budget update:
 - Remove tool-count budgets completely.
 - Keep only token budget plus duplicate-call loop protection.
 - Normalize each tool call into a signature such as:
-  - `toolName + normalized args + normalized target`
+    - `toolName + normalized args + normalized target`
 - Allow the same normalized call twice.
 - Treat the third identical call in the same run as a loop and stop further tool use.
 
 ### Prompt/Brief Injection Strategy
 
 - Preferred v1 approach:
-  - keep the agent registered in YAML
-  - build the run-specific brief in PHP
-  - prepend it as the system message in the `MessageBag`
+    - keep the agent registered in YAML
+    - build the run-specific brief in PHP
+    - prepend it as the system message in the `MessageBag`
 - This avoids hard-coding prompts in YAML while still benefiting from the AI Bundle's agent and tool registration.
 - Only introduce a custom `ResearchAgentFactory` if we hit limits with the container-provided `ai.agent.web_research` service.
 
 ### Concrete Run Sequence
 
 1. `POST /research/runs`
-  Validate input, apply `IP + session` throttles, create `ResearchRun`, return `runId`.
+   Validate input, apply `IP + session` throttles, create `ResearchRun`, return `runId`.
 2. `GET /research/runs/{id}/mercure-auth`
-  Return or set authorization for the run's private Mercure topic.
+   Return or set authorization for the run's private Mercure topic.
 3. Frontend subscribes to the run topic through Mercure.
 4. A controller/service starts `ResearchRunService::execute($runId)`.
 5. `ResearchRunService` builds the initial system brief and hands control to `ResearchOrchestrator`.
@@ -731,23 +729,22 @@ Budget update:
 ## Iterative Delivery
 
 1. Add backend domain skeleton in `src/Research/`.
-  Create isolated services/interfaces for run orchestration, brief building, event publishing, limiter/budget enforcement, and history loading without wiring the real model loop yet.
+   Create isolated services/interfaces for run orchestration, brief building, event publishing, limiter/budget enforcement, and history loading without wiring the real model loop yet.
 2. Add persistence model and migrations.
-  Create entities such as `ResearchRun`, `ResearchStep`, and optionally `ResearchMessage`/`ResearchSource`, then add Doctrine migrations for SQLite-backed history and audit data.
+   Create entities such as `ResearchRun`, `ResearchStep`, and optionally `ResearchMessage`/`ResearchSource`, then add Doctrine migrations for SQLite-backed history and audit data.
 3. Add request throttling and research budgets.
-  Configure Symfony RateLimiter for `IP + session`, enforce `1 request / 10 minutes` and `5 requests / day`, and add token-budget plus duplicate-call detection in a dedicated guardrail service.
+   Configure Symfony RateLimiter for `IP + session`, enforce `1 request / 10 minutes` and `5 requests / day`, and add token-budget plus duplicate-call detection in a dedicated guardrail service.
 4. Add the real research orchestration service.
-  Implement `ResearchBriefBuilder`, `ResearchRunService`, and `ResearchOrchestrator` so the app controls the turn loop directly, injects budget updates between turns, applies the web-research rules from `[/home/ineersa/.cursor/agents/web-research.md](/home/ineersa/.cursor/agents/web-research.md)`, and normalizes tool/result events into app-level DTOs.
+   Implement `ResearchBriefBuilder`, `ResearchRunService`, and `ResearchOrchestrator` so the app controls the turn loop directly, injects budget updates between turns, applies the web-research rules from `[/home/ineersa/.cursor/agents/web-research.md](/home/ineersa/.cursor/agents/web-research.md)`, and normalizes tool/result events into app-level DTOs.
 5. Add Mercure-backed streaming endpoints.
-  Introduce a submit/start endpoint plus Mercure topic authorization flow; publish `activity`, `answer`, `budget`, and `complete` events through a transport-agnostic publisher interface.
+   Introduce a submit/start endpoint plus Mercure topic authorization flow; publish `activity`, `answer`, `budget`, and `complete` events through a transport-agnostic publisher interface.
 6. Replace the stub Stimulus flow with live streaming.
-  Update `research_ui_controller.js` to submit real runs, consume Mercure events, append tool activity to the trace UI, append markdown answer chunks to the answer container, and support cancel/reconnect behavior.
+   Update `research_ui_controller.js` to submit real runs, consume Mercure events, append tool activity to the trace UI, append markdown answer chunks to the answer container, and support cancel/reconnect behavior.
 7. Add markdown rendering modes.
-  Render final markdown safely in the answer pane, provide a raw/rendered toggle, and then add `highlight.js` for fenced code blocks.
+   Render final markdown safely in the answer pane, provide a raw/rendered toggle, and then add `highlight.js` for fenced code blocks.
 8. Add history loading from SQLite. ✅
-  Replace fake sidebar history with persisted runs, support loading a past run into the existing answer/trace panes, and show run status, timestamps, and limiter/budget outcomes.
+   Replace fake sidebar history with persisted runs, support loading a past run into the existing answer/trace panes, and show run status, timestamps, and limiter/budget outcomes.
 9. Add observability and failure handling.
-  Persist limiter rejections, budget exhaustion, token usage snapshots, agent/tool errors, and incomplete runs; expose friendly UI states for throttled, timed out, and aborted research.
+   Persist limiter rejections, budget exhaustion, token usage snapshots, agent/tool errors, and incomplete runs; expose friendly UI states for throttled, timed out, and aborted research.
 10. Add SSE fallback only if Mercure becomes a blocker.
-  Keep the transport abstraction so a lightweight `SseEventPublisher` can be introduced later without changing the orchestration layer.
-
+    Keep the transport abstraction so a lightweight `SseEventPublisher` can be introduced later without changing the orchestration layer.

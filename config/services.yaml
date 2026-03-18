@@ -68,3 +68,9 @@ services:
     # Research domain - interface bindings
     App\Research\Event\EventPublisherInterface: '@App\Research\Event\MercureEventPublisher'
     App\Research\Persistence\ResearchRunRepositoryInterface: '@App\Research\Persistence\ResearchRunRepository'
+
+    # MCP web search client - stateful client for websearch server
+    App\Research\Mcp\McpWebSearchClient:
+        arguments:
+            $httpClient: '@http_client'
+            $baseUrl: '%env(MCP_WEBSEARCH_URL)%'

@@ -39,6 +39,8 @@ final class RunOrchestrator implements RunOrchestratorInterface
     private const BUDGET_NOTICE_THRESHOLD = 5_000;
     private const ANSWER_ONLY_THRESHOLD = 2_000;
     private const MAX_TURNS = 75;
+    private const WALL_CLOCK_TIMEOUT_SECONDS = 900;
+    private const MAX_CONSECUTIVE_TOOL_FAILURES = 3;
 
     public function __construct(
         private readonly PlatformInterface $platform,
@@ -73,6 +75,8 @@ final class RunOrchestrator implements RunOrchestratorInterface
         $tokenBudgetUsed = 0;
         $lastBudgetNoticeThreshold = 0;
         $sequence = 0;
+        $startedAt = time();
+        $consecutiveToolFailures = 0;
 
         $run->setStatus('running');
         $this->persistStep($run, ++$sequence, 'run_started', 0, 'Research run started', null);
@@ -83,6 +87,17 @@ final class RunOrchestrator implements RunOrchestratorInterface
 
         try {
             while ($turn < self::MAX_TURNS) {
+                if (time() - $startedAt >= self::WALL_CLOCK_TIMEOUT_SECONDS) {
+                    $run->setStatus('timed_out');
+                    $run->setFailureReason('Research timed out after '.self::WALL_CLOCK_TIMEOUT_SECONDS.' seconds');
+                    $run->setCompletedAt(new \DateTimeImmutable());
+                    $this->persistStep($run, ++$sequence, 'run_failed', $turn, 'Wall-clock timeout', null);
+                    $this->eventPublisher->publishComplete($runId, ['status' => 'timed_out']);
+                    $this->entityManager->flush();
+
+                    return;
+                }
+
                 $remaining = self::HARD_CAP_TOKENS - $tokenBudgetUsed;
                 if ($remaining < self::ANSWER_ONLY_THRESHOLD) {
                     $answerOnly = true;
@@ -121,10 +136,12 @@ final class RunOrchestrator implements RunOrchestratorInterface
                 }
 
                 $turnResult = $this->normalizeResult($result, $turn, $assistantTextBeforeTools);
-                $tokenBudgetUsed += $this->extractTokens($result);
-                $this->budgetEnforcer->recordTokenUsage($runId, $this->extractTokens($result));
+                $tokensThisTurn = $this->extractTokens($result);
+                $tokenBudgetUsed += $tokensThisTurn;
+                $this->budgetEnforcer->recordTokenUsage($runId, $tokensThisTurn);
 
                 $run->setTokenBudgetUsed($tokenBudgetUsed);
+                $this->persistTokenSnapshot($run, ++$sequence, $turn, $turnResult, $tokenBudgetUsed);
                 $this->eventPublisher->publishBudget($runId, $this->budgetMeta($tokenBudgetUsed, self::HARD_CAP_TOKENS - $tokenBudgetUsed));
 
                 if ($turnResult->isFinal) {
@@ -186,16 +203,37 @@ final class RunOrchestrator implements RunOrchestratorInterface
                         }
 
                         $toolCall = $toolCallsForMessages[$i];
-                        $toolResult = $this->toolbox->execute($toolCall);
-                        $content = $this->toolResultConverter->convert($toolResult) ?? '';
-                        $this->budgetEnforcer->afterToolCall($runId, $decision->name, $decision->arguments, $content);
+                        try {
+                            $toolResult = $this->toolbox->execute($toolCall);
+                            $content = $this->toolResultConverter->convert($toolResult) ?? '';
+                            $this->budgetEnforcer->afterToolCall($runId, $decision->name, $decision->arguments, $content);
 
-                        $summary = \sprintf('Executed %s', $decision->name);
-                        $payload = json_encode(['arguments' => $decision->arguments, 'result_preview' => \strlen($content) > 200 ? substr($content, 0, 200).'...' : $content], \JSON_THROW_ON_ERROR);
-                        $this->persistStep($run, ++$sequence, 'tool_succeeded', $turn, $summary, $payload, $decision->name, json_encode($decision->arguments, \JSON_THROW_ON_ERROR), $decision->normalizedSignature);
-                        $this->eventPublisher->publishActivity($runId, 'tool_succeeded', $summary, ['tool' => $decision->name]);
+                            $consecutiveToolFailures = 0;
+                            $summary = \sprintf('Executed %s', $decision->name);
+                            $payload = json_encode(['arguments' => $decision->arguments, 'result_preview' => \strlen($content) > 200 ? substr($content, 0, 200).'...' : $content], \JSON_THROW_ON_ERROR);
+                            $this->persistStep($run, ++$sequence, 'tool_succeeded', $turn, $summary, $payload, $decision->name, json_encode($decision->arguments, \JSON_THROW_ON_ERROR), $decision->normalizedSignature);
+                            $this->eventPublisher->publishActivity($runId, 'tool_succeeded', $summary, ['tool' => $decision->name]);
 
-                        $messages = $messages->with(Message::ofToolCall($toolCall, $content));
+                            $messages = $messages->with(Message::ofToolCall($toolCall, $content));
+                        } catch (\Throwable $toolError) {
+                            $errorMsg = $toolError->getMessage();
+                            $payload = json_encode(['arguments' => $decision->arguments, 'error' => $errorMsg], \JSON_THROW_ON_ERROR);
+                            $this->persistStep($run, ++$sequence, 'tool_failed', $turn, \sprintf('%s failed: %s', $decision->name, $errorMsg), $payload, $decision->name, json_encode($decision->arguments, \JSON_THROW_ON_ERROR), $decision->normalizedSignature);
+                            $this->eventPublisher->publishActivity($runId, 'tool_failed', \sprintf('Tool error: %s', $errorMsg), ['tool' => $decision->name]);
+                            $messages = $messages->with(Message::ofToolCall($toolCall, \sprintf('Error: %s', $errorMsg)));
+
+                            $consecutiveToolFailures++;
+                            if ($consecutiveToolFailures >= self::MAX_CONSECUTIVE_TOOL_FAILURES) {
+                                $run->setStatus('failed');
+                                $run->setFailureReason($consecutiveToolFailures.' tool calls in a row failed. Model or tools may be unavailable.');
+                                $run->setCompletedAt(new \DateTimeImmutable());
+                                $this->persistStep($run, ++$sequence, 'run_failed', $turn, 'Consecutive tool failures', null);
+                                $this->eventPublisher->publishComplete($runId, ['status' => 'failed', 'reason' => 'Consecutive tool failures']);
+                                $this->entityManager->flush();
+
+                                return;
+                            }
+                        }
                     }
                 } else {
                     $messages = $messages->with(Message::ofAssistant($turnResult->assistantText));
@@ -343,6 +381,40 @@ final class RunOrchestrator implements RunOrchestratorInterface
         }
 
         return 0;
+    }
+
+    private function persistTokenSnapshot(
+        ResearchRun $run,
+        int $sequence,
+        int $turnNumber,
+        ResearchTurnResult $turnResult,
+        int $cumulativeUsed,
+    ): void {
+        if (null === $turnResult->totalTokens && null === $turnResult->promptTokens && null === $turnResult->completionTokens) {
+            return;
+        }
+
+        $summary = \sprintf('Tokens: %d cumulative', $cumulativeUsed);
+        $payload = json_encode([
+            'promptTokens' => $turnResult->promptTokens,
+            'completionTokens' => $turnResult->completionTokens,
+            'totalTokens' => $turnResult->totalTokens,
+            'cumulativeUsed' => $cumulativeUsed,
+        ], \JSON_THROW_ON_ERROR);
+
+        $step = new ResearchStep();
+        $step->setRun($run);
+        $step->setSequence($sequence);
+        $step->setType('token_snapshot');
+        $step->setTurnNumber($turnNumber);
+        $step->setSummary($summary);
+        $step->setPayloadJson($payload);
+        $step->setPromptTokens($turnResult->promptTokens);
+        $step->setCompletionTokens($turnResult->completionTokens);
+        $step->setTotalTokens($turnResult->totalTokens);
+        $step->setEstimatedTokens(false);
+        $run->addStep($step);
+        $this->entityManager->persist($step);
     }
 
     private function persistStep(

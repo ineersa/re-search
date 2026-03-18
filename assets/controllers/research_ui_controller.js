@@ -123,7 +123,16 @@ export default class extends Controller {
             const data = await response.json();
 
             if (!response.ok) {
-                this.setError(data.error || 'Failed to start research');
+                if (response.status === 429) {
+                    this.statusTarget.classList.remove('text-gray-400');
+                    this.statusTarget.classList.add('text-amber-400');
+                    this.element.classList.remove('is-searching');
+                    this.element.classList.add('is-complete');
+                    const retrySec = data.retryAfter ?? 600;
+                    this.statusTarget.textContent = `Rate limited — retry in ${Math.ceil(retrySec / 60)} min`;
+                } else {
+                    this.setError(data.error || 'Failed to start research');
+                }
                 return;
             }
 
@@ -262,6 +271,12 @@ export default class extends Controller {
             this.statusTarget.textContent = 'Budget exhausted';
         } else if (status === 'loop_stopped') {
             this.statusTarget.textContent = 'Stopped (loop detected)';
+        } else if (status === 'timed_out') {
+            this.statusTarget.textContent = 'Research timed out';
+        } else if (status === 'throttled') {
+            this.statusTarget.textContent = 'Rate limited — try again later';
+        } else if (status === 'aborted') {
+            this.statusTarget.textContent = 'Research aborted';
         } else if (status === 'failed') {
             this.statusTarget.textContent = reason || 'Research failed';
         } else {
@@ -553,6 +568,8 @@ export default class extends Controller {
             loop_stopped: 'Loop stopped',
             failed: 'Failed',
             timed_out: 'Timed out',
+            throttled: 'Rate limited',
+            aborted: 'Aborted',
         };
         return statusLabels[status] || status;
     }
