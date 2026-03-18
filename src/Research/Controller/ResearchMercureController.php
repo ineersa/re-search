@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Controller;
 
 use App\Research\Mercure\ResearchTopicFactory;
-use App\Research\Persistence\ResearchRunRepositoryInterface;
+use App\Research\Persistence\ResearchRunRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,7 +22,7 @@ final class ResearchMercureController extends AbstractController
     public function __invoke(
         string $id,
         Request $request,
-        ResearchRunRepositoryInterface $runRepository,
+        ResearchRunRepository $runRepository,
         ResearchTopicFactory $topicFactory,
         Authorization $authorization,
     ): Response {

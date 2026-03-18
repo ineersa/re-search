@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\History;
 
-use App\Research\Persistence\ResearchRunRepositoryInterface;
+use App\Research\Persistence\ResearchRunRepository;
 
 /**
  * Loads research history from persistence.
@@ -13,7 +13,7 @@ use App\Research\Persistence\ResearchRunRepositoryInterface;
 final class HistoryLoader implements HistoryLoaderInterface
 {
     public function __construct(
-        private readonly ResearchRunRepositoryInterface $repository,
+        private readonly ResearchRunRepository $repository,
     ) {
     }
 

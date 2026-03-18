@@ -73,12 +73,6 @@ parameters:
 			path: src/Entity/ResearchRun.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:getFailureReason$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
 			message: '#^Unused App\\Entity\\ResearchRun\:\:getMessages$#'
 			identifier: shipmonk.deadMethod
 			count: 1
@@ -91,25 +85,7 @@ parameters:
 			path: src/Entity/ResearchRun.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:getTokenBudgetHardCap$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
 			message: '#^Unused App\\Entity\\ResearchRun\:\:getUpdatedAt$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:isAnswerOnlyTriggered$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:isTokenBudgetEstimated$#'
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Entity/ResearchRun.php
@@ -241,30 +217,6 @@ parameters:
 			path: src/Entity/ResearchStep.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:setCompletionTokens$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:setEstimatedTokens$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:setPromptTokens$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:setTotalTokens$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
 			message: '#^Method App\\Platform\\LlamaCpp\\Contract\\ToolCallNormalizer\:\:normalize\(\) should return array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: array\<string, mixed\>\}\} but returns array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: non\-empty\-string\|false\}\}\.$#'
 			identifier: return.type
 			count: 1
@@ -385,25 +337,7 @@ parameters:
 			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
 
 		-
-			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$completionTokens is never read$#'
-			identifier: shipmonk.deadProperty.neverRead
-			count: 1
-			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
-
-		-
-			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$promptTokens is never read$#'
-			identifier: shipmonk.deadProperty.neverRead
-			count: 1
-			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
-
-		-
 			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$rawMetadata is never read$#'
-			identifier: shipmonk.deadProperty.neverRead
-			count: 1
-			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
-
-		-
-			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$totalTokens is never read$#'
 			identifier: shipmonk.deadProperty.neverRead
 			count: 1
 			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
@@ -461,6 +395,24 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/Throttle/ResearchThrottle.php
+
+		-
+			message: '#^Unused App\\Research\\Mcp\\McpWebSearchClient\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Mcp/McpWebSearchClient.php
+
+		-
+			message: '#^Unused App\\Research\\Mcp\\McpWebSearchClient\:\:disconnect$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Mcp/McpWebSearchClient.php
+
+		-
+			message: '#^Unused App\\Research\\Tool\\WebSearchTool\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Tool/WebSearchTool.php
 
 		-
 			message: '#^Unused App\\Research\\Tool\\WebSearchTool\:\:find$#'

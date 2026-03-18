@@ -12,8 +12,8 @@ use App\Research\Guardrail\Exception\LoopDetectedException;
 use App\Research\Guardrail\ResearchBudgetEnforcerInterface;
 use App\Research\Orchestration\Dto\ResearchTurnResult;
 use App\Research\Orchestration\Dto\ToolCallDecision;
-use App\Research\Persistence\ResearchRunRepositoryInterface;
-use App\Research\ResearchBriefBuilderInterface;
+use App\Research\Persistence\ResearchRunRepository;
+use App\Research\ResearchBriefBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Agent\Toolbox\ToolResultConverter;
@@ -33,7 +33,7 @@ use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
  *
  * @see .cursor/plans/web_research_flow_5c8ddc68.plan.md
  */
-final class RunOrchestrator implements RunOrchestratorInterface
+final class RunOrchestrator
 {
     private const HARD_CAP_TOKENS = 75_000;
     private const BUDGET_NOTICE_THRESHOLD = 5_000;
@@ -47,9 +47,9 @@ final class RunOrchestrator implements RunOrchestratorInterface
         private readonly string $model,
         private readonly ToolboxInterface $toolbox,
         private readonly ResearchBudgetEnforcerInterface $budgetEnforcer,
-        private readonly ResearchBriefBuilderInterface $briefBuilder,
+        private readonly ResearchBriefBuilder $briefBuilder,
         private readonly EventPublisherInterface $eventPublisher,
-        private readonly ResearchRunRepositoryInterface $runRepository,
+        private readonly ResearchRunRepository $runRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly ToolResultConverter $toolResultConverter = new ToolResultConverter(),
     ) {

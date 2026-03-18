@@ -12,7 +12,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Doctrine-backed implementation of research run queries.
  */
-final class ResearchRunRepository implements ResearchRunRepositoryInterface
+final class ResearchRunRepository
 {
     public function __construct(
         private readonly DoctrineResearchRunRepository $doctrineRepository,
@@ -32,6 +32,9 @@ final class ResearchRunRepository implements ResearchRunRepositoryInterface
         return $run instanceof ResearchRun ? $run : null;
     }
 
+    /**
+     * @return list<array{id: string, query: string, status: string, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null}>
+     */
     public function findRecentByClientKey(string $clientKey, int $limit = 20): array
     {
         $runs = $this->doctrineRepository->findBy(
@@ -57,6 +60,9 @@ final class ResearchRunRepository implements ResearchRunRepositoryInterface
         );
     }
 
+    /**
+     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: string, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
+     */
     public function findRunWithSteps(string $runId): ?array
     {
         try {
@@ -103,6 +109,9 @@ final class ResearchRunRepository implements ResearchRunRepositoryInterface
         ];
     }
 
+    /**
+     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: string, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
+     */
     public function findRunWithStepsForClient(string $runId, string $clientKey): ?array
     {
         try {

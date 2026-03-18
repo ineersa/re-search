@@ -28,8 +28,8 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(202);
         self::assertResponseHeaderSame('content-type', 'application/json');
         $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertArrayHasKey('runId', $data);
-        $this->assertArrayHasKey('mercureTopic', $data);
+        self::assertArrayHasKey('runId', $data);
+        self::assertArrayHasKey('mercureTopic', $data);
     }
 
     public function testSubmitReturns400WhenQueryMissing(): void

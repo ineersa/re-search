@@ -10,7 +10,7 @@ namespace App\Research;
  *
  * @see /home/ineersa/.cursor/agents/web-research.md
  */
-final class ResearchBriefBuilder implements ResearchBriefBuilderInterface
+final class ResearchBriefBuilder
 {
     public function __construct(
         private readonly ?\DateTimeImmutable $now = null,

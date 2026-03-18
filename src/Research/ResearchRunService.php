@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research;
 
-use App\Research\Orchestration\RunOrchestratorInterface;
+use App\Research\Orchestration\RunOrchestrator;
 
 /**
  * Application entry point for a research run.
@@ -14,7 +14,7 @@ use App\Research\Orchestration\RunOrchestratorInterface;
 final class ResearchRunService
 {
     public function __construct(
-        private readonly RunOrchestratorInterface $orchestrator,
+        private readonly RunOrchestrator $orchestrator,
     ) {
     }
 

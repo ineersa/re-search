@@ -7,7 +7,7 @@ namespace App\Research\Controller;
 use App\Entity\ResearchRun;
 use App\Research\Mercure\ResearchTopicFactory;
 use App\Research\Message\ExecuteResearchRun;
-use App\Research\Persistence\ResearchRunRepositoryInterface;
+use App\Research\Persistence\ResearchRunRepository;
 use App\Research\Throttle\ResearchThrottle;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,11 +22,10 @@ final class ResearchController extends AbstractController
     #[Route('/research/runs', name: 'app_research_list', methods: ['GET'])]
     public function list(
         Request $request,
-        ResearchRunRepositoryInterface $runRepository,
+        ResearchRunRepository $runRepository,
     ): Response {
         $clientKey = $this->buildClientKey($request);
         $runs = $runRepository->findRecentByClientKey($clientKey, 20);
-
         $items = array_map(
             static function (array $run): array {
                 $createdAt = $run['createdAt'];
@@ -55,7 +54,7 @@ final class ResearchController extends AbstractController
     public function show(
         string $id,
         Request $request,
-        ResearchRunRepositoryInterface $runRepository,
+        ResearchRunRepository $runRepository,
     ): Response {
         $clientKey = $this->buildClientKey($request);
         $data = $runRepository->findRunWithStepsForClient($id, $clientKey);
@@ -90,8 +89,8 @@ final class ResearchController extends AbstractController
             $throttle->consume($request);
         } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException $e) {
             $run = new ResearchRun();
-            $run->setQuery($query ?: '(throttled)');
-            $run->setQueryHash($query ? hash('sha256', $query) : '');
+            $run->setQuery($query !== '' ? $query : '(throttled)');
+            $run->setQueryHash($query !== '' ? hash('sha256', $query) : '');
             $run->setClientKey($clientKey);
             $run->setStatus('throttled');
             $run->setFailureReason('Rate limit exceeded. Please try again later.');
