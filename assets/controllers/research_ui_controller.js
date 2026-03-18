@@ -1,5 +1,10 @@
 import { Controller } from '@hotwired/stimulus';
 
+/**
+ * Research UI controller: submits real runs, consumes Mercure events,
+ * appends tool activity to trace UI, streams markdown to answer container,
+ * and supports cancel/reconnect behavior.
+ */
 export default class extends Controller {
     static targets = [
         'hero',
@@ -17,7 +22,14 @@ export default class extends Controller {
         'results',
         'sidebar',
         'sidebarOverlay',
+        'cancelBtn',
     ];
+
+    static values = {
+        mercureHubUrl: { type: String, default: '' },
+        submitUrl: { type: String, default: '/research/runs' },
+        mercureAuthUrl: { type: String, default: '' },
+    };
 
     sidebarOpen = false;
     historyPage = 0;
@@ -25,7 +37,7 @@ export default class extends Controller {
 
     connect() {
         this.timer = null;
-        this.stepIndex = 0;
+        this.eventSource = null;
         this.activeTab = 'answer';
         this.toolCalls = [];
         this.historyItems = [
@@ -46,23 +58,19 @@ export default class extends Controller {
     }
 
     disconnect() {
-        if (this.timer) {
-            clearTimeout(this.timer);
-            this.timer = null;
-        }
+        this.cancelRun();
     }
 
     submit(event) {
         event.preventDefault();
 
         const query = this.inputTarget.value.trim();
-        if (!query) {
+        if ('' === query) {
             return;
         }
 
         this.cancelRun();
         this.toolCalls = [];
-        this.stepIndex = 0;
         this.activeTab = 'answer';
         this.queryLineTarget.textContent = query;
 
@@ -77,8 +85,9 @@ export default class extends Controller {
         this.resultsTarget.hidden = false;
         this.heroTarget.style.display = 'none';
         this.showTraceTab();
+        this.updateCancelButtonVisibility(true);
 
-        this.runNextStep(query);
+        this.submitRun(query);
     }
 
     switchTab(event) {
@@ -92,92 +101,236 @@ export default class extends Controller {
         this.showAnswerTab();
     }
 
-    runNextStep(query) {
-        const script = [
-            {
-                type: 'tool',
-                label: 'websearch.search',
-                message: 'Looking up official Symfony + Tailwind integration docs.',
-                link: 'https://symfony.com/bundles/TailwindBundle',
-                path: 'seed query -> official docs',
-            },
-            {
-                type: 'reasoning',
-                label: 'reasoning',
-                message: 'Comparing AssetMapper-first workflow versus Encore-specific setup.',
-            },
-            {
-                type: 'tool',
-                label: 'websearch.open',
-                message: 'Reading bundle commands and build order details.',
-                link: 'https://symfony.com/doc/current/frontend/asset_mapper.html',
-                path: 'docs -> commands -> deploy notes',
-            },
-            {
-                type: 'tool',
-                label: 'websearch.open',
-                message: 'Cross-checking Tailwind standalone CLI options.',
-                link: 'https://tailwindcss.com/blog/standalone-cli',
-                path: 'alt flow -> cli flags',
-            },
-            {
-                type: 'reasoning',
-                label: 'reasoning',
-                message: 'Preparing concise recommendation and rollout command list.',
-            },
-        ];
+    async submitRun(query) {
+        const formData = new FormData();
+        formData.append('query', query);
 
-        if (this.stepIndex >= script.length) {
-            this.completeRun(query);
+        try {
+            const submitUrl = this.submitUrlValue || '/research/runs';
+            const response = await fetch(submitUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
 
+            const data = await response.json();
+
+            if (!response.ok) {
+                this.setError(data.error || 'Failed to start research');
+                return;
+            }
+
+            const { runId, mercureTopic } = data;
+            this.currentRunId = runId;
+            this.currentMercureTopic = mercureTopic;
+
+            await this.authorizeMercure(runId);
+            this.subscribeToMercure(mercureTopic);
+        } catch (err) {
+            this.setError(err.message || 'Network error');
+        }
+    }
+
+    async authorizeMercure(runId) {
+        const template = this.mercureAuthUrlValue || `/research/runs/${runId}/mercure-auth`;
+        const authUrl = template.replace('__ID__', runId);
+        await fetch(authUrl, { credentials: 'same-origin' });
+    }
+
+    subscribeToMercure(topic) {
+        this.closeEventSource();
+
+        const hubBase = this.mercureHubUrlValue || new URL('/.well-known/mercure', window.location.origin).href;
+        const hubUrl = new URL(hubBase);
+        hubUrl.searchParams.set('topic', topic);
+        const subscribeUrl = hubUrl.toString();
+
+        this.eventSource = new EventSource(subscribeUrl);
+
+        this.eventSource.onmessage = (e) => this.handleMercureMessage(e);
+        this.eventSource.onerror = (e) => this.handleMercureError(e);
+    }
+
+    handleMercureMessage(event) {
+        let payload;
+        try {
+            payload = JSON.parse(event.data);
+        } catch {
             return;
         }
 
-        const step = script[this.stepIndex];
-        this.stepIndex += 1;
+        const { type } = payload;
+
+        switch (type) {
+            case 'activity':
+                this.appendActivity(payload);
+                break;
+            case 'answer':
+                this.appendAnswer(payload);
+                break;
+            case 'budget':
+                this.updateBudget(payload);
+                break;
+            case 'complete':
+                this.completeRun(payload);
+                break;
+            default:
+                break;
+        }
+    }
+
+    appendActivity(payload) {
+        const { stepType, summary, meta = {} } = payload;
+        const toolName = meta.tool || stepType;
+        const link = meta.url || meta.link || null;
+        const path = meta.path || '';
 
         const row = document.createElement('article');
-        row.className = `border border-[#333] bg-[#1a1a1a] p-3`;
-        if (step.type === 'tool') {
+        row.className = 'border border-[#333] bg-[#1a1a1a] p-3';
+        if (stepType?.startsWith('tool_') || toolName !== stepType) {
             row.classList.add('border-gray-500');
         }
-        const safeLabel = this.escapeHtml(step.label);
-        const safeMessage = this.escapeHtml(step.message);
+        const safeLabel = this.escapeHtml(toolName);
+        const safeMessage = this.escapeHtml(summary || '');
         row.innerHTML = `
             <p class="m-0 text-xs uppercase tracking-wider text-gray-500">${safeLabel}</p>
             <p class="mt-1 leading-relaxed text-gray-300">${safeMessage}</p>
         `;
+        if (link) {
+            const safeLink = this.escapeHtml(link);
+            row.innerHTML += `<a class="mt-2 inline-block text-sm text-blue-400 no-underline hover:text-blue-300 hover:underline transition-colors" href="${safeLink}" target="_blank" rel="noreferrer">${safeLink}</a>`;
+        }
         this.streamTarget.appendChild(row);
         this.streamTarget.scrollTop = this.streamTarget.scrollHeight;
 
-        if (step.type === 'tool') {
-            this.toolCalls.push(step);
-            this.renderTrace();
-        }
-
-        this.timer = setTimeout(() => this.runNextStep(query), 820);
+        this.toolCalls.push({
+            label: toolName,
+            message: summary || '',
+            path: path || 'n/a',
+            link: link || '#',
+        });
+        this.renderTrace();
     }
 
-    completeRun(query) {
-        this.cancelRun();
+    appendAnswer(payload) {
+        const { markdown, isFinal } = payload;
+        if (!markdown) {
+            return;
+        }
+
+        const chunk = document.createElement('div');
+        chunk.className = 'answer-chunk';
+        chunk.innerHTML = this.escapeHtml(markdown).replace(/\n/g, '<br>');
+        this.answerBodyTarget.appendChild(chunk);
+        this.answerBodyTarget.scrollTop = this.answerBodyTarget.scrollHeight;
+
+        if (isFinal) {
+            this.showAnswerTab();
+        }
+    }
+
+    updateBudget(payload) {
+        const { meta = {} } = payload;
+        const remaining = meta.remaining;
+        if (typeof remaining === 'number' && remaining < 10000) {
+            this.statusTarget.textContent = `Researching… ~${Math.round(remaining / 1000)}k tokens left`;
+        }
+    }
+
+    completeRun(payload = {}) {
+        this.closeEventSource();
+        this.updateCancelButtonVisibility(false);
+
         this.element.classList.remove('is-searching');
         this.element.classList.add('is-complete');
         this.statusTarget.classList.remove('text-gray-400');
         this.statusTarget.classList.add('text-white');
-        this.statusTarget.textContent = 'Research complete';
-        this.streamTarget.innerHTML = '';
-        this.answerBodyTarget.innerHTML = `
-            <h2 class="m-0 text-lg">Symfony + Tailwind (AssetMapper)</h2>
-            <p class="mt-1 leading-relaxed">Use <code>symfonycasts/tailwind-bundle</code> as the default path, then run <code>tailwind:build</code> before <code>asset-map:compile</code> in production builds.</p>
-            <p class="mt-1 leading-relaxed">Keep daily development on <code>tailwind:build --watch</code> and retain trace details in the Tools tab for auditability.</p>
-        `;
 
+        const meta = payload.meta || {};
+        const status = meta.status || 'completed';
+        const reason = meta.reason || '';
+
+        if (status === 'completed') {
+            this.statusTarget.textContent = 'Research complete';
+        } else if (status === 'budget_exhausted') {
+            this.statusTarget.textContent = 'Budget exhausted';
+        } else if (status === 'loop_stopped') {
+            this.statusTarget.textContent = 'Stopped (loop detected)';
+        } else if (status === 'failed') {
+            this.statusTarget.textContent = reason || 'Research failed';
+        } else {
+            this.statusTarget.textContent = 'Research complete';
+        }
+
+        this.streamTarget.innerHTML = '';
         this.showAnswerTab();
 
+        const query = this.queryLineTarget?.textContent || '';
         this.historyItems.unshift({ query, time: 'just now' });
         this.historyItems = this.historyItems.slice(0, 10);
         this.historyPage = 0;
         this.renderHistory();
+    }
+
+    handleMercureError() {
+        if (this.eventSource?.readyState === EventSource.CLOSED) {
+            return;
+        }
+        if (this.eventSource?.readyState === EventSource.CONNECTING) {
+            this.statusTarget.textContent = 'Reconnecting…';
+        }
+    }
+
+    cancelRun() {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+        this.closeEventSource();
+        this.updateCancelButtonVisibility(false);
+
+        if (this.element?.classList?.contains('is-searching')) {
+            this.element.classList.remove('is-searching');
+            this.element.classList.add('is-complete');
+            this.statusTarget.textContent = 'Stopped';
+            this.statusTarget.classList.remove('text-gray-400');
+            this.statusTarget.classList.add('text-white');
+        }
+    }
+
+    closeEventSource() {
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+        }
+    }
+
+    reconnect() {
+        if (!this.currentRunId || !this.currentMercureTopic) {
+            return;
+        }
+        this.authorizeMercure(this.currentRunId).then(() => {
+            this.subscribeToMercure(this.currentMercureTopic);
+            this.statusTarget.textContent = 'Reconnecting…';
+        });
+    }
+
+    updateCancelButtonVisibility(visible) {
+        if (!this.hasCancelBtnTarget) {
+            return;
+        }
+        this.cancelBtnTarget.hidden = !visible;
+    }
+
+    setError(message) {
+        this.cancelRun();
+        this.statusTarget.textContent = this.escapeHtml(message);
+        this.statusTarget.classList.remove('text-gray-400');
+        this.statusTarget.classList.add('text-red-400');
     }
 
     renderTrace() {
@@ -272,26 +425,26 @@ export default class extends Controller {
         this.inputTarget.value = query;
         this.queryLineTarget.textContent = query;
         this.heroTarget.style.display = 'none';
-        
+
         this.toolCalls = [
             {
                 label: 'database.query',
                 message: 'Loading previous research trace from memory.',
                 path: 'cache -> history',
-                link: '#'
+                link: '#',
             },
             {
                 label: 'agent.reasoning',
                 message: 'Verifying past responses are still relevant.',
                 path: 'eval -> check',
-                link: '#'
+                link: '#',
             },
             {
                 label: 'result.render',
                 message: 'Formatting historical data for current view.',
                 path: 'ui -> render',
-                link: '#'
-            }
+                link: '#',
+            },
         ];
         this.renderTrace();
 
@@ -303,7 +456,7 @@ export default class extends Controller {
         this.streamTarget.innerHTML = '';
         this.answerBodyTarget.innerHTML = `
             <h2 class="m-0 text-lg">Retrieved from cache</h2>
-            <p class="mt-1 leading-relaxed">This is a historical view of your query: <strong>"${this.escapeHtml(query)}"</strong></p>
+            <p class="mt-1 leading-relaxed">This is a historical view of your query: <strong>${this.escapeHtml(query)}</strong></p>
             <p class="mt-1 leading-relaxed">The agent has successfully restored the final answer and the corresponding tool execution trace. You can view the original process in the Trace tab.</p>
         `;
 
@@ -351,13 +504,6 @@ export default class extends Controller {
             this.sidebarTarget.classList.add('-translate-x-full');
             this.sidebarTarget.classList.remove('translate-x-0');
             this.sidebarOverlayTarget.classList.add('hidden');
-        }
-    }
-
-    cancelRun() {
-        if (this.timer) {
-            clearTimeout(this.timer);
-            this.timer = null;
         }
     }
 
