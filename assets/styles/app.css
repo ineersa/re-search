@@ -18,3 +18,50 @@ body {
 code, pre, kbd, samp, tt, .font-mono {
     font-family: var(--font-mono);
 }
+
+/* Markdown-rendered answer pane */
+.markdown-body {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #e5e7eb;
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+}
+
+.markdown-body h1 { font-size: 1.25rem; }
+.markdown-body h2 { font-size: 1.125rem; }
+.markdown-body h3 { font-size: 1rem; }
+
+.markdown-body p { margin: 0.5em 0; }
+.markdown-body ul, .markdown-body ol { margin: 0.5em 0; padding-left: 1.5em; }
+.markdown-body li { margin: 0.25em 0; }
+.markdown-body a { color: #60a5fa; text-decoration: none; }
+.markdown-body a:hover { text-decoration: underline; }
+.markdown-body blockquote {
+    margin: 0.5em 0;
+    padding-left: 1em;
+    border-left: 4px solid #4b5563;
+    color: #9ca3af;
+}
+
+.markdown-body pre {
+    margin: 0.75em 0;
+    padding: 0.75em;
+    overflow-x: auto;
+    background: #1a1a1a;
+    border-radius: 0.25rem;
+    border: 1px solid #333;
+}
+
+.markdown-body pre code {
+    padding: 0;
+    background: transparent;
+    font-size: 0.8125rem;
+}
+
+.markdown-body :first-child { margin-top: 0; }
+.markdown-body :last-child { margin-bottom: 0; }

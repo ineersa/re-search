@@ -25,4 +25,13 @@ return [
     '@hotwired/turbo' => [
         'version' => '7.3.0',
     ],
+    'marked' => [
+        'version' => '17.0.4',
+    ],
+    'dompurify' => [
+        'version' => '3.3.3',
+    ],
+    'highlight.js' => [
+        'version' => '11.11.1',
+    ],
 ];

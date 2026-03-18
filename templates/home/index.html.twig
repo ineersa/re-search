@@ -2,6 +2,10 @@
 
 {% block title %}re-search{% endblock %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
+{% endblock %}
+
 {% block body %}
     <div
         class="flex flex-col min-h-screen bg-[#0a0a0a]"
@@ -106,6 +110,17 @@
                                 <p class="m-0 text-xs uppercase tracking-wider text-gray-500">intro</p>
                                 <p class="mt-1 leading-relaxed text-gray-300">Tool activity appears here while the agent runs.</p>
                             </article>
+                        </div>
+                        <div class="flex justify-end mb-2">
+                            <button
+                                type="button"
+                                class="border border-[#444] bg-transparent px-2 py-1 text-xs text-gray-500 hover:text-white hover:border-gray-500 transition-colors cursor-pointer"
+                                data-research-ui-target="renderModeToggle"
+                                data-action="click->research-ui#toggleRenderMode"
+                                hidden
+                            >
+                                Raw
+                            </button>
                         </div>
                         <div class="grid gap-2 answer-body" data-research-ui-target="answerBody"></div>
                     </article>

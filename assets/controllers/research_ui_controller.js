@@ -1,9 +1,15 @@
 import { Controller } from '@hotwired/stimulus';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import hljs from 'highlight.js';
 
 /**
  * Research UI controller: submits real runs, consumes Mercure events,
  * appends tool activity to trace UI, streams markdown to answer container,
  * and supports cancel/reconnect behavior.
+ *
+ * Markdown is rendered safely (marked + DOMPurify) with raw/rendered toggle
+ * and highlight.js for fenced code blocks.
  */
 export default class extends Controller {
     static targets = [
@@ -23,6 +29,7 @@ export default class extends Controller {
         'sidebar',
         'sidebarOverlay',
         'cancelBtn',
+        'renderModeToggle',
     ];
 
     static values = {
@@ -34,6 +41,8 @@ export default class extends Controller {
     sidebarOpen = false;
     historyPage = 0;
     historyItemsPerPage = 5;
+    accumulatedMarkdown = '';
+    renderMode = 'rendered';
 
     connect() {
         this.timer = null;
@@ -71,6 +80,8 @@ export default class extends Controller {
 
         this.cancelRun();
         this.toolCalls = [];
+        this.accumulatedMarkdown = '';
+        this.renderMode = 'rendered';
         this.activeTab = 'answer';
         this.queryLineTarget.textContent = query;
 
@@ -82,6 +93,7 @@ export default class extends Controller {
         this.streamTarget.innerHTML = '';
         this.answerBodyTarget.innerHTML = '';
         this.traceBodyTarget.innerHTML = '';
+        this.updateRenderModeToggleVisibility(false);
         this.resultsTarget.hidden = false;
         this.heroTarget.style.display = 'none';
         this.showTraceTab();
@@ -222,13 +234,12 @@ export default class extends Controller {
             return;
         }
 
-        const chunk = document.createElement('div');
-        chunk.className = 'answer-chunk';
-        chunk.innerHTML = this.escapeHtml(markdown).replace(/\n/g, '<br>');
-        this.answerBodyTarget.appendChild(chunk);
+        this.accumulatedMarkdown += markdown;
+        this.renderAnswerBody();
         this.answerBodyTarget.scrollTop = this.answerBodyTarget.scrollHeight;
 
         if (isFinal) {
+            this.updateRenderModeToggleVisibility(true);
             this.showAnswerTab();
         }
     }
@@ -423,6 +434,8 @@ export default class extends Controller {
     loadHistoryItem(event) {
         const query = event.currentTarget.dataset.query;
         this.inputTarget.value = query;
+        this.accumulatedMarkdown = '';
+        this.renderMode = 'rendered';
         this.queryLineTarget.textContent = query;
         this.heroTarget.style.display = 'none';
 
@@ -461,6 +474,7 @@ export default class extends Controller {
         `;
 
         this.resultsTarget.hidden = false;
+        this.updateRenderModeToggleVisibility(false);
         this.showAnswerTab();
     }
 
@@ -504,6 +518,44 @@ export default class extends Controller {
             this.sidebarTarget.classList.add('-translate-x-full');
             this.sidebarTarget.classList.remove('translate-x-0');
             this.sidebarOverlayTarget.classList.add('hidden');
+        }
+    }
+
+    renderAnswerBody() {
+        if (this.renderMode === 'raw') {
+            this.answerBodyTarget.innerHTML = `<pre class="answer-markdown-raw m-0 p-0 overflow-x-auto whitespace-pre-wrap break-words text-gray-300">${this.escapeHtml(this.accumulatedMarkdown)}</pre>`;
+
+            return;
+        }
+
+        const rawHtml = marked.parse(this.accumulatedMarkdown, { gfm: true, breaks: true, silent: true }) ?? '';
+        const safeHtml = DOMPurify.sanitize(String(rawHtml));
+        this.answerBodyTarget.innerHTML = `<div class="answer-markdown-rendered markdown-body">${safeHtml}</div>`;
+        this.answerBodyTarget.querySelectorAll('pre code').forEach((el) => {
+            hljs.highlightElement(el);
+        });
+    }
+
+    toggleRenderMode() {
+        this.renderMode = this.renderMode === 'rendered' ? 'raw' : 'rendered';
+        this.renderAnswerBody();
+        this.updateRenderModeToggleLabel();
+    }
+
+    updateRenderModeToggleLabel() {
+        if (!this.hasRenderModeToggleTarget) {
+            return;
+        }
+        this.renderModeToggleTarget.textContent = this.renderMode === 'rendered' ? 'Raw' : 'Rendered';
+    }
+
+    updateRenderModeToggleVisibility(visible) {
+        if (!this.hasRenderModeToggleTarget) {
+            return;
+        }
+        this.renderModeToggleTarget.hidden = !visible;
+        if (visible) {
+            this.updateRenderModeToggleLabel();
         }
     }
 
