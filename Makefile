@@ -9,7 +9,7 @@ PHP_SERVICE := php
 	ps ps-prod logs logs-prod logs-php logs-mailer pull prune \
 	sh root-sh composer composer-install composer-update \
 	console cc cache-warmup doctrine-migrate doctrine-diff doctrine-status \
-	test cs-fix phpstan quality check config config-prod stop stop-prod \
+	messenger-consume test cs-fix phpstan quality check config config-prod stop stop-prod \
 	tailwind-setup tailwind-init tailwind-watch tailwind-build assets-compile
 
 help: ## Show all available commands
@@ -107,6 +107,9 @@ doctrine-diff: ## Generate Doctrine migration diff in local container
 
 doctrine-status: ## Show Doctrine migration status in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console doctrine:migrations:status
+
+messenger-consume: ## Run Messenger consumer for async transport
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume async -vv
 
 test: ## Run PHPUnit tests in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/phpunit

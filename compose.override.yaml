@@ -1,4 +1,3 @@
-
 services:
   php:
     build:
@@ -9,6 +8,9 @@ services:
       APP_ENV: dev
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       SERVER_NAME: localhost, http://localhost
+      MERCURE_URL: http://localhost/.well-known/mercure
+      MERCURE_PUBLIC_URL: http://localhost:${HTTP_PORT:-8080}/.well-known/mercure
+      MERCURE_JWT_SECRET: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
     volumes:
       - ./:/app:delegated
       - ./docker/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro

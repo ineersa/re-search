@@ -8,6 +8,7 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     research.model: '%env(RESEARCH_MODEL)%'
+    research.mercure_topic_base: '%env(DEFAULT_URI)%'
 
 services:
     # default configuration for services in *this* file
@@ -59,6 +60,11 @@ services:
             $model: '%research.model%'
             $toolbox: '@Symfony\AI\Agent\Toolbox\ToolboxInterface'
 
+    # Research Mercure - topic factory and event publisher
+    App\Research\Mercure\ResearchTopicFactory:
+        arguments:
+            $baseUrl: '%research.mercure_topic_base%'
+
     # Research domain - interface bindings
-    App\Research\Event\EventPublisherInterface: '@App\Research\Event\NullEventPublisher'
+    App\Research\Event\EventPublisherInterface: '@App\Research\Event\MercureEventPublisher'
     App\Research\Persistence\ResearchRunRepositoryInterface: '@App\Research\Persistence\ResearchRunRepository'

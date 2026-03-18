@@ -61,12 +61,6 @@ parameters:
 			path: src/Entity/ResearchMessage.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
 			message: '#^Unused App\\Entity\\ResearchRun\:\:addMessage$#'
 			identifier: shipmonk.deadMethod
 			count: 1
@@ -80,12 +74,6 @@ parameters:
 
 		-
 			message: '#^Unused App\\Entity\\ResearchRun\:\:getFailureReason$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:getMercureTopic$#'
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Entity/ResearchRun.php
@@ -122,30 +110,6 @@ parameters:
 
 		-
 			message: '#^Unused App\\Entity\\ResearchRun\:\:isTokenBudgetEstimated$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:setClientKey$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:setMercureTopic$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:setQuery$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:setQueryHash$#'
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Entity/ResearchRun.php
@@ -463,10 +427,34 @@ parameters:
 			path: src/Research/ResearchRunService.php
 
 		-
-			message: '#^Unused App\\Research\\ResearchRunService\:\:execute$#'
+			message: '#^Unused App\\Research\\Event\\MercureEventPublisher\:\:__construct$#'
 			identifier: shipmonk.deadMethod
 			count: 1
-			path: src/Research/ResearchRunService.php
+			path: src/Research/Event/MercureEventPublisher.php
+
+		-
+			message: '#^Unused App\\Research\\Mercure\\ResearchTopicFactory\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Mercure/ResearchTopicFactory.php
+
+		-
+			message: '#^Unused App\\Research\\Message\\ExecuteResearchRunHandler\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Message/ExecuteResearchRunHandler.php
+
+		-
+			message: '#^Method App\\Research\\Platform\\ResearchPlatformFactory\:\:__construct\(\) has parameter \$platforms with generic class Symfony\\Component\\DependencyInjection\\ServiceLocator but does not specify its types: T$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Research/Platform/ResearchPlatformFactory.php
+
+		-
+			message: '#^Unused App\\Research\\Platform\\ResearchPlatformFactory\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Platform/ResearchPlatformFactory.php
 
 		-
 			message: '#^Unused App\\Research\\Throttle\\ResearchThrottle\:\:__construct$#'
