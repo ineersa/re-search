@@ -51,7 +51,9 @@ final class McpWebSearchClient
         $initRequest = $initRequest->withId(++$this->requestId);
 
         $response = $this->post($initRequest);
-        $sessionHeader = $response->getHeaders(false)[self::SESSION_HEADER] ?? null;
+        $headers = $response->getHeaders(false);
+        // Symfony HttpClient returns header keys lowercase
+        $sessionHeader = $headers[strtolower(self::SESSION_HEADER)] ?? $headers[self::SESSION_HEADER] ?? null;
         if (isset($sessionHeader[0])) {
             $this->sessionId = $sessionHeader[0];
         }

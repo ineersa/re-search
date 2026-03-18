@@ -8,7 +8,8 @@ PHP_SERVICE := php
 .PHONY: help init setup build build-prod up up-prod down down-prod restart restart-prod \
 	ps ps-prod logs logs-prod logs-php logs-mailer pull prune \
 	sh root-sh composer composer-install composer-update \
-	console cc cache-warmup doctrine-migrate doctrine-diff doctrine-status \
+	messenger-clear \
+	console cc cache-warmup rate-limit-reset doctrine-migrate doctrine-diff doctrine-status \
 	messenger-consume test cs-fix phpstan quality check config config-prod stop stop-prod \
 	tailwind-setup tailwind-init tailwind-watch tailwind-build assets-compile
 
@@ -96,6 +97,9 @@ console: ## Run Symfony console command: make console cmd='about'
 cc: ## Clear Symfony cache in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:clear
 
+rate-limit-reset: ## Reset research rate limiter (clears cache.rate_limiter pool)
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:pool:clear cache.rate_limiter
+
 cache-warmup: ## Warm Symfony cache in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:warmup
 
@@ -110,6 +114,10 @@ doctrine-status: ## Show Doctrine migration status in local container
 
 messenger-consume: ## Run Messenger consumer for async transport
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume async -vv
+
+messenger-clear: ## Clear async and failed Messenger queues
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console dbal:run-sql "DELETE FROM messenger_messages"
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:failed:remove --all --no-interaction
 
 test: ## Run PHPUnit tests in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/phpunit
