@@ -38,9 +38,13 @@ use Psr\Log\LoggerInterface;
 final class RunOrchestrator
 {
     private const HARD_CAP_TOKENS = 75_000;
-    private const BUDGET_NOTICE_THRESHOLD = 10_000;
     private const ANSWER_ONLY_THRESHOLD = 5_000;
+    private const STRATEGIC_NOTICE_START = 20_000;
+    private const STRATEGIC_NOTICE_END = 30_000;
+    /** @var list<int> */
+    private const LATE_BUDGET_NOTICE_THRESHOLDS = [60_000, 68_000];
     private const MAX_TURNS = 75;
+    private const MAX_EMPTY_RESPONSE_RETRIES = 5;
     private const WALL_CLOCK_TIMEOUT_SECONDS = 900;
     private const MAX_CONSECUTIVE_TOOL_FAILURES = 3;
     /** Max chars per tool result sent to model (~5K tokens) to avoid context overflow */
@@ -79,17 +83,23 @@ final class RunOrchestrator
         $turn = 0;
         $answerOnly = false;
         $tokenBudgetUsed = 0;
-        $lastBudgetNoticeThreshold = 0;
+        $strategicNoticeSent = false;
+        /** @var array<int, bool> */
+        $lateNoticeSentByThreshold = [];
         $sequence = 0;
         $startedAt = time();
         $consecutiveToolFailures = 0;
+        $emptyResponseRetries = 0;
 
         $run->setStatus('running');
         $this->persistStep($run, ++$sequence, 'run_started', 0, 'Research run started', null);
         $this->eventPublisher->publishActivity($runId, 'run_started', 'Research run started', []);
 
         $toolMap = $this->toolbox->getTools();
-        $options = ['tools' => $toolMap];
+        $options = [
+            'tools' => $toolMap,
+            'stream' => true,
+        ];
 
         try {
             while ($turn < self::MAX_TURNS) {
@@ -112,15 +122,39 @@ final class RunOrchestrator
                 }
 
                 $budgetNotice = null;
-                if ($tokenBudgetUsed >= $lastBudgetNoticeThreshold + self::BUDGET_NOTICE_THRESHOLD) {
-                    $lastBudgetNoticeThreshold = (int) (floor($tokenBudgetUsed / self::BUDGET_NOTICE_THRESHOLD) * self::BUDGET_NOTICE_THRESHOLD);
+                if (
+                    !$strategicNoticeSent
+                    && $tokenBudgetUsed >= self::STRATEGIC_NOTICE_START
+                    && $tokenBudgetUsed <= self::STRATEGIC_NOTICE_END
+                ) {
                     $budgetNotice = \sprintf(
-                        "Budget update:\n- total tokens used so far: %d\n- estimated tokens left before hard cap: %d\n- continue only if the next search materially improves the answer",
+                        "Budget strategy reminder:\n- total tokens used so far: %d\n- estimated tokens left before hard cap: %d\n- prioritize high-signal sources and avoid broad exploratory searches",
                         $tokenBudgetUsed,
                         $remaining
                     );
+                    $strategicNoticeSent = true;
                     $this->persistStep($run, ++$sequence, 'budget_notice', $turn, $budgetNotice, null);
                     $this->eventPublisher->publishBudget($runId, $this->budgetMeta($tokenBudgetUsed, $remaining));
+                }
+
+                if (
+                    null === $budgetNotice
+                    && $tokenBudgetUsed > self::STRATEGIC_NOTICE_END
+                ) {
+                    foreach (self::LATE_BUDGET_NOTICE_THRESHOLDS as $threshold) {
+                        if ($tokenBudgetUsed >= $threshold && !($lateNoticeSentByThreshold[$threshold] ?? false)) {
+                            $budgetNotice = \sprintf(
+                                "Late budget warning:\n- total tokens used so far: %d\n- estimated tokens left before hard cap: %d\n- only continue if one targeted check materially changes the final answer",
+                                $tokenBudgetUsed,
+                                $remaining
+                            );
+                            $lateNoticeSentByThreshold[$threshold] = true;
+                            $this->persistStep($run, ++$sequence, 'budget_notice', $turn, $budgetNotice, null);
+                            $this->eventPublisher->publishBudget($runId, $this->budgetMeta($tokenBudgetUsed, $remaining));
+
+                            break;
+                        }
+                    }
                 }
 
                 $forcedInstruction = null;
@@ -138,12 +172,15 @@ final class RunOrchestrator
                 $result = $deferred->getResult();
 
                 $assistantTextBeforeTools = '';
+                $answerStreamedDuringTurn = false;
+                $resultForTokenExtraction = $result;
                 if ($result instanceof StreamResult) {
                     $this->logger->info('Consuming stream from AI platform', ['turn' => $turn]);
-                    [$result, $assistantTextBeforeTools] = $this->consumeStream($result);
+                    [$result, $assistantTextBeforeTools, $answerStreamedDuringTurn] = $this->consumeStream($runId, $result);
+                    // Token usage is added to StreamResult metadata during iteration; use original for extraction
                 }
 
-                $turnResult = $this->normalizeResult($result, $turn, $assistantTextBeforeTools);
+                $turnResult = $this->normalizeResult($result, $turn, $assistantTextBeforeTools, $resultForTokenExtraction);
                 $this->logger->info('Received AI platform result', [
                     'turn' => $turn,
                     'isFinal' => $turnResult->isFinal,
@@ -153,20 +190,73 @@ final class RunOrchestrator
 
                 $this->persistLlmInvocation($run, ++$sequence, $turn, $messages, $options, $turnResult);
 
-                $tokensThisTurn = $this->extractTokens($result);
-                $tokenBudgetUsed += $tokensThisTurn;
-                $this->budgetEnforcer->recordTokenUsage($runId, $tokensThisTurn);
+                $previousTokenBudgetUsed = $tokenBudgetUsed;
+                $tokensThisTurn = $this->extractTokens($resultForTokenExtraction);
+                if (null !== $turnResult->totalTokens) {
+                    $tokenBudgetUsed = $turnResult->totalTokens;
+                } else {
+                    $tokenBudgetUsed += $tokensThisTurn;
+                }
+
+                $tokenDelta = max(0, $tokenBudgetUsed - $previousTokenBudgetUsed);
+                if ($tokenDelta > 0) {
+                    $this->budgetEnforcer->recordTokenUsage($runId, $tokenDelta);
+                }
 
                 $run->setTokenBudgetUsed($tokenBudgetUsed);
                 $this->persistTokenSnapshot($run, ++$sequence, $turn, $turnResult, $tokenBudgetUsed);
                 $this->eventPublisher->publishBudget($runId, $this->budgetMeta($tokenBudgetUsed, self::HARD_CAP_TOKENS - $tokenBudgetUsed));
+
+                if ('' === trim($turnResult->assistantText) && [] === $turnResult->toolCalls) {
+                    ++$emptyResponseRetries;
+
+                    if ($emptyResponseRetries > self::MAX_EMPTY_RESPONSE_RETRIES) {
+                        $run->setStatus('failed');
+                        $run->setFailureReason('Model returned an empty response repeatedly');
+                        $run->setCompletedAt(new \DateTimeImmutable());
+                        $this->persistStep($run, ++$sequence, 'run_failed', $turn, 'Repeated empty response', null);
+                        $this->eventPublisher->publishComplete($runId, ['status' => 'failed', 'reason' => 'Repeated empty response']);
+                        $this->entityManager->flush();
+
+                        return;
+                    }
+
+                    $summary = \sprintf('Empty response (retry %d/%d), resending same turn', $emptyResponseRetries, self::MAX_EMPTY_RESPONSE_RETRIES);
+                    $emptyPayload = json_encode([
+                        'retry' => $emptyResponseRetries,
+                        'maxRetries' => self::MAX_EMPTY_RESPONSE_RETRIES,
+                        'normalizedResult' => [
+                            'assistantText' => $turnResult->assistantText,
+                            'toolCalls' => array_map(
+                                static fn (ToolCallDecision $decision) => ['name' => $decision->name, 'arguments' => $decision->arguments],
+                                $turnResult->toolCalls
+                            ),
+                            'isFinal' => $turnResult->isFinal,
+                            'promptTokens' => $turnResult->promptTokens,
+                            'completionTokens' => $turnResult->completionTokens,
+                            'totalTokens' => $turnResult->totalTokens,
+                        ],
+                        'rawMetadata' => $turnResult->rawMetadata,
+                    ], \JSON_THROW_ON_ERROR);
+                    $this->persistStep($run, ++$sequence, 'assistant_empty', $turn, $summary, $emptyPayload);
+                    $this->eventPublisher->publishActivity($runId, 'assistant_empty', $summary, ['retry' => $emptyResponseRetries]);
+                    $this->entityManager->flush();
+
+                    continue;
+                }
+
+                $emptyResponseRetries = 0;
 
                 if ($turnResult->isFinal) {
                     $run->setFinalAnswerMarkdown($turnResult->assistantText);
                     $run->setStatus('completed');
                     $run->setCompletedAt(new \DateTimeImmutable());
                     $this->persistStep($run, ++$sequence, 'assistant_final', $turn, $turnResult->assistantText, null);
-                    $this->eventPublisher->publishAnswer($runId, $turnResult->assistantText, true);
+                    if ($answerStreamedDuringTurn) {
+                        $this->eventPublisher->publishAnswer($runId, '', true);
+                    } else {
+                        $this->eventPublisher->publishAnswer($runId, $turnResult->assistantText, true);
+                    }
                     $this->eventPublisher->publishComplete($runId, ['status' => 'completed']);
                     $this->entityManager->flush();
 
@@ -300,43 +390,64 @@ final class RunOrchestrator
     }
 
     /**
-     * @return array{0: ResultInterface, 1: string}
+     * @return array{0: ResultInterface, 1: string, 2: bool}
      */
-    private function consumeStream(StreamResult $stream): array
+    private function consumeStream(string $runId, StreamResult $stream): array
     {
         $text = '';
         $toolCalls = [];
+        $chunkBuffer = '';
+        $streamedAnswer = false;
+
         foreach ($stream->getContent() as $chunk) {
             if (\is_string($chunk)) {
                 $text .= $chunk;
+                $chunkBuffer .= $chunk;
+
+                if (\strlen($chunkBuffer) >= 320 || str_contains($chunkBuffer, "\n\n")) {
+                    $this->eventPublisher->publishAnswer($runId, $chunkBuffer, false);
+                    $chunkBuffer = '';
+                    $streamedAnswer = true;
+                }
             } elseif ($chunk instanceof ToolCallResult) {
                 $toolCalls = $chunk->getContent();
             }
         }
 
-        if ([] !== $toolCalls) {
-            return [new ToolCallResult(...$toolCalls), $text];
+        if ('' !== $chunkBuffer) {
+            $this->eventPublisher->publishAnswer($runId, $chunkBuffer, false);
+            $streamedAnswer = true;
         }
 
-        return [new TextResult($text), $text];
+        if ([] !== $toolCalls) {
+            return [new ToolCallResult(...$toolCalls), $text, $streamedAnswer];
+        }
+
+        return [new TextResult($text), $text, $streamedAnswer];
     }
 
-    private function normalizeResult(ResultInterface $result, int $turn, string $streamedText = ''): ResearchTurnResult
+    private function normalizeResult(ResultInterface $result, int $turn, string $streamedText = '', ?ResultInterface $metadataSource = null): ResearchTurnResult
     {
         $promptTokens = null;
         $completionTokens = null;
         $totalTokens = null;
         $rawMetadata = [];
 
-        if ($result->getMetadata()->has('token_usage')) {
-            $usage = $result->getMetadata()->get('token_usage');
+        $source = $metadataSource ?? $result;
+        foreach ($source->getMetadata()->all() as $key => $value) {
+            $rawMetadata[$key] = $value;
+        }
+
+        if ($source->getMetadata()->has('token_usage')) {
+            $usage = $source->getMetadata()->get('token_usage');
             if ($usage instanceof TokenUsageInterface) {
                 $promptTokens = $usage->getPromptTokens();
                 $completionTokens = $usage->getCompletionTokens();
                 $totalTokens = $usage->getTotalTokens();
             }
-            $rawMetadata['token_usage'] = $usage;
         }
+
+        $rawMetadata = $this->normalizeMetadata($rawMetadata);
 
         if ($result instanceof TextResult) {
             return new ResearchTurnResult(
@@ -394,10 +505,19 @@ final class RunOrchestrator
         }
 
         $usage = $result->getMetadata()->get('token_usage');
-        if ($usage instanceof TokenUsageInterface) {
-            $total = $usage->getTotalTokens();
+        if (!$usage instanceof TokenUsageInterface) {
+            return 0;
+        }
 
-            return null !== $total ? $total : 0;
+        $total = $usage->getTotalTokens();
+        if (null !== $total) {
+            return $total;
+        }
+
+        $prompt = $usage->getPromptTokens();
+        $completion = $usage->getCompletionTokens();
+        if (null !== $prompt && null !== $completion) {
+            return $prompt + $completion;
         }
 
         return 0;
@@ -440,12 +560,12 @@ final class RunOrchestrator
             return;
         }
 
-        $summary = \sprintf('Tokens: %d cumulative', $cumulativeUsed);
+        $summary = \sprintf('Tokens: %d total used', $cumulativeUsed);
         $payload = json_encode([
             'promptTokens' => $turnResult->promptTokens,
             'completionTokens' => $turnResult->completionTokens,
             'totalTokens' => $turnResult->totalTokens,
-            'cumulativeUsed' => $cumulativeUsed,
+            'totalUsed' => $cumulativeUsed,
         ], \JSON_THROW_ON_ERROR);
 
         $step = new ResearchStep();
@@ -486,5 +606,74 @@ final class RunOrchestrator
         $step->setToolSignature($toolSignature);
         $run->addStep($step);
         $this->entityManager->persist($step);
+    }
+
+    /**
+     * @param array<string, mixed> $metadata
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeMetadata(array $metadata): array
+    {
+        $normalized = [];
+        foreach ($metadata as $key => $value) {
+            $normalized[$key] = $this->normalizeForJson($value, 0);
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeForJson(mixed $value, int $depth): mixed
+    {
+        if ($depth >= 5) {
+            return '[max depth reached]';
+        }
+
+        if (null === $value || \is_scalar($value)) {
+            return $value;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format(\DATE_ATOM);
+        }
+
+        if ($value instanceof TokenUsageInterface) {
+            return [
+                'promptTokens' => $value->getPromptTokens(),
+                'completionTokens' => $value->getCompletionTokens(),
+                'totalTokens' => $value->getTotalTokens(),
+            ];
+        }
+
+        if (\is_array($value)) {
+            $normalized = [];
+            foreach ($value as $k => $v) {
+                $normalized[(string) $k] = $this->normalizeForJson($v, $depth + 1);
+            }
+
+            return $normalized;
+        }
+
+        if ($value instanceof \JsonSerializable) {
+            return $this->normalizeForJson($value->jsonSerialize(), $depth + 1);
+        }
+
+        if ($value instanceof \Stringable) {
+            return (string) $value;
+        }
+
+        if ($value instanceof \Traversable) {
+            $normalized = [];
+            foreach ($value as $k => $v) {
+                $normalized[(string) $k] = $this->normalizeForJson($v, $depth + 1);
+            }
+
+            return $normalized;
+        }
+
+        return [
+            '_class' => $value::class,
+            'properties' => $this->normalizeForJson(get_object_vars($value), $depth + 1),
+        ];
     }
 }

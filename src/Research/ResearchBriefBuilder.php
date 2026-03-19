@@ -59,7 +59,7 @@ Citation format (mandatory):
 
 Budget and constraints:
 - Hard token cap: 75000
-- Soft reminder every 10000 tokens.
+- Budget reminders are sparse by design: one strategic reminder around 20k-30k tokens used, then late warnings near 60k+.
 - Mid-flight budget updates and stopping rules (answer-only mode) will be injected as new User messages.
 - When you receive a User message about budget updates or instructing you to stop (answer-only mode), you MUST immediately provide your best final answer based on the evidence gathered so far and STOP making tool calls. Do not explain the budget exhaustion, just answer the question.
 BRIEF;

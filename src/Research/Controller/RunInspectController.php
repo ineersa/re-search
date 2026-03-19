@@ -38,6 +38,7 @@ final class RunInspectController extends AbstractController
             $payload = null !== $payloadJson ? json_decode($payloadJson, true) : null;
             $prettyMessages = '';
             $prettyTools = '';
+            $prettyRawMetadata = '';
             if ('llm_invocation' === $step->getType() && \is_array($payload)) {
                 if (isset($payload['request']['messages'])) {
                     $messagesRaw = $payload['request']['messages'];
@@ -46,6 +47,12 @@ final class RunInspectController extends AbstractController
                 if (isset($payload['request']['tools']) && [] !== $payload['request']['tools']) {
                     $prettyTools = $this->prettyJson(json_encode($payload['request']['tools']));
                 }
+                if (isset($payload['response']['rawMetadata'])) {
+                    $prettyRawMetadata = $this->prettyJson(json_encode($payload['response']['rawMetadata']));
+                }
+            }
+            if ('assistant_empty' === $step->getType() && \is_array($payload) && isset($payload['rawMetadata'])) {
+                $prettyRawMetadata = $this->prettyJson(json_encode($payload['rawMetadata']));
             }
             $stepsForView[] = [
                 'step' => $step,
@@ -53,6 +60,7 @@ final class RunInspectController extends AbstractController
                 'prettyToolArgs' => $this->prettyJson($step->getToolArgumentsJson()),
                 'prettyMessages' => $prettyMessages,
                 'prettyTools' => $prettyTools,
+                'prettyRawMetadata' => $prettyRawMetadata,
             ];
         }
 

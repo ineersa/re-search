@@ -46,6 +46,7 @@ export default class extends Controller {
     historyItemsPerPage = 5;
     accumulatedMarkdown = '';
     renderMode = 'rendered';
+    answerStreamingStarted = false;
 
     connect() {
         this.timer = null;
@@ -74,6 +75,7 @@ export default class extends Controller {
         this.toolCalls = [];
         this.accumulatedMarkdown = '';
         this.renderMode = 'rendered';
+        this.answerStreamingStarted = false;
         this.activeTab = 'answer';
         this.queryLineTarget.textContent = query;
 
@@ -198,27 +200,10 @@ export default class extends Controller {
 
     appendActivity(payload) {
         const { stepType, summary, meta = {} } = payload;
+
         const toolName = meta.tool || stepType;
         const args = meta.arguments || {};
         const link = meta.url || meta.link || null;
-
-        const row = document.createElement('article');
-        row.className = 'border border-[#333] bg-[#1a1a1a] p-3';
-        if (stepType?.startsWith('tool_') || toolName !== stepType) {
-            row.classList.add('border-gray-500');
-        }
-        const safeLabel = this.escapeHtml(toolName);
-        const safeMessage = this.escapeHtml(summary || '');
-        row.innerHTML = `
-            <p class="m-0 text-xs uppercase tracking-wider text-gray-500">${safeLabel}</p>
-            <p class="mt-1 leading-relaxed text-gray-300">${safeMessage}</p>
-        `;
-        if (link) {
-            const safeLink = this.escapeHtml(link);
-            row.innerHTML += `<a class="mt-2 inline-block text-sm text-blue-400 no-underline hover:text-blue-300 hover:underline transition-colors" href="${safeLink}" target="_blank" rel="noreferrer">${safeLink}</a>`;
-        }
-        this.streamTarget.appendChild(row);
-        this.streamTarget.scrollTop = this.streamTarget.scrollHeight;
 
         const result = meta.result ?? null;
         const traceItem = this.buildTraceItem(stepType, toolName, summary, args, link, result);
@@ -228,13 +213,17 @@ export default class extends Controller {
 
     appendAnswer(payload) {
         const { markdown, isFinal } = payload;
-        if (!markdown) {
-            return;
-        }
+        if (markdown) {
+            const hadContentBefore = this.accumulatedMarkdown.trim().length > 0;
+            this.accumulatedMarkdown += markdown;
+            this.renderAnswerBody();
+            this.answerBodyTarget.scrollTop = this.answerBodyTarget.scrollHeight;
 
-        this.accumulatedMarkdown += markdown;
-        this.renderAnswerBody();
-        this.answerBodyTarget.scrollTop = this.answerBodyTarget.scrollHeight;
+            if (!this.answerStreamingStarted && !hadContentBefore && this.accumulatedMarkdown.trim().length > 0) {
+                this.answerStreamingStarted = true;
+                this.showAnswerTab();
+            }
+        }
 
         if (isFinal) {
             this.updateRenderModeToggleVisibility(true);
@@ -744,7 +733,7 @@ export default class extends Controller {
             return;
         }
 
-        const rawHtml = marked.parse(this.accumulatedMarkdown, { gfm: true, breaks: true, silent: true }) ?? '';
+        const rawHtml = marked.parse(this.accumulatedMarkdown, { gfm: true, breaks: false, silent: true }) ?? '';
         const safeHtml = DOMPurify.sanitize(String(rawHtml));
         this.answerBodyTarget.innerHTML = `<div class="answer-markdown-rendered markdown-body">${safeHtml}</div>`;
         this.answerBodyTarget.querySelectorAll('pre code').forEach((el) => {

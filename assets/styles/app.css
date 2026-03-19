@@ -38,6 +38,8 @@ code, pre, kbd, samp, tt, .font-mono {
 
 .markdown-body p { margin: 0.5em 0; }
 .markdown-body ul, .markdown-body ol { margin: 0.5em 0; padding-left: 1.5em; }
+.markdown-body ul { list-style: disc outside; }
+.markdown-body ol { list-style: decimal outside; }
 .markdown-body li { margin: 0.25em 0; }
 .markdown-body a { color: #60a5fa; text-decoration: none; }
 .markdown-body a:hover { text-decoration: underline; }
@@ -61,6 +63,27 @@ code, pre, kbd, samp, tt, .font-mono {
     padding: 0;
     background: transparent;
     font-size: 0.8125rem;
+}
+
+.markdown-body table {
+    width: 100%;
+    margin: 0.75em 0;
+    border-collapse: collapse;
+    border: 1px solid #374151;
+    font-size: 0.8125rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+    padding: 0.5em 0.625em;
+    border: 1px solid #374151;
+    text-align: left;
+    vertical-align: top;
+}
+
+.markdown-body th {
+    font-weight: 600;
+    background: #111827;
 }
 
 .markdown-body :first-child { margin-top: 0; }

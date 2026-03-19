@@ -32,7 +32,7 @@ final class LlmInvocationTraceSerializer
     /**
      * @param array<string, mixed> $options
      *
-     * @return array{request: array{model: string, messages: string, toolNames: list<string>, tools: list<array{name: string, description: string, parameters: array<string, mixed>|null}>}, response: array{assistantText: string, toolCalls: list<array{name: string, arguments: array<string, mixed>}>, isFinal: bool, promptTokens: int|null, completionTokens: int|null, totalTokens: int|null}}
+     * @return array{request: array{model: string, messages: string, toolNames: list<string>, tools: list<array{name: string, description: string, parameters: array<string, mixed>|null}>}, response: array{assistantText: string, toolCalls: list<array{name: string, arguments: array<string, mixed>}>, isFinal: bool, promptTokens: int|null, completionTokens: int|null, totalTokens: int|null, rawMetadata: array<string, mixed>}}
      */
     public function buildPayload(
         string $model,
@@ -66,6 +66,7 @@ final class LlmInvocationTraceSerializer
                 'promptTokens' => $turnResult->promptTokens,
                 'completionTokens' => $turnResult->completionTokens,
                 'totalTokens' => $turnResult->totalTokens,
+                'rawMetadata' => $turnResult->rawMetadata,
             ],
         ];
     }
