@@ -13,20 +13,6 @@ You can test the research orchestrator loop synchronously using the console comm
 make console cmd="app:research:test 'Who was the 16th president of the united states?' -vvv"
 ```
 
-### Recording and Mocking Tool Calls
-
-You can record the MCP web search tool responses to a JSON fixture file and replay them later. This is incredibly useful for testing the AI prompt changes without hitting external search services or using tokens for repeated web requests.
-
-1. **Record a fixture:**
-```bash
-make console cmd="app:research:test 'Who was the 16th president of the united states?' --record=data/fixture.json -vvv"
-```
-
-2. **Replay/mock from a fixture:**
-```bash
-make console cmd="app:research:test 'Who was the 16th president of the united states?' --mock=data/fixture.json -vvv"
-```
-
 ### Testing the UI (Frontend) without the AI Model
 
 If you want to test the frontend UI transitions (loaders, budget updates, markdown rendering) without running the real AI orchestrator, you can use the UI test command. 

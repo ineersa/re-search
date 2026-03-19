@@ -17,7 +17,8 @@ final class ResultConverter extends BaseResultConverter
 {
     public function convert(RawResultInterface|RawHttpResult $result, array $options = []): \Symfony\AI\Platform\Result\ResultInterface
     {
-        if ($options['stream'] ?? false) {
+        $stream = $options['stream'] ?? false;
+        if (\is_bool($stream) && $stream) {
             return new StreamResult($this->convertStreamWithUsage($result));
         }
 
@@ -190,23 +191,16 @@ final class ResultConverter extends BaseResultConverter
         $toolCalls = [];
         $lastConsumedOffset = 0;
         foreach ($matches as $match) {
-            $fullMatch = $match[0][0] ?? '';
-            $startOffset = $match[0][1] ?? 0;
-            $name = $match['name'][0] ?? '';
-            $paramsBody = $match['params'][0] ?? '';
-
-            if ('' === $name) {
-                continue;
-            }
+            $fullMatch = $match[0][0];
+            $startOffset = $match[0][1];
+            $name = $match['name'][0];
+            $paramsBody = $match['params'][0];
 
             $arguments = [];
             if (preg_match_all('/<parameter=(?<key>[a-zA-Z0-9_.:-]+)>\s*(?<value>.*?)\s*<\/parameter>/s', $paramsBody, $paramMatches, \PREG_SET_ORDER)) {
                 foreach ($paramMatches as $paramMatch) {
-                    $key = $paramMatch['key'] ?? '';
-                    $value = $paramMatch['value'] ?? '';
-                    if ('' === $key) {
-                        continue;
-                    }
+                    $key = $paramMatch['key'];
+                    $value = $paramMatch['value'];
 
                     $arguments[$key] = html_entity_decode(trim($value), \ENT_QUOTES | \ENT_HTML5);
                 }
@@ -217,7 +211,7 @@ final class ResultConverter extends BaseResultConverter
         }
 
         if ($lastConsumedOffset > 0) {
-            $buffer = (string) substr($buffer, $lastConsumedOffset);
+            $buffer = substr($buffer, $lastConsumedOffset);
         } elseif ($flush) {
             $buffer = '';
         }

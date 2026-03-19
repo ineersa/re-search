@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Research\Controller;
 
 use App\Research\Mercure\ResearchTopicFactory;
-use App\Research\Persistence\ResearchRunRepository;
+use App\Repository\ResearchRunRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

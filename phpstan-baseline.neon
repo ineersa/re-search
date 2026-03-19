@@ -1,74 +1,14 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:getClientKey$#'
-			identifier: shipmonk.deadMethod
+			message: '#^Property App\\Entity\\ResearchRun\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
 			count: 1
 			path: src/Entity/ResearchRun.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:getQueryHash$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:getUpdatedAt$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:setTokenBudgetEstimated$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchRun\:\:setTokenBudgetHardCap$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchRun.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:getCompletionTokens$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:getPromptTokens$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:getRun$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:getToolArgumentsJson$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:getToolSignature$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:getTotalTokens$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchStep.php
-
-		-
-			message: '#^Unused App\\Entity\\ResearchStep\:\:isEstimatedTokens$#'
-			identifier: shipmonk.deadMethod
+			message: '#^Property App\\Entity\\ResearchStep\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
 			count: 1
 			path: src/Entity/ResearchStep.php
 
@@ -193,22 +133,10 @@ parameters:
 			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
 
 		-
-			message: '#^Property App\\Research\\Orchestration\\Dto\\ResearchTurnResult\:\:\$rawMetadata is never read$#'
-			identifier: shipmonk.deadProperty.neverRead
-			count: 1
-			path: src/Research/Orchestration/Dto/ResearchTurnResult.php
-
-		-
 			message: '#^Unused App\\Research\\Orchestration\\RunOrchestrator\:\:__construct$#'
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/Orchestration/RunOrchestrator.php
-
-		-
-			message: '#^Unused App\\Research\\Persistence\\ResearchRunRepository\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Persistence/ResearchRunRepository.php
 
 		-
 			message: '#^Unused App\\Research\\ResearchRunService\:\:__construct$#'
@@ -287,4 +215,34 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/Tool/WebSearchTool.php
+
+		-
+			message: '#^Unused App\\Research\\Maintenance\\Message\\PruneResearchTracesMessageHandler\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Maintenance/Message/PruneResearchTracesMessageHandler.php
+
+		-
+			message: '#^Unused App\\Research\\Maintenance\\ResearchMaintenanceSchedule\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Maintenance/ResearchMaintenanceSchedule.php
+
+		-
+			message: '#^Unused App\\Research\\Maintenance\\ResearchTracePruner\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Maintenance/ResearchTracePruner.php
+
+		-
+			message: '#^Unused App\\Research\\Serializer\\LlmInvocationTraceSerializer\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Serializer/LlmInvocationTraceSerializer.php
+
+		-
+			message: '#^Unused App\\Schedule\:\:__construct$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Schedule.php
 

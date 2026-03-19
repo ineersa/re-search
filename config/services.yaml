@@ -89,11 +89,3 @@ services:
             $httpClient: '@http_client'
             $baseUrl: '%env(MCP_WEBSEARCH_URL)%'
 
-    # Dev-only run inspection
-    App\Research\Controller\RunInspectController:
-        arguments:
-            $kernelEnvironment: '%kernel.environment%'
-
-    App\Controller\HomeController:
-        arguments:
-            $kernelEnvironment: '%kernel.environment%'

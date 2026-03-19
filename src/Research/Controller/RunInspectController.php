@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Research\Controller;
 
-use App\Research\Persistence\ResearchRunRepository;
+use App\Repository\ResearchRunRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -14,20 +15,17 @@ use Symfony\Component\Routing\Attribute\Route;
  */
 final class RunInspectController extends AbstractController
 {
-    public function __construct(
-        private readonly ResearchRunRepository $runRepository,
-        private readonly string $kernelEnvironment,
-    ) {
-    }
-
     #[Route('/research/runs/{id}/inspect', name: 'app_research_inspect', methods: ['GET'])]
-    public function inspect(string $id): Response
-    {
-        if ('dev' !== $this->kernelEnvironment) {
+    public function inspect(
+        string $id,
+        ResearchRunRepository $runRepository,
+        #[Autowire('%kernel.environment%')] string $kernelEnvironment,
+    ): Response {
+        if ('dev' !== $kernelEnvironment) {
             throw $this->createNotFoundException('Run inspection is only available in dev environment.');
         }
 
-        $run = $this->runRepository->findEntity($id);
+        $run = $runRepository->findEntity($id);
         if (null === $run) {
             throw $this->createNotFoundException('Research run not found.');
         }

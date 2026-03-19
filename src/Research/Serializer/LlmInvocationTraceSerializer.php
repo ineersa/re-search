@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Research\Persistence;
+namespace App\Research\Serializer;
 
 use App\Research\Orchestration\Dto\ResearchTurnResult;
 use Symfony\AI\Chat\MessageNormalizer;

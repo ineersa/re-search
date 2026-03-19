@@ -12,7 +12,8 @@ final class ModelClient extends BaseModelClient
 {
     public function request(Model $model, array|string $payload, array $options = []): RawHttpResult
     {
-        if (($options['stream'] ?? false) && !isset($options['stream_options'])) {
+        $stream = $options['stream'] ?? false;
+        if (\is_bool($stream) && $stream && !isset($options['stream_options'])) {
             $options['stream_options'] = ['include_usage' => true];
         }
 

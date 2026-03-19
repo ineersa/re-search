@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\History;
 
-use App\Research\Persistence\ResearchRunRepository;
+use App\Repository\ResearchRunRepository;
 
 /**
  * Loads research history from persistence.

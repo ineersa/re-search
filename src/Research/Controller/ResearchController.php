@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Research\Controller;
 
 use App\Entity\ResearchRun;
+use App\Repository\ResearchRunRepository;
 use App\Research\Mercure\ResearchTopicFactory;
 use App\Research\Message\ExecuteResearchRun;
-use App\Research\Persistence\ResearchRunRepository;
 use App\Research\Throttle\ResearchThrottle;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -85,28 +85,28 @@ final class ResearchController extends AbstractController
         $query = $request->request->getString('query');
         $clientKey = $this->buildClientKey($request);
 
-        // try {
-        //     $throttle->consume($request);
-        // } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException $e) {
-        //     $run = new ResearchRun();
-        //     $run->setQuery($query !== '' ? $query : '(throttled)');
-        //     $run->setQueryHash($query !== '' ? hash('sha256', $query) : '');
-        //     $run->setClientKey($clientKey);
-        //     $run->setStatus('throttled');
-        //     $run->setFailureReason('Rate limit exceeded. Please try again later.');
-        //     $entityManager->persist($run);
-        //     $entityManager->flush();
+        try {
+            $throttle->consume($request);
+        } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException $e) {
+            $run = new ResearchRun();
+            $run->setQuery('' !== $query ? $query : '(throttled)');
+            $run->setQueryHash('' !== $query ? hash('sha256', $query) : '');
+            $run->setClientKey($clientKey);
+            $run->setStatus('throttled');
+            $run->setFailureReason('Rate limit exceeded. Please try again later.');
+            $entityManager->persist($run);
+            $entityManager->flush();
 
-        //     $retryAfter = $e->getHeaders()['Retry-After'] ?? 600;
+            $retryAfter = $e->getHeaders()['Retry-After'] ?? 600;
 
-        //     return new JsonResponse([
-        //         'status' => 'throttled',
-        //         'runId' => $run->getId()->toRfc4122(),
-        //         'retryAfter' => (int) $retryAfter,
-        //     ], Response::HTTP_TOO_MANY_REQUESTS, [
-        //         'Retry-After' => (string) $retryAfter,
-        //     ]);
-        // }
+            return new JsonResponse([
+                'status' => 'throttled',
+                'runId' => $run->getRunUuid(),
+                'retryAfter' => (int) $retryAfter,
+            ], Response::HTTP_TOO_MANY_REQUESTS, [
+                'Retry-After' => (string) $retryAfter,
+            ]);
+        }
 
         if ('' === $query) {
             return new JsonResponse(['error' => 'Missing or empty query'], Response::HTTP_BAD_REQUEST);
