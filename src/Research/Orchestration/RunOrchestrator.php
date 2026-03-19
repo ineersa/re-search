@@ -24,6 +24,7 @@ use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
+use Symfony\AI\Platform\Result\ThinkingContent;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
 use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
@@ -93,7 +94,7 @@ final class RunOrchestrator
 
         $run->setStatus('running');
         $this->persistStep($run, ++$sequence, 'run_started', 0, 'Research run started', null);
-        $this->eventPublisher->publishActivity($runId, 'run_started', 'Research run started', []);
+        $this->eventPublisher->publishActivity($runId, 'run_started', 'Research run started', ['sequence' => $sequence, 'turnNumber' => 0]);
 
         $toolMap = $this->toolbox->getTools();
         $options = [
@@ -121,7 +122,7 @@ final class RunOrchestrator
                 if ($remaining < self::ANSWER_ONLY_THRESHOLD) {
                     $answerOnly = true;
                     $run->setAnswerOnlyTriggered(true);
-                    $this->eventPublisher->publishActivity($runId, 'answer_only_enabled', 'Switching to answer-only mode', []);
+                    $this->eventPublisher->publishActivity($runId, 'answer_only_enabled', 'Switching to answer-only mode', ['sequence' => $sequence, 'turnNumber' => $turn]);
                 }
 
                 $budgetNotice = null;
@@ -176,11 +177,21 @@ final class RunOrchestrator
 
                 $assistantTextBeforeTools = '';
                 $answerStreamedDuringTurn = false;
+                $reasoningText = null;
                 $resultForTokenExtraction = $result;
                 if ($result instanceof StreamResult) {
                     $this->logger->info('Consuming stream from AI platform', ['turn' => $turn]);
-                    [$result, $assistantTextBeforeTools, $answerStreamedDuringTurn] = $this->consumeStream($runId, $result);
+                    [$result, $assistantTextBeforeTools, $answerStreamedDuringTurn, $reasoningText] = $this->consumeStream($runId, $result);
                     // Token usage is added to StreamResult metadata during iteration; use original for extraction
+                }
+
+                if (null !== $reasoningText && '' !== trim($reasoningText)) {
+                    $summary = \strlen($reasoningText) > 480
+                        ? substr($reasoningText, 0, 480).'...'
+                        : $reasoningText;
+                    $payload = json_encode(['reasoning' => $reasoningText], \JSON_THROW_ON_ERROR);
+                    $this->persistStep($run, ++$sequence, 'assistant_reasoning', $turn, $summary, $payload);
+                    $this->eventPublisher->publishActivity($runId, 'assistant_reasoning', $summary, ['reasoning' => $reasoningText, 'sequence' => $sequence, 'turnNumber' => $turn]);
                 }
 
                 $turnResult = $this->normalizeResult($result, $turn, $assistantTextBeforeTools, $resultForTokenExtraction);
@@ -242,7 +253,7 @@ final class RunOrchestrator
                         'rawMetadata' => $turnResult->rawMetadata,
                     ], \JSON_THROW_ON_ERROR);
                     $this->persistStep($run, ++$sequence, 'assistant_empty', $turn, $summary, $emptyPayload);
-                    $this->eventPublisher->publishActivity($runId, 'assistant_empty', $summary, ['retry' => $emptyResponseRetries]);
+                    $this->eventPublisher->publishActivity($runId, 'assistant_empty', $summary, ['retry' => $emptyResponseRetries, 'sequence' => $sequence, 'turnNumber' => $turn]);
                     $this->entityManager->flush();
 
                     continue;
@@ -295,7 +306,7 @@ final class RunOrchestrator
                             $run->setFailureReason($e->getMessage());
                             $run->setCompletedAt(new \DateTimeImmutable());
                             $this->persistStep($run, ++$sequence, 'loop_detected', $turn, $decision->normalizedSignature, null);
-                            $this->eventPublisher->publishActivity($runId, 'loop_detected', 'Stopping: duplicate call', ['signature' => $decision->normalizedSignature]);
+                            $this->eventPublisher->publishActivity($runId, 'loop_detected', 'Stopping: duplicate call', ['signature' => $decision->normalizedSignature, 'sequence' => $sequence, 'turnNumber' => $turn]);
                             $this->eventPublisher->publishComplete($runId, ['status' => 'loop_stopped']);
                             $this->entityManager->flush();
 
@@ -303,7 +314,7 @@ final class RunOrchestrator
                         } catch (BudgetExhaustedException $e) {
                             $run->setAnswerOnlyTriggered(true);
                             $answerOnly = true;
-                            $this->eventPublisher->publishActivity($runId, 'answer_only_enabled', 'Switching to answer-only mode: budget exhausted', []);
+                            $this->eventPublisher->publishActivity($runId, 'answer_only_enabled', 'Switching to answer-only mode: budget exhausted', ['sequence' => $sequence, 'turnNumber' => $turn]);
 
                             $forcedInstruction = 'Budget exhausted. Do not use any tools. Provide only your best final answer from the evidence gathered so far.';
                             $messages = $messages->with(Message::ofUser($forcedInstruction));
@@ -322,7 +333,7 @@ final class RunOrchestrator
                             $summary = \sprintf('Executed %s', $decision->name);
                             $payload = json_encode(['arguments' => $decision->arguments, 'result_preview' => \strlen($content) > 200 ? substr($content, 0, 200).'...' : $content, 'result' => $content], \JSON_THROW_ON_ERROR);
                             $this->persistStep($run, ++$sequence, 'tool_succeeded', $turn, $summary, $payload, $decision->name, json_encode($decision->arguments, \JSON_THROW_ON_ERROR), $decision->normalizedSignature);
-                            $this->eventPublisher->publishActivity($runId, 'tool_succeeded', $summary, ['tool' => $decision->name, 'arguments' => $decision->arguments, 'result' => $content]);
+                            $this->eventPublisher->publishActivity($runId, 'tool_succeeded', $summary, ['tool' => $decision->name, 'arguments' => $decision->arguments, 'result' => $content, 'sequence' => $sequence, 'turnNumber' => $turn]);
 
                             $contentForModel = \strlen($content) > self::MAX_TOOL_RESULT_CHARS
                                 ? substr($content, 0, self::MAX_TOOL_RESULT_CHARS)."\n\n[Content was truncated. Total length: ".\strlen($content)." chars. Use websearch_find with the same URL to extract specific parts.]"
@@ -332,7 +343,7 @@ final class RunOrchestrator
                             $errorMsg = $toolError->getMessage();
                             $payload = json_encode(['arguments' => $decision->arguments, 'error' => $errorMsg], \JSON_THROW_ON_ERROR);
                             $this->persistStep($run, ++$sequence, 'tool_failed', $turn, \sprintf('%s failed: %s', $decision->name, $errorMsg), $payload, $decision->name, json_encode($decision->arguments, \JSON_THROW_ON_ERROR), $decision->normalizedSignature);
-                            $this->eventPublisher->publishActivity($runId, 'tool_failed', \sprintf('Tool error: %s', $errorMsg), ['tool' => $decision->name]);
+                            $this->eventPublisher->publishActivity($runId, 'tool_failed', \sprintf('Tool error: %s', $errorMsg), ['tool' => $decision->name, 'sequence' => $sequence, 'turnNumber' => $turn]);
                             $messages = $messages->with(Message::ofToolCall($toolCall, \sprintf('Error: %s', $errorMsg)));
 
                             $consecutiveToolFailures++;
@@ -393,7 +404,7 @@ final class RunOrchestrator
     }
 
     /**
-     * @return array{0: ResultInterface, 1: string, 2: bool}
+     * @return array{0: ResultInterface, 1: string, 2: bool, 3: ?string}
      */
     private function consumeStream(string $runId, StreamResult $stream): array
     {
@@ -401,6 +412,7 @@ final class RunOrchestrator
         $toolCalls = [];
         $chunkBuffer = '';
         $streamedAnswer = false;
+        $reasoningBuffer = '';
 
         foreach ($stream->getContent() as $chunk) {
             if (\is_string($chunk)) {
@@ -412,10 +424,14 @@ final class RunOrchestrator
                     $chunkBuffer = '';
                     $streamedAnswer = true;
                 }
+            } elseif ($chunk instanceof ThinkingContent) {
+                $reasoningBuffer .= $chunk->thinking;
             } elseif ($chunk instanceof ToolCallResult) {
                 $toolCalls = $chunk->getContent();
             }
         }
+
+        $reasoningText = '' !== trim($reasoningBuffer) ? trim($reasoningBuffer) : null;
 
         if ('' !== $chunkBuffer) {
             $this->eventPublisher->publishAnswer($runId, $chunkBuffer, false);
@@ -423,10 +439,10 @@ final class RunOrchestrator
         }
 
         if ([] !== $toolCalls) {
-            return [new ToolCallResult(...$toolCalls), $text, $streamedAnswer];
+            return [new ToolCallResult(...$toolCalls), $text, $streamedAnswer, $reasoningText];
         }
 
-        return [new TextResult($text), $text, $streamedAnswer];
+        return [new TextResult($text), $text, $streamedAnswer, $reasoningText];
     }
 
     private function normalizeResult(ResultInterface $result, int $turn, string $streamedText = '', ?ResultInterface $metadataSource = null): ResearchTurnResult

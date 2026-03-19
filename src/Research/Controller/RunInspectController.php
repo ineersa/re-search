@@ -54,6 +54,7 @@ final class RunInspectController extends AbstractController
             if ('assistant_empty' === $step->getType() && \is_array($payload) && isset($payload['rawMetadata'])) {
                 $prettyRawMetadata = $this->prettyJson(json_encode($payload['rawMetadata']));
             }
+
             $stepsForView[] = [
                 'step' => $step,
                 'prettyPayload' => $this->prettyJson($payloadJson),
