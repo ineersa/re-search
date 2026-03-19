@@ -5,4 +5,4 @@ ai:
                 base_url: '%env(GENERIC_BASE_URL)%'
                 api_key: null
                 http_client: http_client
-                model_catalog: ai.platform.model_catalog.generic
+                model_catalog: app.generic.model_catalog

@@ -32,7 +32,7 @@ final class LlmInvocationTraceSerializer
     /**
      * @param array<string, mixed> $options
      *
-     * @return array{request: array{model: string, messages: string, toolNames: list<string>, tools: list<array{name: string, description: string, parameters: array<string, mixed>|null}>}, response: array{assistantText: string, toolCalls: list<array{name: string, arguments: array<string, mixed>}>, isFinal: bool, promptTokens: int|null, completionTokens: int|null, totalTokens: int|null, rawMetadata: array<string, mixed>}}
+     * @return array{request: array{model: string, messages: string, toolNames: list<string>, tools: list<array{name: string, description: string, parameters: array<string, mixed>|null}>, options: array<string, mixed>}, response: array{assistantText: string, toolCalls: list<array{name: string, arguments: array<string, mixed>}>, isFinal: bool, promptTokens: int|null, completionTokens: int|null, totalTokens: int|null, rawMetadata: array<string, mixed>}}
      */
     public function buildPayload(
         string $model,
@@ -43,6 +43,7 @@ final class LlmInvocationTraceSerializer
         $toolMap = $options['tools'] ?? [];
         $toolDefinitions = $this->extractToolDefinitions($toolMap);
         $toolNames = array_column($toolDefinitions, 'name');
+        $requestOptions = $this->sanitizeOptionsForTrace($options);
 
         $messagesJson = $this->serializer->serialize($messages->getMessages(), 'json');
 
@@ -52,6 +53,7 @@ final class LlmInvocationTraceSerializer
                 'messages' => $messagesJson,
                 'toolNames' => $toolNames,
                 'tools' => $toolDefinitions,
+                'options' => $requestOptions,
             ],
             'response' => [
                 'assistantText' => $turnResult->assistantText,
@@ -101,5 +103,17 @@ final class LlmInvocationTraceSerializer
         }
 
         return $defs;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     *
+     * @return array<string, mixed>
+     */
+    private function sanitizeOptionsForTrace(array $options): array
+    {
+        unset($options['tools']);
+
+        return $options;
     }
 }

@@ -99,6 +99,9 @@ final class RunOrchestrator
         $options = [
             'tools' => $toolMap,
             'stream' => true,
+            'stream_options' => [
+                'include_usage' => true,
+            ],
         ];
 
         try {

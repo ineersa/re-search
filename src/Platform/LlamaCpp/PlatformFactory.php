@@ -13,9 +13,9 @@ declare(strict_types=1);
 
 namespace App\Platform\LlamaCpp;
 
+use App\Platform\Generic\PlatformFactory as CustomGenericPlatformFactory;
 use App\Platform\LlamaCpp\Contract\ToolCallNormalizer;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use Symfony\AI\Platform\Bridge\Generic\PlatformFactory as GenericPlatformFactory;
 use Symfony\AI\Platform\Contract;
 use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Platform;
@@ -40,7 +40,7 @@ class PlatformFactory
         // Jinja2 chat templates (which use the |items filter on arguments).
         $contract ??= Contract::create(new ToolCallNormalizer());
 
-        return GenericPlatformFactory::create(
+        return CustomGenericPlatformFactory::create(
             baseUrl: $baseUrl,
             apiKey: $apiKey,
             httpClient: $httpClient,
