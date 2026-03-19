@@ -344,13 +344,14 @@ export default class extends Controller {
     buildTraceItem(stepType, toolName, summary, args, link, result = null, sequence = null, turnNumber = null) {
         const isRunStarted = stepType === 'run_started';
         const isReasoning = stepType === 'assistant_reasoning';
+        const isPruned = stepType === 'trace_pruned';
         const url = args.url || link || null;
         const query = args.query ?? null;
         const filter = args.query ?? args.selector ?? null;
 
         return {
-            type: isRunStarted ? 'run_started' : (isReasoning ? 'reasoning' : 'tool'),
-            label: isReasoning ? 'reasoning' : toolName,
+            type: isRunStarted ? 'run_started' : (isReasoning ? 'reasoning' : (isPruned ? 'trace_pruned' : 'tool')),
+            label: isReasoning ? 'reasoning' : (isPruned ? 'trace pruned' : toolName),
             message: summary || '',
             arguments: args,
             query,
@@ -364,7 +365,7 @@ export default class extends Controller {
 
     renderTrace() {
         if (this.toolCalls.length === 0) {
-            this.traceBodyTarget.innerHTML = '<p class="trace-empty">No tool calls yet.</p>';
+            this.traceBodyTarget.innerHTML = '<p class="trace-empty">Trace was pruned. Full trace is available only for the most recent 10 runs.</p>';
 
             return;
         }
@@ -378,6 +379,10 @@ export default class extends Controller {
 
                     if (call.type === 'reasoning') {
                         return this.renderTraceReasoning(index, call);
+                    }
+
+                    if (call.type === 'trace_pruned') {
+                        return this.renderTracePruned(index, call);
                     }
 
                     return this.renderTraceToolCall(index, call);
@@ -443,6 +448,18 @@ export default class extends Controller {
             <article class="border border-[#2f2f2f] bg-[#151515] p-3 trace-card" data-trace-index="${index}"${sequenceAttr}>
                 <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} reasoning</p>
                 <p class="mt-1 leading-relaxed text-gray-300 whitespace-pre-wrap break-words">${safeMessage}</p>
+            </article>
+        `;
+    }
+
+    renderTracePruned(index, call) {
+        const safeMessage = this.escapeHtml(call.message || 'Trace was pruned. Full trace is available only for the most recent 10 runs.');
+        const sequenceAttr = Number.isInteger(call.sequence) ? ` data-step-sequence="${call.sequence}"` : '';
+
+        return `
+            <article class="border border-amber-700/50 bg-amber-950/20 p-3 trace-card" data-trace-index="${index}"${sequenceAttr}>
+                <p class="m-0 text-xs uppercase tracking-wider text-amber-400">#${index + 1} trace pruned</p>
+                <p class="mt-1 leading-relaxed text-amber-100">${safeMessage}</p>
             </article>
         `;
     }
@@ -597,7 +614,7 @@ export default class extends Controller {
             this.heroTarget.style.display = 'none';
 
             this.toolCalls = steps
-                .filter((step) => step.type === 'run_started' || step.type === 'assistant_reasoning' || step.type === 'tool_succeeded')
+                .filter((step) => step.type === 'run_started' || step.type === 'assistant_reasoning' || step.type === 'tool_succeeded' || step.type === 'trace_pruned')
                 .map((step) => {
                     const meta = step.payloadJson ? (() => {
                         try {

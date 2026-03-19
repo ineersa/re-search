@@ -10,7 +10,7 @@ PHP_SERVICE := php
 	sh root-sh composer composer-install composer-update \
 	messenger-clear \
 	console cc cache-warmup rate-limit-reset doctrine-migrate doctrine-diff doctrine-status \
-	messenger-consume test cs-fix phpstan quality check config config-prod stop stop-prod \
+	messenger-consume scheduler-consume test cs-fix phpstan quality check config config-prod stop stop-prod \
 	tailwind-setup tailwind-init tailwind-watch tailwind-build assets-compile
 
 help: ## Show all available commands
@@ -114,6 +114,9 @@ doctrine-status: ## Show Doctrine migration status in local container
 
 messenger-consume: ## Run Messenger consumer for async transport
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume async -vv
+
+scheduler-consume: ## Run Messenger consumer for research maintenance scheduler
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume scheduler_research_maintenance -vv
 
 messenger-clear: ## Clear async and failed Messenger queues
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console dbal:run-sql "DELETE FROM messenger_messages"
