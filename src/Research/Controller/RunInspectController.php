@@ -37,15 +37,22 @@ final class RunInspectController extends AbstractController
             $payloadJson = $step->getPayloadJson();
             $payload = null !== $payloadJson ? json_decode($payloadJson, true) : null;
             $prettyMessages = '';
-            if ('llm_invocation' === $step->getType() && \is_array($payload) && isset($payload['request']['messages'])) {
-                $messagesRaw = $payload['request']['messages'];
-                $prettyMessages = \is_string($messagesRaw) ? $this->prettyJson($messagesRaw) : $this->prettyJson(json_encode($messagesRaw));
+            $prettyTools = '';
+            if ('llm_invocation' === $step->getType() && \is_array($payload)) {
+                if (isset($payload['request']['messages'])) {
+                    $messagesRaw = $payload['request']['messages'];
+                    $prettyMessages = \is_string($messagesRaw) ? $this->prettyJson($messagesRaw) : $this->prettyJson(json_encode($messagesRaw));
+                }
+                if (isset($payload['request']['tools']) && [] !== $payload['request']['tools']) {
+                    $prettyTools = $this->prettyJson(json_encode($payload['request']['tools']));
+                }
             }
             $stepsForView[] = [
                 'step' => $step,
                 'prettyPayload' => $this->prettyJson($payloadJson),
                 'prettyToolArgs' => $this->prettyJson($step->getToolArgumentsJson()),
                 'prettyMessages' => $prettyMessages,
+                'prettyTools' => $prettyTools,
             ];
         }
 

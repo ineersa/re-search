@@ -7,6 +7,7 @@ namespace App\Research\Persistence;
 use App\Research\Orchestration\Dto\ResearchTurnResult;
 use Symfony\AI\Chat\MessageNormalizer;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Tool\Tool;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Normalizer\ArrayDenormalizer;
 use Symfony\Component\Serializer\Serializer;
@@ -31,7 +32,7 @@ final class LlmInvocationTraceSerializer
     /**
      * @param array<string, mixed> $options
      *
-     * @return array{request: array{model: string, messages: string, toolNames: list<string>}, response: array{assistantText: string, toolCalls: list<array{name: string, arguments: array<string, mixed>}>, isFinal: bool, promptTokens: int|null, completionTokens: int|null, totalTokens: int|null}}
+     * @return array{request: array{model: string, messages: string, toolNames: list<string>, tools: list<array{name: string, description: string, parameters: array<string, mixed>|null}>}, response: array{assistantText: string, toolCalls: list<array{name: string, arguments: array<string, mixed>}>, isFinal: bool, promptTokens: int|null, completionTokens: int|null, totalTokens: int|null}}
      */
     public function buildPayload(
         string $model,
@@ -40,7 +41,8 @@ final class LlmInvocationTraceSerializer
         ResearchTurnResult $turnResult,
     ): array {
         $toolMap = $options['tools'] ?? [];
-        $toolNames = \is_array($toolMap) ? array_keys($toolMap) : [];
+        $toolDefinitions = $this->extractToolDefinitions($toolMap);
+        $toolNames = array_column($toolDefinitions, 'name');
 
         $messagesJson = $this->serializer->serialize($messages->getMessages(), 'json');
 
@@ -49,6 +51,7 @@ final class LlmInvocationTraceSerializer
                 'model' => $model,
                 'messages' => $messagesJson,
                 'toolNames' => $toolNames,
+                'tools' => $toolDefinitions,
             ],
             'response' => [
                 'assistantText' => $turnResult->assistantText,
@@ -65,5 +68,37 @@ final class LlmInvocationTraceSerializer
                 'totalTokens' => $turnResult->totalTokens,
             ],
         ];
+    }
+
+    /**
+     * @param mixed $toolMap Tool[] from toolbox or API-ready array
+     *
+     * @return list<array{name: string, description: string, parameters: array<string, mixed>|null}>
+     */
+    private function extractToolDefinitions(mixed $toolMap): array
+    {
+        if (!\is_array($toolMap)) {
+            return [];
+        }
+
+        $defs = [];
+        foreach ($toolMap as $tool) {
+            if ($tool instanceof Tool) {
+                $defs[] = [
+                    'name' => $tool->getName(),
+                    'description' => $tool->getDescription(),
+                    'parameters' => $tool->getParameters(),
+                ];
+            } elseif (\is_array($tool) && isset($tool['function'])) {
+                $fn = $tool['function'];
+                $defs[] = [
+                    'name' => $fn['name'] ?? '',
+                    'description' => $fn['description'] ?? '',
+                    'parameters' => $fn['parameters'] ?? null,
+                ];
+            }
+        }
+
+        return $defs;
     }
 }

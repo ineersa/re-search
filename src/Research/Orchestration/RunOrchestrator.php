@@ -43,8 +43,8 @@ final class RunOrchestrator
     private const MAX_TURNS = 75;
     private const WALL_CLOCK_TIMEOUT_SECONDS = 900;
     private const MAX_CONSECUTIVE_TOOL_FAILURES = 3;
-    /** Max chars per tool result sent to model (~4K tokens) to avoid context overflow */
-    private const MAX_TOOL_RESULT_CHARS = 16_000;
+    /** Max chars per tool result sent to model (~5K tokens) to avoid context overflow */
+    private const MAX_TOOL_RESULT_CHARS = 20_000;
 
     public function __construct(
         private readonly PlatformInterface $platform,
@@ -232,7 +232,7 @@ final class RunOrchestrator
                             $this->eventPublisher->publishActivity($runId, 'tool_succeeded', $summary, ['tool' => $decision->name, 'arguments' => $decision->arguments, 'result' => $content]);
 
                             $contentForModel = \strlen($content) > self::MAX_TOOL_RESULT_CHARS
-                                ? substr($content, 0, self::MAX_TOOL_RESULT_CHARS)."\n\n[... truncated, ".\strlen($content)." chars total — use websearch_find to extract specific parts ...]"
+                                ? substr($content, 0, self::MAX_TOOL_RESULT_CHARS)."\n\n[Content was truncated. Total length: ".\strlen($content)." chars. Use websearch_find with the same URL to extract specific parts.]"
                                 : $content;
                             $messages = $messages->with(Message::ofToolCall($toolCall, $contentForModel));
                         } catch (\Throwable $toolError) {

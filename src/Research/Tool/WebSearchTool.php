@@ -14,9 +14,9 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  *
  * @see .cursor/plans/web_research_flow_5c8ddc68.plan.md
  */
-#[AsTool('websearch_search', description: 'Search the web through the MCP web search service', method: 'search')]
-#[AsTool('websearch_open', description: 'Open a specific search result through the MCP web search service', method: 'open')]
-#[AsTool('websearch_find', description: 'Find text within an opened page through the MCP web search service', method: 'find')]
+#[AsTool('websearch_search', description: 'Runs web search for `query` and returns ranked results with canonical URLs and short summaries. Use for discovery before deep reading. Query tips: include specific nouns, version numbers, product names; avoid very long prompts. `topn` (default 5) controls recall: 3-5 for focused lookup, 8-10 when coverage matters. After choosing a URL, use websearch_open then websearch_find to verify exact phrases.', method: 'search')]
+#[AsTool('websearch_open', description: 'Loads `url` and returns a window of page text with numbered lines (L{n}). Omit `startAtLine` for auto mode — anchors near search snippets for the same URL. Use `fetchAll: true` only when you need the full page; otherwise omit it to get a focused window. Auto windows are ~100 lines for scanning context.', method: 'open')]
+#[AsTool('websearch_find', description: 'Find text in a page at `url` using `query`. Use after websearch_open on the same URL. `match`: contains (default, flexible) or exact (strict, for verifying literal text). `context_lines` (default 5) controls chunk size around hits. Both `url` and `query` are required.', method: 'find')]
 final class WebSearchTool
 {
     private bool $recording = false;
