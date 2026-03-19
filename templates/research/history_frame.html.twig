@@ -1,0 +1,66 @@
+<turbo-frame id="research-history">
+    <div class="grid gap-2">
+        {% if rows is empty %}
+            <p class="m-0 text-sm text-gray-600">No runs yet.</p>
+        {% else %}
+            {% for row in rows %}
+                <article
+                    class="flex items-start justify-between gap-2 cursor-pointer border border-transparent bg-[#141414] p-3 transition-all hover:translate-x-[2px] hover:border-[#444] history-row"
+                    data-action="click->research-ui#loadHistoryItem"
+                    data-run-id="{{ row.id }}"
+                >
+                    <div class="min-w-0 flex-1">
+                        <p class="m-0 text-sm leading-tight text-gray-200">{{ row.query }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ row.timeAgo }}</p>
+                        <p class="mt-0.5 text-xs text-gray-600">
+                            {{ row.statusLabel }}{% if row.budgetMeta %} · {{ row.budgetMeta }}{% endif %}
+                        </p>
+                    </div>
+                    {% if show_inspect %}
+                        <a
+                            href="{{ path('app_research_inspect', { id: row.id }) }}"
+                            target="_blank"
+                            rel="noopener"
+                            class="shrink-0 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                            data-action="click->research-ui#stopPropagation"
+                        >Inspect</a>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    {% if total_pages > 1 %}
+        <div class="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-[#222]">
+            {% if page > 0 %}
+                <a class="text-gray-500 transition hover:text-white" href="{{ path('app_research_history_frame', { page: page - 1 }) }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </a>
+            {% else %}
+                <span class="text-gray-500 opacity-30 cursor-not-allowed" aria-disabled="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </span>
+            {% endif %}
+
+            <span class="text-xs text-gray-500">{{ page + 1 }} / {{ total_pages }}</span>
+
+            {% if page < total_pages - 1 %}
+                <a class="text-gray-500 transition hover:text-white" href="{{ path('app_research_history_frame', { page: page + 1 }) }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            {% else %}
+                <span class="text-gray-500 opacity-30 cursor-not-allowed" aria-disabled="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </span>
+            {% endif %}
+        </div>
+    {% endif %}
+</turbo-frame>

@@ -9,8 +9,10 @@ use App\Repository\ResearchRunRepository;
 use App\Research\Mercure\ResearchTopicFactory;
 use App\Research\Message\ExecuteResearchRun;
 use App\Research\Throttle\ResearchThrottle;
+use App\Research\View\ResearchHistoryFormatter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -48,6 +50,37 @@ final class ResearchController extends AbstractController
         );
 
         return new JsonResponse(['runs' => $items]);
+    }
+
+    #[Route('/research/history-frame', name: 'app_research_history_frame', methods: ['GET'])]
+    public function historyFrame(
+        Request $request,
+        ResearchRunRepository $runRepository,
+        #[Autowire('%kernel.environment%')] string $kernelEnvironment,
+    ): Response {
+        $perPage = 5;
+        $page = max(0, (int) $request->query->get('page', 0));
+        $clientKey = $this->buildClientKey($request);
+        $runs = $runRepository->findRecentByClientKey($clientKey, 20);
+        $total = \count($runs);
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 0;
+        if ($totalPages > 0) {
+            $page = min($page, $totalPages - 1);
+        } else {
+            $page = 0;
+        }
+        $slice = \array_slice($runs, $page * $perPage, $perPage);
+        $rows = array_map(
+            static fn (array $run): array => ResearchHistoryFormatter::formatRow($run),
+            $slice
+        );
+
+        return $this->render('research/history_frame.html.twig', [
+            'rows' => $rows,
+            'page' => $page,
+            'total_pages' => $totalPages,
+            'show_inspect' => 'dev' === $kernelEnvironment,
+        ]);
     }
 
     #[Route('/research/runs/{id}', name: 'app_research_show', methods: ['GET'])]

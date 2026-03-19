@@ -1,7 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import hljs from 'highlight.js';
+import { renderAnswerBody as renderAnswerBodyView, renderAnswerReferences as renderAnswerReferencesView } from './research_ui/answer_view.js';
+import { escapeHtml } from './research_ui/escape_html.js';
+import { jumpToTraceStep as scrollToTraceStep } from './research_ui/jump_trace.js';
+import { buildNoAnswerHtml, formatStatus } from './research_ui/run_format.js';
+import { buildTraceItem, renderTrace as renderTraceView } from './research_ui/trace_view.js';
 
 /**
  * Research UI controller: submits real runs, consumes Mercure events,
@@ -10,6 +12,9 @@ import hljs from 'highlight.js';
  *
  * Markdown is rendered safely (marked + DOMPurify) with raw/rendered toggle
  * and highlight.js for fenced code blocks.
+ *
+ * Implementation is split under `./research_ui/` (trace, answer, evidence parsing).
+ * History is a Turbo Frame (`research-history`) rendered on the server.
  */
 export default class extends Controller {
     static targets = [
@@ -24,7 +29,7 @@ export default class extends Controller {
         'trace',
         'traceBody',
         'status',
-        'history',
+        'historyFrame',
         'tabs',
         'results',
         'sidebar',
@@ -36,15 +41,12 @@ export default class extends Controller {
     static values = {
         mercureHubUrl: { type: String, default: '' },
         submitUrl: { type: String, default: '/research/runs' },
-        historyUrl: { type: String, default: '/research/runs' },
         runUrl: { type: String, default: '' },
+        historyFrameUrl: { type: String, default: '' },
         mercureAuthUrl: { type: String, default: '' },
-        inspectUrl: { type: String, default: '' },
     };
 
     sidebarOpen = false;
-    historyPage = 0;
-    historyItemsPerPage = 5;
     accumulatedMarkdown = '';
     renderMode = 'rendered';
     answerStreamingStarted = false;
@@ -54,9 +56,7 @@ export default class extends Controller {
         this.eventSource = null;
         this.activeTab = 'answer';
         this.toolCalls = [];
-        this.historyItems = [];
 
-        this.fetchHistory();
         this.showAnswerTab();
     }
 
@@ -140,6 +140,7 @@ export default class extends Controller {
                 } else {
                     this.setError(data.error || 'Failed to start research');
                 }
+
                 return;
             }
 
@@ -212,7 +213,7 @@ export default class extends Controller {
         const result = meta.result ?? null;
         const sequence = Number.isInteger(meta.sequence) ? meta.sequence : null;
         const turnNumber = Number.isInteger(meta.turnNumber) ? meta.turnNumber : (Number.isInteger(meta.turn) ? meta.turn : null);
-        const traceItem = this.buildTraceItem(stepType, toolName, summary, args, link, result, sequence, turnNumber);
+        const traceItem = buildTraceItem(stepType, toolName, summary, args, link, result, sequence, turnNumber);
         this.toolCalls.push(traceItem);
         this.renderTrace();
         this.renderAnswerReferences();
@@ -281,7 +282,7 @@ export default class extends Controller {
         this.streamTarget.innerHTML = '';
         this.showAnswerTab();
 
-        this.fetchHistory();
+        this.reloadHistoryFrame();
     }
 
     handleMercureError() {
@@ -336,246 +337,27 @@ export default class extends Controller {
 
     setError(message) {
         this.cancelRun();
-        this.statusTarget.textContent = this.escapeHtml(message);
+        this.statusTarget.textContent = escapeHtml(message);
         this.statusTarget.classList.remove('text-gray-400');
         this.statusTarget.classList.add('text-red-400');
     }
 
-    buildTraceItem(stepType, toolName, summary, args, link, result = null, sequence = null, turnNumber = null) {
-        const isRunStarted = stepType === 'run_started';
-        const isReasoning = stepType === 'assistant_reasoning';
-        const isPruned = stepType === 'trace_pruned';
-        const url = args.url || link || null;
-        const query = args.query ?? null;
-        const filter = args.query ?? args.selector ?? null;
-
-        return {
-            type: isRunStarted ? 'run_started' : (isReasoning ? 'reasoning' : (isPruned ? 'trace_pruned' : 'tool')),
-            label: isReasoning ? 'reasoning' : (isPruned ? 'trace pruned' : toolName),
-            message: summary || '',
-            arguments: args,
-            query,
-            url,
-            filter,
-            result: result ?? null,
-            sequence,
-            turnNumber,
-        };
-    }
-
     renderTrace() {
-        if (this.toolCalls.length === 0) {
-            this.traceBodyTarget.innerHTML = '<p class="trace-empty">Trace was pruned. Full trace is available only for the most recent 10 runs.</p>';
+        renderTraceView({ toolCalls: this.toolCalls, traceBody: this.traceBodyTarget });
+    }
+
+    reloadHistoryFrame() {
+        if (!this.hasHistoryFrameTarget) {
+            return;
+        }
+        const url = this.historyFrameUrlValue;
+        if (url) {
+            this.historyFrameTarget.src = url;
 
             return;
         }
-
-        const items = this.toolCalls
-            .map(
-                (call, index) => {
-                    if (call.type === 'run_started') {
-                        return this.renderTraceRunStarted(index, call);
-                    }
-
-                    if (call.type === 'reasoning') {
-                        return this.renderTraceReasoning(index, call);
-                    }
-
-                    if (call.type === 'trace_pruned') {
-                        return this.renderTracePruned(index, call);
-                    }
-
-                    return this.renderTraceToolCall(index, call);
-                },
-            )
-            .join('');
-
-        this.traceBodyTarget.innerHTML = items;
-        this.attachTraceClickHandlers();
-    }
-
-    renderTraceRunStarted(index, call) {
-        const safeLabel = this.escapeHtml(call.label);
-        const safeMessage = this.escapeHtml(call.message);
-        const sequenceAttr = Number.isInteger(call.sequence) ? ` data-step-sequence="${call.sequence}"` : '';
-
-        return `
-            <article class="border border-[#333] bg-[#1a1a1a] p-3 trace-card" data-trace-index="${index}"${sequenceAttr}>
-                <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} ${safeLabel}</p>
-                <p class="mt-1 leading-relaxed text-gray-300">${safeMessage}</p>
-            </article>
-        `;
-    }
-
-    renderTraceToolCall(index, call) {
-        const safeLabel = this.escapeHtml(call.label);
-        let primaryText = '';
-        if (call.label === 'websearch_search' && call.query) {
-            primaryText = this.escapeHtml(call.query);
-        } else if (call.label === 'websearch_open' && call.url) {
-            primaryText = this.escapeHtml(call.url);
-        } else if (call.label === 'websearch_find' && (call.url || call.filter)) {
-            primaryText = [call.url, call.filter].filter(Boolean).map((s) => this.escapeHtml(s)).join(' · ');
-        } else {
-            primaryText = this.escapeHtml(call.message);
-        }
-
-        const hasParams = Object.keys(call.arguments || {}).length > 0;
-        const paramsJson = hasParams ? this.escapeHtml(JSON.stringify(call.arguments, null, 2)) : '';
-        const hasResult = typeof call.result === 'string' && call.result.length > 0;
-        const resultText = hasResult ? this.escapeHtml(call.result) : '';
-        const sequenceAttr = Number.isInteger(call.sequence) ? ` data-step-sequence="${call.sequence}"` : '';
-
-        return `
-            <article class="border border-[#333] bg-[#1a1a1a] p-3 trace-card hover:border-gray-500 transition-colors" data-trace-index="${index}"${sequenceAttr}>
-                <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} ${safeLabel}</p>
-                <p class="mt-1 leading-relaxed text-gray-300 break-all">${primaryText}</p>
-                <div class="mt-2 flex flex-wrap gap-2">
-                    ${hasParams ? `<button type="button" class="trace-toggle-params text-xs text-gray-500 hover:text-gray-300 border border-[#444] px-2 py-1 rounded bg-transparent cursor-pointer">Show params</button>` : ''}
-                    ${hasResult ? `<button type="button" class="trace-toggle-result text-xs text-gray-500 hover:text-gray-300 border border-[#444] px-2 py-1 rounded bg-transparent cursor-pointer">Open result</button>` : ''}
-                </div>
-                ${hasParams ? `<pre class="trace-params mt-2 p-2 bg-[#0a0a0a] text-xs text-gray-400 rounded hidden overflow-x-auto max-h-48" data-trace-params>${paramsJson}</pre>` : ''}
-                ${hasResult ? `<pre class="trace-result mt-2 p-2 bg-[#0a0a0a] text-xs text-gray-400 rounded hidden overflow-auto max-h-96 whitespace-pre-wrap break-words" data-trace-result>${resultText}</pre>` : ''}
-            </article>
-        `;
-    }
-
-    renderTraceReasoning(index, call) {
-        const safeMessage = this.escapeHtml(call.message);
-        const sequenceAttr = Number.isInteger(call.sequence) ? ` data-step-sequence="${call.sequence}"` : '';
-
-        return `
-            <article class="border border-[#2f2f2f] bg-[#151515] p-3 trace-card" data-trace-index="${index}"${sequenceAttr}>
-                <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} reasoning</p>
-                <p class="mt-1 leading-relaxed text-gray-300 whitespace-pre-wrap break-words">${safeMessage}</p>
-            </article>
-        `;
-    }
-
-    renderTracePruned(index, call) {
-        const safeMessage = this.escapeHtml(call.message || 'Trace was pruned. Full trace is available only for the most recent 10 runs.');
-        const sequenceAttr = Number.isInteger(call.sequence) ? ` data-step-sequence="${call.sequence}"` : '';
-
-        return `
-            <article class="border border-amber-700/50 bg-amber-950/20 p-3 trace-card" data-trace-index="${index}"${sequenceAttr}>
-                <p class="m-0 text-xs uppercase tracking-wider text-amber-400">#${index + 1} trace pruned</p>
-                <p class="mt-1 leading-relaxed text-amber-100">${safeMessage}</p>
-            </article>
-        `;
-    }
-
-    attachTraceClickHandlers() {
-        this.traceBodyTarget.querySelectorAll('.trace-card').forEach((card) => {
-            const paramsEl = card.querySelector('[data-trace-params]');
-            const paramsBtn = card.querySelector('.trace-toggle-params');
-            if (paramsEl && paramsBtn) {
-                paramsBtn.addEventListener('click', () => {
-                    const isHidden = paramsEl.classList.contains('hidden');
-                    paramsEl.classList.toggle('hidden');
-                    paramsBtn.textContent = isHidden ? 'Hide params' : 'Show params';
-                });
-            }
-            const resultEl = card.querySelector('[data-trace-result]');
-            const resultBtn = card.querySelector('.trace-toggle-result');
-            if (resultEl && resultBtn) {
-                resultBtn.addEventListener('click', () => {
-                    const isHidden = resultEl.classList.contains('hidden');
-                    resultEl.classList.toggle('hidden');
-                    resultBtn.textContent = isHidden ? 'Close result' : 'Open result';
-                });
-            }
-        });
-    }
-
-    async fetchHistory() {
-        const historyUrl = this.historyUrlValue || '/research/runs';
-        try {
-            const response = await fetch(historyUrl, {
-                method: 'GET',
-                headers: { Accept: 'application/json' },
-                credentials: 'same-origin',
-            });
-            const data = await response.json();
-            this.historyItems = data.runs || [];
-        } catch {
-            this.historyItems = [];
-        }
-        this.historyPage = 0;
-        this.renderHistory();
-    }
-
-    renderHistory() {
-        if (this.historyItems.length === 0) {
-            this.historyTarget.innerHTML = '<p class="m-0 text-sm text-gray-600">No runs yet.</p>';
-
-            return;
-        }
-
-        const totalPages = Math.ceil(this.historyItems.length / this.historyItemsPerPage);
-        const start = this.historyPage * this.historyItemsPerPage;
-        const end = start + this.historyItemsPerPage;
-        const itemsToShow = this.historyItems.slice(start, end);
-
-        const items = itemsToShow
-            .map(
-                (item) => {
-                    const safeQuery = this.escapeHtml(item.query);
-                    const safeTime = this.formatTimeAgo(item.completedAt || item.createdAt);
-                    const safeStatus = this.escapeHtml(this.formatStatus(item));
-                    const safeMeta = this.escapeHtml(this.formatBudgetMeta(item));
-                    const inspectHref = this.hasInspectUrlValue && this.inspectUrlValue
-                        ? this.inspectUrlValue.replace('__ID__', this.escapeHtml(item.id))
-                        : null;
-                    const inspectLink = inspectHref
-                        ? `<a href="${inspectHref}" target="_blank" rel="noopener" class="shrink-0 text-xs text-gray-500 hover:text-gray-300 transition-colors" data-action="click->research-ui#stopPropagation">Inspect</a>`
-                        : '';
-
-                    return `
-                <article class="flex items-start justify-between gap-2 cursor-pointer border border-transparent bg-[#141414] p-3 transition-all hover:translate-x-[2px] hover:border-[#444] history-row" data-action="click->research-ui#loadHistoryItem" data-run-id="${this.escapeHtml(item.id)}">
-                    <div class="min-w-0 flex-1">
-                        <p class="m-0 text-sm leading-tight text-gray-200">${safeQuery}</p>
-                        <p class="mt-1 text-xs text-gray-500">${safeTime}</p>
-                        <p class="mt-0.5 text-xs text-gray-600">${safeStatus}${safeMeta ? ` · ${safeMeta}` : ''}</p>
-                    </div>
-                    ${inspectLink}
-                </article>
-            `;
-                },
-            )
-            .join('');
-
-        let pagination = '';
-        if (this.historyItems.length > this.historyItemsPerPage) {
-            const prevDisabled = this.historyPage === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:text-white';
-            const nextDisabled = this.historyPage >= totalPages - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:text-white';
-            const prevPage = this.historyPage > 0 ? this.historyPage - 1 : 0;
-            const nextPage = this.historyPage < totalPages - 1 ? this.historyPage + 1 : totalPages - 1;
-
-            pagination = `
-                <div class="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-[#222]">
-                    <button class="text-gray-500 transition ${prevDisabled}" data-action="click->research-ui#changePage" data-page="${prevPage}" ${this.historyPage === 0 ? 'disabled' : ''}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
-                    <span class="text-xs text-gray-500">${this.historyPage + 1} / ${totalPages}</span>
-                    <button class="text-gray-500 transition ${nextDisabled}" data-action="click->research-ui#changePage" data-page="${nextPage}" ${this.historyPage >= totalPages - 1 ? 'disabled' : ''}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </button>
-                </div>
-            `;
-        }
-
-        this.historyTarget.innerHTML = items + pagination;
-    }
-
-    changePage(event) {
-        const newPage = parseInt(event.currentTarget.dataset.page, 10);
-        if (newPage !== this.historyPage) {
-            this.historyPage = newPage;
-            this.renderHistory();
+        if (typeof this.historyFrameTarget.reload === 'function') {
+            this.historyFrameTarget.reload();
         }
     }
 
@@ -601,6 +383,7 @@ export default class extends Controller {
 
             if (!response.ok) {
                 this.setError('Failed to load run');
+
                 return;
             }
 
@@ -636,7 +419,7 @@ export default class extends Controller {
                     const sequence = Number.isInteger(step.sequence) ? step.sequence : null;
                     const turnNumber = Number.isInteger(step.turnNumber) ? step.turnNumber : null;
 
-                    return this.buildTraceItem(step.type, step.toolName || step.type, step.summary || '', args, url, result, sequence, turnNumber);
+                    return buildTraceItem(step.type, step.toolName || step.type, step.summary || '', args, url, result, sequence, turnNumber);
                 });
             this.renderTrace();
 
@@ -644,14 +427,14 @@ export default class extends Controller {
             this.element.classList.add('is-complete');
             this.statusTarget.classList.remove('text-gray-400');
             this.statusTarget.classList.add('text-white');
-            this.statusTarget.textContent = this.formatStatus(run);
+            this.statusTarget.textContent = formatStatus(run);
 
             this.streamTarget.innerHTML = '';
             if (run.finalAnswerMarkdown) {
                 this.renderAnswerBody();
                 this.updateRenderModeToggleVisibility(true);
             } else {
-                this.answerBodyTarget.innerHTML = this.buildNoAnswerHtml(run);
+                this.answerBodyTarget.innerHTML = buildNoAnswerHtml(run, escapeHtml);
                 this.updateRenderModeToggleVisibility(false);
             }
             this.renderAnswerReferences();
@@ -662,76 +445,6 @@ export default class extends Controller {
         } catch (err) {
             this.setError(err.message || 'Failed to load run');
         }
-    }
-
-    formatTimeAgo(isoString) {
-        if (!isoString) {
-            return '';
-        }
-        const date = new Date(isoString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffSec = Math.floor(diffMs / 1000);
-        const diffMin = Math.floor(diffSec / 60);
-        const diffHr = Math.floor(diffMin / 60);
-        const diffDay = Math.floor(diffHr / 24);
-
-        if (diffSec < 60) {
-            return 'just now';
-        }
-        if (diffMin < 60) {
-            return `${diffMin}m ago`;
-        }
-        if (diffHr < 24) {
-            return `${diffHr}h ago`;
-        }
-        if (diffDay < 7) {
-            return `${diffDay}d ago`;
-        }
-        return date.toLocaleDateString();
-    }
-
-    formatStatus(run) {
-        const status = run.status || 'unknown';
-        const statusLabels = {
-            completed: 'Complete',
-            running: 'Running',
-            queued: 'Queued',
-            answer_only: 'Answer only',
-            budget_exhausted: 'Budget exhausted',
-            loop_stopped: 'Loop stopped',
-            failed: 'Failed',
-            timed_out: 'Timed out',
-            throttled: 'Rate limited',
-            aborted: 'Aborted',
-        };
-        return statusLabels[status] || status;
-    }
-
-    formatBudgetMeta(run) {
-        const parts = [];
-        if (run.tokenBudgetUsed != null && run.tokenBudgetHardCap != null) {
-            parts.push(`${(run.tokenBudgetUsed / 1000).toFixed(1)}k / ${(run.tokenBudgetHardCap / 1000).toFixed(0)}k tokens`);
-        }
-        if (run.loopDetected) {
-            parts.push('loop');
-        }
-        if (run.answerOnlyTriggered) {
-            parts.push('answer-only');
-        }
-        return parts.join(', ');
-    }
-
-    buildNoAnswerHtml(run) {
-        const status = this.formatStatus(run);
-        const reason = run.failureReason ? this.escapeHtml(run.failureReason) : '';
-        const meta = this.formatBudgetMeta(run);
-
-        return `
-            <p class="m-0 text-gray-500">No answer produced. Status: ${this.escapeHtml(status)}</p>
-            ${reason ? `<p class="mt-1 text-sm text-gray-600">${reason}</p>` : ''}
-            ${meta ? `<p class="mt-1 text-xs text-gray-600">${this.escapeHtml(meta)}</p>` : ''}
-        `;
     }
 
     showAnswerTab() {
@@ -778,17 +491,10 @@ export default class extends Controller {
     }
 
     renderAnswerBody() {
-        if (this.renderMode === 'raw') {
-            this.answerBodyTarget.innerHTML = `<pre class="answer-markdown-raw m-0 p-0 overflow-x-auto whitespace-pre-wrap break-words text-gray-300">${this.escapeHtml(this.accumulatedMarkdown)}</pre>`;
-
-            return;
-        }
-
-        const rawHtml = marked.parse(this.accumulatedMarkdown, { gfm: true, breaks: false, silent: true }) ?? '';
-        const safeHtml = DOMPurify.sanitize(String(rawHtml));
-        this.answerBodyTarget.innerHTML = `<div class="answer-markdown-rendered markdown-body">${safeHtml}</div>`;
-        this.answerBodyTarget.querySelectorAll('pre code').forEach((el) => {
-            hljs.highlightElement(el);
+        renderAnswerBodyView({
+            accumulatedMarkdown: this.accumulatedMarkdown,
+            renderMode: this.renderMode,
+            answerBody: this.answerBodyTarget,
         });
     }
 
@@ -800,266 +506,19 @@ export default class extends Controller {
     }
 
     renderAnswerReferences() {
-        if (!this.hasAnswerReferencesTarget) {
-            return;
-        }
-
-        const references = this.buildReferenceEvidence(this.accumulatedMarkdown, this.toolCalls);
-        if (references.length === 0) {
-            this.answerReferencesTarget.innerHTML = '';
-
-            return;
-        }
-
-        const rows = references.map((reference) => {
-            const safeUrl = this.escapeHtml(reference.url);
-            const markerList = reference.markers.map((m) => this.escapeHtml(m)).join(', ');
-
-            const jumpLabel = Number.isInteger(reference.sourceTurnNumber)
-                ? `Jump to turn ${reference.sourceTurnNumber}`
-                : `Jump to step #${reference.sourceSequence}`;
-
-            const jump = Number.isInteger(reference.sourceSequence)
-                ? `<button type="button" class="ml-2 border border-[#444] bg-transparent px-2 py-0.5 text-[11px] text-gray-400 hover:text-white hover:border-gray-500 transition-colors cursor-pointer" data-action="click->research-ui#jumpToTraceStep" data-step-sequence="${reference.sourceSequence}">${jumpLabel}</button>`
-                : '';
-
-            return `
-                <article class="rounded border border-[#2b2b2b] bg-[#131313] p-3">
-                    <p class="m-0 text-sm text-gray-300">
-                        <span class="font-semibold text-white">Used by refs: ${markerList}</span>
-                        <a href="${safeUrl}" target="_blank" rel="noopener" class="ml-2 break-all text-blue-400 hover:text-blue-300">${safeUrl}</a>
-                    </p>
-                    <p class="mt-1 text-xs text-gray-500">${jump || 'No matching step in trace for this source.'}</p>
-                </article>
-            `;
-        }).join('');
-
-        this.answerReferencesTarget.innerHTML = `
-            <section class="rounded-lg border border-[#333] bg-[#111] p-3">
-                <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">References evidence</h3>
-                <div class="space-y-3">${rows}</div>
-            </section>
-        `;
-    }
-
-    buildReferenceEvidence(markdown, toolCalls) {
-        if (!markdown || markdown.trim().length === 0) {
-            return [];
-        }
-
-        const references = this.parseReferencesFromMarkdown(markdown);
-        if (references.length === 0) {
-            return [];
-        }
-
-        const sourceMap = new Map();
-        toolCalls
-            .filter((call) => call.label === 'websearch_open' && typeof call.url === 'string' && typeof call.result === 'string')
-            .forEach((call) => {
-                const lineMap = this.extractLineMap(call.result);
-                if (lineMap.size === 0) {
-                    return;
-                }
-
-                if (!sourceMap.has(call.url)) {
-                    sourceMap.set(call.url, []);
-                }
-                sourceMap.get(call.url).push({ sequence: call.sequence, turnNumber: call.turnNumber, lineMap });
-            });
-
-        const groups = new Map();
-        references.forEach((reference) => {
-            const key = reference.url;
-            if (!groups.has(key)) {
-                groups.set(key, {
-                    url: reference.url,
-                    markers: [],
-                    markerIds: [],
-                    sourceSequence: null,
-                    sourceTurnNumber: null,
-                });
-            }
-
-            const group = groups.get(key);
-            group.markers.push(reference.marker);
-            group.markerIds.push(reference.id);
-
-            if (group.sourceSequence == null) {
-                const candidates = sourceMap.get(reference.url) || [];
-                if (candidates.length > 0) {
-                    const withSpanMatch = candidates.find((source) => this.hasAnySpanMatch(source.lineMap, reference.spans));
-                    const chosen = withSpanMatch || candidates[0];
-                    group.sourceSequence = Number.isInteger(chosen.sequence) ? chosen.sequence : null;
-                    group.sourceTurnNumber = Number.isInteger(chosen.turnNumber) ? chosen.turnNumber : null;
-                }
-            }
+        renderAnswerReferencesView({
+            hasAnswerReferencesTarget: this.hasAnswerReferencesTarget,
+            answerReferences: this.answerReferencesTarget,
+            accumulatedMarkdown: this.accumulatedMarkdown,
+            toolCalls: this.toolCalls,
         });
-
-        return Array.from(groups.values()).sort((a, b) => {
-            const left = Math.min(...a.markerIds);
-            const right = Math.min(...b.markerIds);
-
-            return left - right;
-        });
-    }
-
-    parseReferencesFromMarkdown(markdown) {
-        const referencesSection = this.extractReferencesSection(markdown);
-        if (!referencesSection) {
-            return [];
-        }
-
-        const references = [];
-        const pattern = /(?:^|\s)(?<marker>[0-9]+|[⁰¹²³⁴⁵⁶⁷⁸⁹]+)[\.)]?\s+(?<url>https?:\/\/[^\s)]+)(?:\s+\((?<lineInfo>lines?[^)]*)\))?/giu;
-
-        for (const match of referencesSection.matchAll(pattern)) {
-            if (!match.groups) {
-                continue;
-            }
-
-            const marker = match.groups.marker;
-            const id = this.referenceIdFromMarker(marker);
-            if (id == null) {
-                continue;
-            }
-
-            const url = match.groups.url.replace(/[.,;)]+$/u, '');
-            const spans = this.parseLineSpans(match.groups.lineInfo || '');
-            references.push({ id, marker, url, spans });
-        }
-
-        return references.sort((a, b) => a.id - b.id);
-    }
-
-    extractReferencesSection(markdown) {
-        const match = markdown.match(/(?:^|\n)#{1,6}\s+References\b[\s\S]*$/iu);
-        if (match && match[0]) {
-            return match[0];
-        }
-
-        const fallback = markdown.match(/(?:^|\n)References\s*[\s\S]*$/iu);
-
-        return fallback ? fallback[0] : '';
-    }
-
-    parseLineSpans(lineInfo) {
-        if (!lineInfo) {
-            return [];
-        }
-
-        const spans = [];
-        const pattern = /L(?<start>\d+)(?:\s*-\s*L?(?<end>\d+))?/giu;
-        for (const match of lineInfo.matchAll(pattern)) {
-            const start = Number.parseInt(match.groups?.start, 10);
-            const end = match.groups?.end ? Number.parseInt(match.groups.end, 10) : start;
-            if (!Number.isInteger(start) || !Number.isInteger(end)) {
-                continue;
-            }
-            spans.push({ startLine: Math.min(start, end), endLine: Math.max(start, end) });
-        }
-
-        return spans;
-    }
-
-    referenceIdFromMarker(marker) {
-        if (/^\d+$/u.test(marker)) {
-            return Number.parseInt(marker, 10);
-        }
-
-        const map = {
-            '⁰': '0',
-            '¹': '1',
-            '²': '2',
-            '³': '3',
-            '⁴': '4',
-            '⁵': '5',
-            '⁶': '6',
-            '⁷': '7',
-            '⁸': '8',
-            '⁹': '9',
-        };
-
-        let digits = '';
-        for (const ch of marker) {
-            if (!map[ch]) {
-                return null;
-            }
-            digits += map[ch];
-        }
-
-        return digits ? Number.parseInt(digits, 10) : null;
-    }
-
-    extractLineMap(result) {
-        const lineMap = new Map();
-        let currentLine = null;
-
-        result.split(/\r?\n/u).forEach((row) => {
-            const match = row.match(/^L(?<line>\d+):\s?(?<text>.*)$/u);
-            if (match?.groups?.line) {
-                currentLine = Number.parseInt(match.groups.line, 10);
-                lineMap.set(currentLine, match.groups.text || '');
-
-                return;
-            }
-
-            if (currentLine != null && row.trim() !== '') {
-                lineMap.set(currentLine, `${lineMap.get(currentLine)} ${row.trim()}`.trim());
-            }
-        });
-
-        return lineMap;
-    }
-
-    hasAnySpanMatch(lineMap, spans) {
-        if (!(lineMap instanceof Map) || lineMap.size === 0 || !Array.isArray(spans) || spans.length === 0) {
-            return false;
-        }
-
-        for (const span of spans) {
-            const startLine = span.startLine;
-            const normalizedEnd = Math.min(Math.max(span.endLine ?? startLine, startLine), startLine + 8);
-            for (let line = startLine; line <= normalizedEnd; line += 1) {
-                if (lineMap.has(line)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     jumpToTraceStep(event) {
-        event.preventDefault();
-        const sequenceRaw = event.currentTarget?.dataset?.stepSequence;
-        const sequence = Number.parseInt(sequenceRaw, 10);
-        if (!Number.isInteger(sequence)) {
-            return;
-        }
-
-        this.showTraceTab();
-
-        requestAnimationFrame(() => {
-            const selector = `.trace-card[data-step-sequence="${sequence}"]`;
-            const card = this.traceBodyTarget.querySelector(selector);
-            if (!card) {
-                return;
-            }
-
-            card.querySelectorAll('pre.hidden').forEach((node) => {
-                node.classList.remove('hidden');
-            });
-            card.querySelectorAll('.trace-toggle-params').forEach((btn) => {
-                btn.textContent = 'Hide params';
-            });
-            card.querySelectorAll('.trace-toggle-result').forEach((btn) => {
-                btn.textContent = 'Close result';
-            });
-
-            card.classList.add('trace-highlight');
-            const scrollTop = Math.max(0, card.offsetTop - 24);
-            this.traceTarget.scrollTo({ top: scrollTop, behavior: 'smooth' });
-            setTimeout(() => card.classList.remove('trace-highlight'), 1800);
+        scrollToTraceStep(event, {
+            traceTarget: this.traceTarget,
+            traceBodyTarget: this.traceBodyTarget,
+            showTraceTab: () => this.showTraceTab(),
         });
     }
 
@@ -1078,14 +537,5 @@ export default class extends Controller {
         if (visible) {
             this.updateRenderModeToggleLabel();
         }
-    }
-
-    escapeHtml(value) {
-        return String(value)
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#39;');
     }
 }
