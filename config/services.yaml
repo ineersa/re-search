@@ -75,6 +75,11 @@ services:
             $model: '%research.model%'
             $toolbox: '@Symfony\AI\Agent\Toolbox\ToolboxInterface'
 
+    App\Research\ResearchTaskPromptBuilder:
+        arguments:
+            $platform: '@Symfony\AI\Platform\PlatformInterface'
+            $model: '%research.model%'
+
     # Research Mercure - topic factory and event publisher
     App\Research\Mercure\ResearchTopicFactory:
         arguments:
@@ -88,4 +93,3 @@ services:
         arguments:
             $httpClient: '@http_client'
             $baseUrl: '%env(MCP_WEBSEARCH_URL)%'
-

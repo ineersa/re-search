@@ -13,7 +13,8 @@ use App\Research\Guardrail\ResearchBudgetEnforcerInterface;
 use App\Repository\ResearchRunRepository;
 use App\Research\Orchestration\Dto\ResearchTurnResult;
 use App\Research\Orchestration\Dto\ToolCallDecision;
-use App\Research\ResearchBriefBuilder;
+use App\Research\ResearchSystemPromptBuilder;
+use App\Research\ResearchTaskPromptBuilder;
 use App\Research\Serializer\LlmInvocationTraceSerializer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
@@ -56,7 +57,8 @@ final class RunOrchestrator
         private readonly string $model,
         private readonly ToolboxInterface $toolbox,
         private readonly ResearchBudgetEnforcerInterface $budgetEnforcer,
-        private readonly ResearchBriefBuilder $briefBuilder,
+        private readonly ResearchSystemPromptBuilder $systemPromptBuilder,
+        private readonly ResearchTaskPromptBuilder $taskPromptBuilder,
         private readonly EventPublisherInterface $eventPublisher,
         private readonly ResearchRunRepository $runRepository,
         private readonly EntityManagerInterface $entityManager,
@@ -74,11 +76,12 @@ final class RunOrchestrator
         }
 
         $rawQuery = $run->getQuery();
-        $brief = $this->briefBuilder->build($rawQuery);
+        $systemPrompt = $this->systemPromptBuilder->build($rawQuery);
+        $taskPrompt = $this->taskPromptBuilder->build($rawQuery);
 
         $messages = new MessageBag(
-            Message::forSystem($brief),
-            Message::ofUser($rawQuery)
+            Message::forSystem($systemPrompt),
+            Message::ofUser($taskPrompt)
         );
 
         $turn = 0;
@@ -93,8 +96,8 @@ final class RunOrchestrator
         $emptyResponseRetries = 0;
 
         $run->setStatus('running');
-        $this->persistStep($run, ++$sequence, 'run_started', 0, 'Research run started', null);
-        $this->eventPublisher->publishActivity($runId, 'run_started', 'Research run started', ['sequence' => $sequence, 'turnNumber' => 0]);
+        $this->persistStep($run, ++$sequence, 'run_started', 0, $taskPrompt, null);
+        $this->eventPublisher->publishActivity($runId, 'run_started', $taskPrompt, ['sequence' => $sequence, 'turnNumber' => 0]);
 
         $toolMap = $this->toolbox->getTools();
         $options = [

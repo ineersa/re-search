@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Research;
 
-use App\Research\ResearchBriefBuilder;
+use App\Research\ResearchSystemPromptBuilder;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
-final class ResearchBriefBuilderTest extends TestCase
+final class ResearchSystemPromptBuilderTest extends TestCase
 {
     public function testBuildIncludesWebResearchRules(): void
     {
-        $builder = new ResearchBriefBuilder(new \DateTimeImmutable('2026-03-17'));
+        $builder = new ResearchSystemPromptBuilder(new MockClock('2026-03-17 00:00:00'));
         $brief = $builder->build('What is Symfony?');
 
         self::assertStringContainsString('Today: 2026-03-17', $brief);
@@ -22,6 +23,6 @@ final class ResearchBriefBuilderTest extends TestCase
         self::assertStringContainsString('Nothing found in reviewed sources', $brief);
         self::assertStringContainsString('Impossible to verify from available sources', $brief);
         self::assertStringContainsString('75000', $brief);
-        self::assertStringContainsString('10000', $brief);
+        self::assertStringContainsString('20k-30k', $brief);
     }
 }
