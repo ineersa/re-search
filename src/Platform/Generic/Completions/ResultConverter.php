@@ -201,8 +201,9 @@ final class ResultConverter extends BaseResultConverter
                 foreach ($paramMatches as $paramMatch) {
                     $key = $paramMatch['key'];
                     $value = $paramMatch['value'];
+                    $decoded = html_entity_decode(trim($value), \ENT_QUOTES | \ENT_HTML5);
 
-                    $arguments[$key] = html_entity_decode(trim($value), \ENT_QUOTES | \ENT_HTML5);
+                    $arguments[$key] = $this->coerceXmlToolParameterValue($decoded);
                 }
             }
 
@@ -221,5 +222,46 @@ final class ResultConverter extends BaseResultConverter
         }
 
         return $toolCalls;
+    }
+
+    /**
+     * Qwen / llama.cpp Jinja templates stringify tool arguments; Symfony tools expect typed values.
+     *
+     * @see https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct/blob/main/qwen3coder_tool_parser.py (_convert_param_value)
+     */
+    private function coerceXmlToolParameterValue(string $value): mixed
+    {
+        if ('' === $value) {
+            return $value;
+        }
+
+        $lower = strtolower($value);
+        if ('true' === $lower) {
+            return true;
+        }
+        if ('false' === $lower) {
+            return false;
+        }
+        if ('null' === $lower || 'none' === $lower) {
+            return null;
+        }
+
+        if (1 === preg_match('/^-?\d+$/', $value)) {
+            return (int) $value;
+        }
+
+        $first = $value[0];
+        if ('{' === $first || '[' === $first) {
+            try {
+                $decoded = json_decode($value, true, 512, \JSON_THROW_ON_ERROR);
+                if (\is_array($decoded)) {
+                    return $decoded;
+                }
+            } catch (\JsonException) {
+                // keep string
+            }
+        }
+
+        return $value;
     }
 }

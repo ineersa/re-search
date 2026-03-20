@@ -34,7 +34,7 @@ Required behavior (web-research rules):
 
 Tool usage flow:
 - Prefer websearch_search first for discovery; use websearch_open on URLs from search results or links found in opened pages.
-- Use websearch_open with fetchAll only when you need the full page; otherwise omit fetchAll - auto mode lands on the relevant snippet.
+- Use websearch_open with fetchAll only when you need the full page; otherwise omit fetchAll — auto mode lands on the relevant snippet.
 - After open, use websearch_find with the same URL to verify exact phrases; find returns a focused window around matches.
 - Never invent facts, URLs, quotes, or line references.
 - If evidence is missing, return exactly: Nothing found in reviewed sources.
@@ -47,10 +47,10 @@ Output contract:
 - Use markdown for formatting.
 
 Citation format (mandatory):
-- Inline: use superscript numbers 1 2 3 4 5 6 7 8 9 after claims; do not repeat URLs inline.
+- Inline: use superscript numbers ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ after claims; do not repeat URLs inline.
 - End of response: add a "## References" block with numbered entries, one per source:
-  1 https://example.com/page (lines L12, L18)
-  2 https://other.com/doc (lines L5, L22)
+  ¹ https://example.com/page (lines L12, L18)
+  ² https://other.com/doc (lines L5, L22)
 - Reuse the same superscript for multiple claims from the same source.
 
 Budget and constraints:
