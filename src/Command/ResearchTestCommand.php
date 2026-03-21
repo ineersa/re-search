@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\ResearchRun;
-use App\Research\ResearchRunService;
+use App\Research\Message\Orchestrator\OrchestratorTick;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -13,16 +13,17 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsCommand(
     name: 'app:research:test',
-    description: 'Test the research orchestrator loop with a specific question',
+    description: 'Dispatch a research run and bootstrap orchestrator ticks',
 )]
 class ResearchTestCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly ResearchRunService $researchRunService,
+        private readonly MessageBusInterface $bus,
     ) {
         parent::__construct();
     }
@@ -68,13 +69,13 @@ class ResearchTestCommand extends Command
             $io->success(sprintf('Research run created with ID: %s', $runId));
         }
 
-        $io->info('Starting orchestrator loop... Check logs for info output.');
+        $io->info('Dispatching initial orchestrator tick...');
 
         try {
-            $this->researchRunService->execute($runId);
+            $this->bus->dispatch(new OrchestratorTick($runId));
 
             $this->entityManager->refresh($run);
-            $io->success(sprintf('Run completed with status: %s', $run->getStatus()));
+            $io->success(sprintf('Tick dispatched. Current run status: %s', $run->getStatusValue()));
             $finalAnswer = $run->getFinalAnswerMarkdown();
             if (null !== $finalAnswer && '' !== $finalAnswer) {
                 $io->section('Final Answer');

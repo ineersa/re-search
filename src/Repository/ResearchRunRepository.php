@@ -41,7 +41,7 @@ class ResearchRunRepository extends ServiceEntityRepository
             static fn (ResearchRun $run) => [
                 'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
-                'status' => $run->getStatus(),
+                'status' => $run->getStatusValue(),
                 'createdAt' => $run->getCreatedAt(),
                 'completedAt' => $run->getCompletedAt(),
                 'tokenBudgetUsed' => $run->getTokenBudgetUsed(),
@@ -83,7 +83,7 @@ class ResearchRunRepository extends ServiceEntityRepository
             'run' => [
                 'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
-                'status' => $run->getStatus(),
+                'status' => $run->getStatusValue(),
                 'finalAnswerMarkdown' => $run->getFinalAnswerMarkdown(),
                 'tokenBudgetUsed' => $run->getTokenBudgetUsed(),
                 'tokenBudgetHardCap' => $run->getTokenBudgetHardCap(),
@@ -127,7 +127,7 @@ class ResearchRunRepository extends ServiceEntityRepository
             'run' => [
                 'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
-                'status' => $run->getStatus(),
+                'status' => $run->getStatusValue(),
                 'finalAnswerMarkdown' => $run->getFinalAnswerMarkdown(),
                 'tokenBudgetUsed' => $run->getTokenBudgetUsed(),
                 'tokenBudgetHardCap' => $run->getTokenBudgetHardCap(),

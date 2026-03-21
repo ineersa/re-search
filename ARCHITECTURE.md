@@ -1,143 +1,227 @@
 # Architecture
 
-This document provides a technical overview of the **re-search** architecture, focusing on the web research workflow, request lifecycle, rate limiting, and safeguards.
+This document describes the current **re-search** architecture.
+
+The implementation is now event-driven and DB-backed: the orchestrator advances a run in short ticks, while dedicated workers perform LLM and tool IO.
 
 ## Research Workflow Overview
 
-The web research feature is built around an asynchronous, background-execution model using Symfony Messenger and real-time event streaming via Mercure.
+The web research flow uses Symfony Messenger queues plus Mercure event streaming.
 
 ```mermaid
-graph TD
-    Browser[Browser / Stimulus]
+sequenceDiagram
+    participant B as Browser (Stimulus)
+    participant C as ResearchController
+    participant T as ResearchThrottle
+    participant DB as SQLite/Doctrine
+    participant OQ as orchestrator queue
+    participant OTH as OrchestratorTickHandler
+    participant OTS as OrchestratorTransitionService
+    participant LQ as llm queue
+    participant LH as ExecuteLlmOperationHandler
+    participant TQ as tool queue
+    participant TH as ExecuteToolOperationHandler
+    participant AI as Symfony AI Platform
+    participant MCP as MCP Websearch
+    participant M as Mercure
 
-    subgraph API [Public API]
-        RC[ResearchController]
-        RT[ResearchThrottle]
+    B->>C: POST /research/runs
+    C->>T: consume()
+    T-->>C: accepted
+    C->>DB: create ResearchRun (queued)
+    C->>OQ: OrchestratorTick(runId)
+    C-->>B: 202 + runId + topic
+
+    loop Until terminal status
+        OQ->>OTH: OrchestratorTick(runId)
+        OTH->>OTS: transition(run, state)
+
+        alt dispatch_llm
+            OTS->>DB: upsert llm operation
+            OTS->>LQ: ExecuteLlmOperation(opId)
+            LQ->>LH: message
+            LH->>AI: invoke(model, messages)
+            LH->>DB: persist operation result
+            LH->>OQ: OrchestratorTick(runId)
+        else dispatch_tools
+            OTS->>DB: upsert tool operation(s)
+            OTS->>TQ: ExecuteToolOperation(opId...)
+            TQ->>TH: message(s)
+            TH->>MCP: execute websearch tool
+            TH->>DB: persist operation result
+            TH->>OQ: OrchestratorTick(runId)
+        else terminal (none)
+            OTS->>DB: persist final answer + status
+        end
+
+        OTS->>M: publish activity/answer/budget/complete
+        M-->>B: Mercure events
     end
-
-    subgraph Worker [Background Worker]
-        MH[ExecuteResearchRunHandler]
-        RS[ResearchRunService]
-        RO[RunOrchestrator]
-    end
-
-    subgraph Domain [Research Domain]
-        RBB[ResearchBriefBuilder]
-        RBE[ResearchBudgetEnforcer]
-        WST[WebSearchTool]
-    end
-
-    subgraph Infra [Infrastructure]
-        DB[(SQLite / Doctrine)]
-        BUS[[Messenger Bus]]
-        HUB{Mercure Hub}
-        MCP[MCP Websearch Server]
-        Platform[Symfony AI Platform]
-    end
-
-    Browser -->|1. POST /research/runs| RC
-    RC -->|2. Check Limit| RT
-    RC -->|3. Persist Run| DB
-    RC -->|4. Dispatch Task| BUS
-    RC -->|5. Return Topic & ID| Browser
-
-    BUS -->|6. Pick up Message| MH
-    MH -->|7. Execute Run| RS
-    RS -->|8. Orchestrate turns| RO
-
-    RO -->|9. Build Brief| RBB
-    RO -->|10. Check Safeguards| RBE
-    RO -->|11. Call Model| Platform
-    RO -->|12. Execute Tool| WST
-    WST -->|13. HTTP Request| MCP
-
-    RO -->|14. Publish Activity/Answer| HUB
-    HUB -->|15. Event Stream| Browser
-
-    RO -->|16. Persist Steps/Answer| DB
 ```
 
-### Request Lifecycle
+## Queue Topology
 
-1.  **Submission**: The user sends a research query via the frontend. The `ResearchController::submit()` endpoint receives it.
-2.  **Rate Limiting**: Before processing, the `ResearchThrottle` service validates the request against a `Symfony RateLimiter` using the user's `IP + Session ID`.
-3.  **Persistence**: If accepted, a `ResearchRun` entity is created in SQLite with a `queued` status.
-4.  **Asynchronicity**: The controller dispatches an `ExecuteResearchRun` message to the Symfony Messenger bus and immediately returns the `runId` and a private Mercure topic URL to the browser.
-5.  **Background Execution**: A worker (or the same process in `sync` mode) picks up the message. `ExecuteResearchRunHandler` triggers the `ResearchRunService`.
-6.  **Orchestration**: The `RunOrchestrator` manages the iterative loop:
-    -   It builds a system brief using the `ResearchBriefBuilder`.
-    -   It calls the AI platform (LlamaCpp via `flash` model).
-    -   It detects tool calls (web search, page opening) and executes them via `WebSearchTool`.
-    -   It enforces safeguards and budget limits at every turn.
-7.  **Real-time Updates**: Throughout the execution, `MercureEventPublisher` sends `activity`, `answer`, `budget`, and `complete` events to the private Mercure topic.
-8.  **Completion**: The final answer is persisted to the `ResearchRun` entity, and the run status is updated to `completed` (or `failed`/`budget_exhausted`/etc.).
+- `orchestrator`: handles `OrchestratorTick` state transitions.
+- `llm`: handles `ExecuteLlmOperation` model calls.
+- `tool`: handles `ExecuteToolOperation` tool executions.
 
-## Rate Limiting & Safeguards
+All handlers are intentionally short and finite. Long work is split across multiple messages.
 
-The system implements multiple layers of protection to ensure stability, cost control, and abuse prevention.
+## Request Lifecycle
 
-### Rate Limiting (Front Gate)
+1. **Submission**: frontend sends query to `ResearchController::submit()`.
+2. **Rate limit gate**: `ResearchThrottle` checks `IP|Session ID` using Symfony RateLimiter.
+3. **Run creation**: `ResearchRun` is stored with `status=queued`, `phase=queued`, and a Mercure topic.
+4. **Initial tick dispatch**: controller dispatches `OrchestratorTick(runId)` directly to the `orchestrator` transport.
+5. **Orchestrator transition**: `OrchestratorTickHandler` acquires a per-run lock and delegates to `OrchestratorTransitionService`.
+6. **LLM/tools fan-out**: transition logic creates `ResearchOperation` rows and dispatches either LLM or tool operation messages.
+7. **Worker completion feedback**: LLM/tool handlers persist operation results and dispatch a new `OrchestratorTick`.
+8. **Run completion**: when terminal, final answer and status are persisted and a `complete` event is published.
 
-Managed by `App\Research\Throttle\ResearchThrottle`:
--   **Identifier**: `IP | Session ID`.
--   **Implementation**: Symfony RateLimiter.
--   **Behavior**: If the limit is exceeded, the request is stored as `throttled` in the database, and the user receives a `429 Too Many Requests` response with a `Retry-After` header.
+## Orchestrator State Machine
 
-### Runtime Safeguards (Research Loop)
+Run progression is tracked with `ResearchRun.phase` and persisted JSON state (`orchestrator_state_json`).
 
-Managed by `App\Research\Orchestration\RunOrchestrator` and `App\Research\Guardrail\ResearchBudgetEnforcer`:
+Primary phases:
 
-| Limit | Value | Description |
-| :--- | :--- | :--- |
-| **Token Budget** | 75,000 | Cumulative total tokens (prompt + completion) allowed per run. |
-| **Max Turns** | 75 | Maximum number of model/tool turn cycles allowed. |
-| **Wall Clock Timeout**| 15 minutes | Maximum duration for a single background execution. |
-| **Duplicate Calls** | 2 | A specific tool call (same signature) is allowed twice; the third triggers a loop-stop. |
-| **Tool Failures** | 3 | Three consecutive tool execution failures will abort the run. |
-| **Answer-Only Mode** | 2,000 tokens | When remaining budget is low, the orchestrator forces the model to stop tool usage and provide a final answer. |
+- `queued`: initialize prompt state and queue first LLM operation.
+- `waiting_llm`: wait for turn result, then either finish or queue tools/next turn.
+- `waiting_tools`: wait for all tool operations in turn, integrate results in order, then queue next LLM turn.
+- terminal: `completed`, `failed`, `aborted` (plus run status variants like `loop_stopped`, `timed_out`, `throttled`).
 
-### Budget Reminders
+Idempotency keys prevent duplicate operation creation:
 
-Every **5,000 tokens** used, the orchestrator injects a "Budget update" system message into the conversation to keep the model aware of its remaining resources and encourage it to focus on providing an answer.
+- LLM: `<runUuid>:llm:<turnNumber>`
+- Tool: `<runUuid>:tool:<turnNumber>:<position>`
 
-## Component Responsibilities
-
--   **`ResearchRunService`**: High-level application service that loads entities and initiates orchestration.
--   **`RunOrchestrator`**: The core execution engine. Owns the model loop, turn-by-turn logic, and real-time event triggers.
--   **`ResearchBriefBuilder`**: Deterministically transforms the raw user query into a structured research plan (system prompt) including the current date and output requirements.
--   **`WebSearchTool`**: An adapter for the MCP (Model Context Protocol) web search server, exposing `search`, `open`, and `find` capabilities to the model.
--   **`ResearchBudgetEnforcer`**: Stateful enforcer that tracks token usage and tool call signatures to detect loops and budget exhaustion.
--   **`MercureEventPublisher`**: Handles the publication of domain-specific events (`activity`, `answer`, `budget`, `complete`) to Mercure.
+`RunOrchestratorLock` uses a non-blocking per-run lock key (`research_run:{runUuid}:orchestrator`) to avoid concurrent transitions on the same run.
 
 ## Data Model
 
--   **`ResearchRun`**: Stores the root request, client identity, overall status, total budget used, and final markdown answer.
--   **`ResearchStep`**: A detailed timeline of every turn, tool call, reasoning summary, and budget snapshot for history replay and auditing.
--   **`ResearchMessage`**: Optional detailed message history if ongoing chat continuity is enabled.
+### `research_run` (authoritative snapshot)
+
+Stores request identity and the latest run state:
+
+- query, status, final answer markdown
+- token budget counters
+- `phase`, `cancel_requested_at`, `orchestration_version`, `orchestrator_state_json`
+- timestamps and Mercure topic
+
+### `research_operation` (mutable jobs)
+
+Tracks execution lifecycle for LLM/tool units of work:
+
+- `type`: `llm_call` or `tool_call`
+- `status`: `queued`, `running`, `succeeded`, `failed`
+- turn/position, idempotency key
+- request/result payload JSON and error message
+- started/completed timestamps
+
+### `research_step` (append-only timeline)
+
+Stores trace/audit history used by history and inspect views:
+
+- sequence, step type, turn number
+- summaries, tool metadata, payload JSON
+- token snapshot fields where applicable
+
+## Event Contract and Streaming
+
+The Mercure contract remains stable:
+
+- `activity`
+- `answer`
+- `budget`
+- `complete`
+
+`answer` events are now streamed in chunks during final output publication:
+
+- intermediate chunks: `isFinal=false`
+- terminal marker: `isFinal=true` (empty markdown payload)
+
+This preserves the existing event type contract while restoring incremental answer rendering in the UI.
+
+## Frontend Evidence Mapping
+
+The answer/reference UI consumes streamed markdown and maps references back to trace steps.
+
+`assets/controllers/research_ui/reference_evidence.js` now supports:
+
+- multiple headings (`References`, `Sources`, `Citations`, `Bibliography`, `Works Cited`)
+- marker variants (`1`, `[1]`, `(1)`, superscripts)
+- line span variants (`lines 10-20`, `L10-L20`)
+- URL normalization and domain-level fallback when mapping references to tool trace entries
+
+## Rate Limiting and Runtime Safeguards
+
+### Rate Limiting (submit gate)
+
+`App\Research\Throttle\ResearchThrottle`:
+
+- identifier: `IP|Session ID`
+- on limit exceed: request is recorded as `throttled`, API returns `429` with `Retry-After`
+
+### Runtime safeguards (tick transitions)
+
+`App\Research\Orchestration\OrchestratorTransitionService` enforces:
+
+| Limit | Value | Description |
+| :--- | :--- | :--- |
+| Max Turns | 75 | Maximum orchestration turns before failure. |
+| Wall Clock Timeout | 900 seconds | Run fails if total runtime exceeds 15 minutes. |
+| Duplicate Tool Signature | 2 repeats allowed | Third identical tool call triggers `loop_stopped`. |
+| Consecutive Tool Failures | 3 | Three tool failures in a row fail the run. |
+| Empty LLM Retry | 5 | Repeated empty model responses fail the run. |
+| Answer-Only Threshold | 5,000 remaining tokens | Below threshold, tools are disallowed and model is pushed to finalize. |
+
+Token usage is persisted from LLM metadata and published through `budget` events.
+
+## Cancellation (Current State)
+
+Backend cancellation is supported at orchestration level:
+
+- if `ResearchRun.cancel_requested_at` is set, next tick marks run `aborted`
+- `run_aborted` step is persisted and `complete` event is emitted with `status=aborted`
+
+HTTP cancel endpoint wiring and Stop-button backend integration are not yet completed in this slice.
+
+## Component Responsibilities
+
+- **`ResearchController`**: validates submit requests, persists runs, and dispatches initial orchestrator ticks.
+- **`OrchestratorTickHandler`**: lock + load + one transition + next-action dispatch.
+- **`OrchestratorTransitionService`**: state machine logic, safeguards, step persistence, event emission.
+- **`ExecuteLlmOperationHandler`**: executes model invocation and stores operation result.
+- **`ExecuteToolOperationHandler`**: executes toolbox call and stores operation result.
+- **`RunOrchestratorLock`**: per-run non-blocking lock abstraction.
+- **`MercureEventPublisher`**: publishes `activity/answer/budget/complete` events.
+- **`WebSearchTool`**: MCP-backed `websearch_search`, `websearch_open`, `websearch_find`.
+
+Note: `RunOrchestrator` remains in the codebase as legacy implementation reference; active runtime uses tick-based orchestration.
 
 ## Development and Debugging
 
--   **Logs**: Monitor background worker logs to see orchestration turns in real-time.
--   **Profiler**: Use the Symfony Profiler to inspect Messenger messages and database queries.
--   **SQLite**: The database is located at `data/research` (not committed to git).
--   **Mercure**: Ensure the Mercure hub is running (included in the Docker stack) for real-time UI updates.
+- **Queue consumers**: `make messenger-consume` processes non-failed transports.
+- **Logs**: inspect worker logs to follow ticks, operations, and Mercure publications.
+- **Profiler**: inspect Messenger envelopes, Doctrine queries, and HTTP requests.
+- **SQLite**: DB file is `data/research` (local-only).
+- **Inspect view**: `/research/runs/{id}/inspect` shows persisted run/step state.
 
 ## Extension Points
 
-### Adding a New Tool
-To add a new tool to the research agent:
-1.  Create a service under `src/Research/Tool/`.
-2.  Define it as a Symfony AI tool in `config/packages/ai.yaml` under `agent.web_research.tools`.
-3.  Inject any necessary dependencies (e.g., HTTP clients or MCP adapters).
-4.  Ensure the tool is registered in the orchestrator's toolbox.
+### Add a new tool
 
-### Adding a New Safeguard
-To add a new runtime safeguard:
-1.  Extend or implement `App\Research\Guardrail\ResearchBudgetEnforcerInterface`.
-2.  Register the new safeguard in the `RunOrchestrator`.
-3.  Throw a domain-specific exception (like `BudgetExhaustedException`) to trigger the corresponding loop-stop behavior.
+1. Create a tool service under `src/Research/Tool/`.
+2. Expose tool methods using Symfony AI tool attributes.
+3. Ensure arguments/results are serializable and safe for operation payloads.
+4. Verify tool outputs integrate well with `tool_succeeded` trace payloads.
 
-### Modifying the Research Brief
-To change how the agent is instructed or how queries are reformatted:
-1.  Modify `App\Research\ResearchBriefBuilder`.
-2.  Add logic to `build()` to inject new system messages or change the citation/formatting rules.
+### Add or change a safeguard
+
+1. Update transition logic in `OrchestratorTransitionService`.
+2. Persist any new counters/flags in `OrchestratorState`.
+3. Emit a clear terminal status + `complete` event meta when tripped.
+
+### Change prompting strategy
+
+1. Update `ResearchSystemPromptBuilder` and/or `ResearchTaskPromptBuilder`.
+2. Keep citation/output contracts aligned with frontend evidence parsing.

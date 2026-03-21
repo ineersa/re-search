@@ -139,12 +139,6 @@ parameters:
 			path: src/Research/Orchestration/RunOrchestrator.php
 
 		-
-			message: '#^Unused App\\Research\\ResearchRunService\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/ResearchRunService.php
-
-		-
 			message: '#^Unused App\\Research\\Event\\MercureEventPublisher\:\:__construct$#'
 			identifier: shipmonk.deadMethod
 			count: 1
@@ -155,12 +149,6 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/Mercure/ResearchTopicFactory.php
-
-		-
-			message: '#^Unused App\\Research\\Message\\ExecuteResearchRunHandler\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Message/ExecuteResearchRunHandler.php
 
 		-
 			message: '#^Method App\\Research\\Platform\\ResearchPlatformFactory\:\:__construct\(\) has parameter \$platforms with generic class Symfony\\Component\\DependencyInjection\\ServiceLocator but does not specify its types: T$#'

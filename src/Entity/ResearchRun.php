@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Entity\Enum\ResearchRunPhase;
+use App\Entity\Enum\ResearchRunStatus;
 use App\Repository\ResearchRunRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Gedmo\Mapping\Annotation as Gedmo;
+use Gedmo\Timestampable\Traits\TimestampableEntity;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: ResearchRunRepository::class)]
 #[ORM\Table(name: 'research_run')]
 class ResearchRun
 {
+    use TimestampableEntity;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
@@ -30,8 +34,20 @@ class ResearchRun
     #[ORM\Column(type: Types::STRING, length: 64)]
     private string $queryHash;
 
-    #[ORM\Column(type: Types::STRING, length: 32)]
-    private string $status = 'queued';
+    #[ORM\Column(type: Types::STRING, enumType: ResearchRunStatus::class, length: 32)]
+    private ResearchRunStatus $status = ResearchRunStatus::QUEUED;
+
+    #[ORM\Column(type: Types::STRING, enumType: ResearchRunPhase::class, length: 32, options: ['default' => 'queued'])]
+    private ResearchRunPhase $phase = ResearchRunPhase::QUEUED;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $cancelRequestedAt = null;
+
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $orchestrationVersion = 0;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $orchestratorStateJson = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $finalAnswerMarkdown = null;
@@ -60,14 +76,6 @@ class ResearchRun
     #[ORM\Column(type: Types::STRING, length: 128)]
     private string $clientKey;
 
-    #[Gedmo\Timestampable(on: 'create')]
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private \DateTimeImmutable $createdAt;
-
-    #[Gedmo\Timestampable(on: 'update')]
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private \DateTimeImmutable $updatedAt;
-
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $completedAt = null;
 
@@ -81,8 +89,6 @@ class ResearchRun
     public function __construct()
     {
         $this->runUuid = Uuid::v4()->toRfc4122();
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
         $this->steps = new ArrayCollection();
     }
 
@@ -120,14 +126,72 @@ class ResearchRun
         return $this;
     }
 
-    public function getStatus(): string
+    public function getStatus(): ResearchRunStatus
     {
         return $this->status;
     }
 
-    public function setStatus(string $status): static
+    public function getStatusValue(): string
+    {
+        return $this->status->value;
+    }
+
+    public function setStatus(ResearchRunStatus $status): static
     {
         $this->status = $status;
+
+        return $this;
+    }
+
+    public function getPhase(): ResearchRunPhase
+    {
+        return $this->phase;
+    }
+
+    public function getPhaseValue(): string
+    {
+        return $this->phase->value;
+    }
+
+    public function setPhase(ResearchRunPhase $phase): static
+    {
+        $this->phase = $phase;
+
+        return $this;
+    }
+
+    public function getCancelRequestedAt(): ?\DateTimeImmutable
+    {
+        return $this->cancelRequestedAt;
+    }
+
+    public function setCancelRequestedAt(?\DateTimeImmutable $cancelRequestedAt): static
+    {
+        $this->cancelRequestedAt = $cancelRequestedAt;
+
+        return $this;
+    }
+
+    public function getOrchestrationVersion(): int
+    {
+        return $this->orchestrationVersion;
+    }
+
+    public function setOrchestrationVersion(int $orchestrationVersion): static
+    {
+        $this->orchestrationVersion = $orchestrationVersion;
+
+        return $this;
+    }
+
+    public function getOrchestratorStateJson(): ?string
+    {
+        return $this->orchestratorStateJson;
+    }
+
+    public function setOrchestratorStateJson(?string $orchestratorStateJson): static
+    {
+        $this->orchestratorStateJson = $orchestratorStateJson;
 
         return $this;
     }
@@ -238,16 +302,6 @@ class ResearchRun
         $this->clientKey = $clientKey;
 
         return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): \DateTimeImmutable
-    {
-        return $this->updatedAt;
     }
 
     public function getCompletedAt(): ?\DateTimeImmutable

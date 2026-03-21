@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Research\Orchestration;
 
+use App\Entity\Enum\ResearchRunStatus;
 use App\Entity\ResearchRun;
 use App\Entity\ResearchStep;
 use App\Research\Event\EventPublisherInterface;
@@ -95,7 +96,7 @@ final class RunOrchestrator
         $consecutiveToolFailures = 0;
         $emptyResponseRetries = 0;
 
-        $run->setStatus('running');
+        $run->setStatus(ResearchRunStatus::RUNNING);
         $this->persistStep($run, ++$sequence, 'run_started', 0, $taskPrompt, null);
         $this->eventPublisher->publishActivity($runId, 'run_started', $taskPrompt, ['sequence' => $sequence, 'turnNumber' => 0]);
 
@@ -111,11 +112,11 @@ final class RunOrchestrator
         try {
             while ($turn < self::MAX_TURNS) {
                 if (time() - $startedAt >= self::WALL_CLOCK_TIMEOUT_SECONDS) {
-                    $run->setStatus('timed_out');
+                    $run->setStatus(ResearchRunStatus::TIMED_OUT);
                     $run->setFailureReason('Research timed out after '.self::WALL_CLOCK_TIMEOUT_SECONDS.' seconds');
                     $run->setCompletedAt(new \DateTimeImmutable());
                     $this->persistStep($run, ++$sequence, 'run_failed', $turn, 'Wall-clock timeout', null);
-                    $this->eventPublisher->publishComplete($runId, ['status' => 'timed_out']);
+                    $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::TIMED_OUT->value]);
                     $this->entityManager->flush();
 
                     return;
@@ -228,11 +229,11 @@ final class RunOrchestrator
                     ++$emptyResponseRetries;
 
                     if ($emptyResponseRetries > self::MAX_EMPTY_RESPONSE_RETRIES) {
-                        $run->setStatus('failed');
+                        $run->setStatus(ResearchRunStatus::FAILED);
                         $run->setFailureReason('Model returned an empty response repeatedly');
                         $run->setCompletedAt(new \DateTimeImmutable());
                         $this->persistStep($run, ++$sequence, 'run_failed', $turn, 'Repeated empty response', null);
-                        $this->eventPublisher->publishComplete($runId, ['status' => 'failed', 'reason' => 'Repeated empty response']);
+                        $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::FAILED->value, 'reason' => 'Repeated empty response']);
                         $this->entityManager->flush();
 
                         return;
@@ -266,7 +267,7 @@ final class RunOrchestrator
 
                 if ($turnResult->isFinal) {
                     $run->setFinalAnswerMarkdown($turnResult->assistantText);
-                    $run->setStatus('completed');
+                    $run->setStatus(ResearchRunStatus::COMPLETED);
                     $run->setCompletedAt(new \DateTimeImmutable());
                     $this->persistStep($run, ++$sequence, 'assistant_final', $turn, $turnResult->assistantText, null);
                     if ($answerStreamedDuringTurn) {
@@ -274,7 +275,7 @@ final class RunOrchestrator
                     } else {
                         $this->eventPublisher->publishAnswer($runId, $turnResult->assistantText, true);
                     }
-                    $this->eventPublisher->publishComplete($runId, ['status' => 'completed']);
+                    $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::COMPLETED->value]);
                     $this->entityManager->flush();
 
                     return;
@@ -304,13 +305,13 @@ final class RunOrchestrator
                         try {
                             $this->budgetEnforcer->beforeToolCall($runId, $decision->name, $decision->arguments);
                         } catch (LoopDetectedException $e) {
-                            $run->setStatus('loop_stopped');
+                            $run->setStatus(ResearchRunStatus::LOOP_STOPPED);
                             $run->setLoopDetected(true);
                             $run->setFailureReason($e->getMessage());
                             $run->setCompletedAt(new \DateTimeImmutable());
                             $this->persistStep($run, ++$sequence, 'loop_detected', $turn, $decision->normalizedSignature, null);
                             $this->eventPublisher->publishActivity($runId, 'loop_detected', 'Stopping: duplicate call', ['signature' => $decision->normalizedSignature, 'sequence' => $sequence, 'turnNumber' => $turn]);
-                            $this->eventPublisher->publishComplete($runId, ['status' => 'loop_stopped']);
+                            $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::LOOP_STOPPED->value]);
                             $this->entityManager->flush();
 
                             return;
@@ -351,11 +352,11 @@ final class RunOrchestrator
 
                             $consecutiveToolFailures++;
                             if ($consecutiveToolFailures >= self::MAX_CONSECUTIVE_TOOL_FAILURES) {
-                                $run->setStatus('failed');
+                                $run->setStatus(ResearchRunStatus::FAILED);
                                 $run->setFailureReason($consecutiveToolFailures.' tool calls in a row failed. Model or tools may be unavailable.');
                                 $run->setCompletedAt(new \DateTimeImmutable());
                                 $this->persistStep($run, ++$sequence, 'run_failed', $turn, 'Consecutive tool failures', null);
-                                $this->eventPublisher->publishComplete($runId, ['status' => 'failed', 'reason' => 'Consecutive tool failures']);
+                                $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::FAILED->value, 'reason' => 'Consecutive tool failures']);
                                 $this->entityManager->flush();
 
                                 return;
@@ -370,24 +371,24 @@ final class RunOrchestrator
                 $this->entityManager->flush();
             }
 
-            $run->setStatus('failed');
+            $run->setStatus(ResearchRunStatus::FAILED);
             $run->setFailureReason('Max turns exceeded');
             $run->setCompletedAt(new \DateTimeImmutable());
-            $this->eventPublisher->publishComplete($runId, ['status' => 'failed', 'reason' => 'Max turns exceeded']);
+            $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::FAILED->value, 'reason' => 'Max turns exceeded']);
             $this->entityManager->flush();
         } catch (BudgetExhaustedException|LoopDetectedException $e) {
-            $run->setStatus($e instanceof BudgetExhaustedException ? 'budget_exhausted' : 'loop_stopped');
+            $run->setStatus($e instanceof BudgetExhaustedException ? ResearchRunStatus::BUDGET_EXHAUSTED : ResearchRunStatus::LOOP_STOPPED);
             $run->setFailureReason($e->getMessage());
             $run->setCompletedAt(new \DateTimeImmutable());
-            $this->eventPublisher->publishComplete($runId, ['status' => $run->getStatus()]);
+            $this->eventPublisher->publishComplete($runId, ['status' => $run->getStatusValue()]);
             $this->entityManager->flush();
 
             throw $e;
         } catch (\Throwable $e) {
-            $run->setStatus('failed');
+            $run->setStatus(ResearchRunStatus::FAILED);
             $run->setFailureReason($e->getMessage());
             $run->setCompletedAt(new \DateTimeImmutable());
-            $this->eventPublisher->publishComplete($runId, ['status' => 'failed', 'reason' => $e->getMessage()]);
+            $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::FAILED->value, 'reason' => $e->getMessage()]);
             $this->entityManager->flush();
 
             throw $e;

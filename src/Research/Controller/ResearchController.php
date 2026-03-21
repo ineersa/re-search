@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Research\Controller;
 
+use App\Entity\Enum\ResearchRunStatus;
 use App\Entity\ResearchRun;
 use App\Repository\ResearchRunRepository;
 use App\Research\Mercure\ResearchTopicFactory;
-use App\Research\Message\ExecuteResearchRun;
+use App\Research\Message\Orchestrator\OrchestratorTick;
 use App\Research\Throttle\ResearchThrottle;
 use App\Research\View\ResearchHistoryFormatter;
 use Doctrine\ORM\EntityManagerInterface;
@@ -125,7 +126,7 @@ final class ResearchController extends AbstractController
             $run->setQuery('' !== $query ? $query : '(throttled)');
             $run->setQueryHash('' !== $query ? hash('sha256', $query) : '');
             $run->setClientKey($clientKey);
-            $run->setStatus('throttled');
+            $run->setStatus(ResearchRunStatus::THROTTLED);
             $run->setFailureReason('Rate limit exceeded. Please try again later.');
             $entityManager->persist($run);
             $entityManager->flush();
@@ -133,7 +134,7 @@ final class ResearchController extends AbstractController
             $retryAfter = $e->getHeaders()['Retry-After'] ?? 600;
 
             return new JsonResponse([
-                'status' => 'throttled',
+                'status' => ResearchRunStatus::THROTTLED->value,
                 'runId' => $run->getRunUuid(),
                 'retryAfter' => (int) $retryAfter,
             ], Response::HTTP_TOO_MANY_REQUESTS, [
@@ -157,7 +158,7 @@ final class ResearchController extends AbstractController
         $run->setMercureTopic($topicFactory->forRun($runId));
         $entityManager->flush();
 
-        $bus->dispatch(new ExecuteResearchRun($runId));
+        $bus->dispatch(new OrchestratorTick($runId));
 
         return new JsonResponse([
             'status' => 'accepted',

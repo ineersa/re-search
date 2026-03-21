@@ -4,6 +4,8 @@ DOCKER_COMPOSE := docker compose
 COMPOSE_DEV := $(DOCKER_COMPOSE)
 COMPOSE_PROD := $(DOCKER_COMPOSE) -f compose.yaml -f compose.prod.yaml
 PHP_SERVICE := php
+HOST_UID := $(shell id -u)
+HOST_GID := $(shell id -g)
 
 .PHONY: help init setup build build-prod up up-prod down down-prod restart restart-prod \
 	ps ps-prod logs logs-prod logs-php logs-mailer pull prune \
@@ -112,8 +114,8 @@ doctrine-diff: ## Generate Doctrine migration diff in local container
 doctrine-status: ## Show Doctrine migration status in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console doctrine:migrations:status
 
-messenger-consume: ## Run Messenger consumer for async transport
-	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume async -vv
+messenger-consume: ## Run Messenger consumer for all non-failed transports
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume --all --exclude-receivers=failed -vv
 
 scheduler-consume: ## Run Messenger consumer for research maintenance scheduler
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume scheduler_research_maintenance -vv
@@ -129,6 +131,7 @@ cs-fix: ## Run PHP CS Fixer in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php vendor/bin/php-cs-fixer fix
 
 phpstan: ## Run PHPStan in local container
+	@$(COMPOSE_DEV) exec $(PHP_SERVICE) sh -lc "mkdir -p /app/var/phpstan && chown -R $(HOST_UID):$(HOST_GID) /app/var/phpstan"
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php vendor/bin/phpstan analyse -c phpstan.dist.neon
 
 quality: ## Run cs-fix, phpstan, and tests

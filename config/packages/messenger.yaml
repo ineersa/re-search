@@ -4,8 +4,24 @@ framework:
 
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
-            async:
+            orchestrator:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: orchestrator
+                retry_strategy:
+                    max_retries: 3
+                    multiplier: 2
+            llm:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: llm
+                retry_strategy:
+                    max_retries: 3
+                    multiplier: 2
+            tool:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: tool
                 retry_strategy:
                     max_retries: 3
                     multiplier: 2
@@ -18,4 +34,6 @@ framework:
             messenger.bus.default: []
 
         routing:
-            App\Research\Message\ExecuteResearchRun: async
+            App\Research\Message\Orchestrator\*: orchestrator
+            App\Research\Message\Llm\*: llm
+            App\Research\Message\Tool\*: tool
