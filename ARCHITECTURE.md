@@ -2,7 +2,7 @@
 
 This document describes the current **re-search** architecture.
 
-The implementation is now event-driven and DB-backed: the orchestrator advances a run in short ticks, while dedicated workers perform LLM and tool IO.
+The implementation is event-driven and DB-backed: the orchestrator advances a run in short ticks, while dedicated workers perform LLM and tool IO. The orchestration logic is split into focused services (transition routing, turn processing, operation/payload mapping, state management, and step recording) to keep each handler small and deterministic.
 
 ## Research Workflow Overview
 
@@ -17,6 +17,7 @@ sequenceDiagram
     participant OQ as orchestrator queue
     participant OTH as OrchestratorTickHandler
     participant OTS as OrchestratorTransitionService
+    participant OTP as OrchestratorTurnProcessor
     participant LQ as llm queue
     participant LH as ExecuteLlmOperationHandler
     participant TQ as tool queue
@@ -35,26 +36,27 @@ sequenceDiagram
     loop Until terminal status
         OQ->>OTH: OrchestratorTick(runId)
         OTH->>OTS: transition(run, state)
+        OTS->>OTP: route waiting phases
 
         alt dispatch_llm
-            OTS->>DB: upsert llm operation
-            OTS->>LQ: ExecuteLlmOperation(opId)
+            OTP->>DB: upsert llm operation
+            OTP->>LQ: ExecuteLlmOperation(opId)
             LQ->>LH: message
             LH->>AI: invoke(model, messages)
             LH->>DB: persist operation result
             LH->>OQ: OrchestratorTick(runId)
         else dispatch_tools
-            OTS->>DB: upsert tool operation(s)
-            OTS->>TQ: ExecuteToolOperation(opId...)
+            OTP->>DB: upsert tool operation(s)
+            OTP->>TQ: ExecuteToolOperation(opId...)
             TQ->>TH: message(s)
             TH->>MCP: execute websearch tool
             TH->>DB: persist operation result
             TH->>OQ: OrchestratorTick(runId)
         else terminal (none)
-            OTS->>DB: persist final answer + status
+            OTP->>DB: persist final answer + status
         end
 
-        OTS->>M: publish activity/answer/budget/complete
+        OTP->>M: publish activity/answer/budget/complete
         M-->>B: Mercure events
     end
 ```
@@ -95,6 +97,20 @@ Idempotency keys prevent duplicate operation creation:
 - Tool: `<runUuid>:tool:<turnNumber>:<position>`
 
 `RunOrchestratorLock` uses a non-blocking per-run lock key (`research_run:{runUuid}:orchestrator`) to avoid concurrent transitions on the same run.
+
+## Orchestrator Service Decomposition
+
+The orchestration internals are intentionally split so behavior stays explicit and testable:
+
+- **`OrchestratorTransitionService`**: timeout gate, queued-phase bootstrap (`run_started`), and phase routing.
+- **`OrchestratorTurnProcessor`**: `waiting_llm` / `waiting_tools` transitions, safeguard enforcement, and next-action selection.
+- **`OrchestratorOperationFactory`**: idempotent creation of LLM/tool operations and operation keys.
+- **`OrchestratorOperationPayloadMapper`**: typed DTO encode/decode, message-window to `MessageBag` conversion, tool call normalization, metadata extraction.
+- **`OrchestratorLlmInvocationRecorder`**: builds/persists `llm_invocation` trace payloads.
+- **`OrchestratorStepRecorder`**: append-only `research_step` writer, including token snapshots.
+- **`OrchestratorRunStateManager`**: state/version persistence, token budget accounting, terminal-failure helper, and chunked final-answer publishing.
+
+Worker handlers (`ExecuteLlmOperationHandler`, `ExecuteToolOperationHandler`) also use `OrchestratorOperationPayloadMapper`, keeping operation payload contracts consistent end-to-end.
 
 ## Data Model
 
@@ -139,6 +155,8 @@ The Mercure contract remains stable:
 - intermediate chunks: `isFinal=false`
 - terminal marker: `isFinal=true` (empty markdown payload)
 
+Chunking is performed by `OrchestratorRunStateManager` (currently 320 UTF-8 chars per chunk).
+
 This preserves the existing event type contract while restoring incremental answer rendering in the UI.
 
 ## Frontend Evidence Mapping
@@ -163,7 +181,7 @@ The answer/reference UI consumes streamed markdown and maps references back to t
 
 ### Runtime safeguards (tick transitions)
 
-`App\Research\Orchestration\OrchestratorTransitionService` enforces:
+`App\Research\Orchestration\OrchestratorTurnProcessor` enforces turn-level safeguards, and `OrchestratorTransitionService` enforces wall-clock timeout:
 
 | Limit | Value | Description |
 | :--- | :--- | :--- |
@@ -174,7 +192,7 @@ The answer/reference UI consumes streamed markdown and maps references back to t
 | Empty LLM Retry | 5 | Repeated empty model responses fail the run. |
 | Answer-Only Threshold | 5,000 remaining tokens | Below threshold, tools are disallowed and model is pushed to finalize. |
 
-Token usage is persisted from LLM metadata and published through `budget` events.
+Token usage is persisted from LLM metadata and published through `budget` events. `hardCap` in budget events comes from `ResearchRun.tokenBudgetHardCap` (default: 75,000).
 
 ## Cancellation (Current State)
 
@@ -187,11 +205,17 @@ HTTP cancel endpoint wiring and Stop-button backend integration are not yet comp
 
 ## Component Responsibilities
 
-- **`ResearchController`**: validates submit requests, persists runs, and dispatches initial orchestrator ticks.
-- **`OrchestratorTickHandler`**: lock + load + one transition + next-action dispatch.
-- **`OrchestratorTransitionService`**: state machine logic, safeguards, step persistence, event emission.
-- **`ExecuteLlmOperationHandler`**: executes model invocation and stores operation result.
-- **`ExecuteToolOperationHandler`**: executes toolbox call and stores operation result.
+- **`ResearchController`**: validates submit requests, persists runs, dispatches initial orchestrator ticks.
+- **`OrchestratorTickHandler`**: lock + load + one transition + flush + next-action dispatch.
+- **`OrchestratorTransitionService`**: timeout checks, queued bootstrap, and phase delegation.
+- **`OrchestratorTurnProcessor`**: core `waiting_llm` / `waiting_tools` transition logic and safeguards.
+- **`OrchestratorOperationFactory`**: creates/fetches idempotent LLM and tool operations.
+- **`OrchestratorOperationPayloadMapper`**: canonical payload codec/normalizer for orchestrator and workers.
+- **`OrchestratorLlmInvocationRecorder`**: persists `llm_invocation` trace steps.
+- **`OrchestratorStepRecorder`**: persists timeline steps and token snapshots.
+- **`OrchestratorRunStateManager`**: persists state, updates budget counters, streams final answers.
+- **`ExecuteLlmOperationHandler`**: performs model invocation and persists operation result.
+- **`ExecuteToolOperationHandler`**: executes toolbox call and persists operation result.
 - **`RunOrchestratorLock`**: per-run non-blocking lock abstraction.
 - **`MercureEventPublisher`**: publishes `activity/answer/budget/complete` events.
 - **`WebSearchTool`**: MCP-backed `websearch_search`, `websearch_open`, `websearch_find`.
@@ -217,7 +241,7 @@ Note: `RunOrchestrator` remains in the codebase as legacy implementation referen
 
 ### Add or change a safeguard
 
-1. Update transition logic in `OrchestratorTransitionService`.
+1. Update transition logic in `OrchestratorTurnProcessor` (or `OrchestratorTransitionService` for timeout/queued behavior).
 2. Persist any new counters/flags in `OrchestratorState`.
 3. Emit a clear terminal status + `complete` event meta when tripped.
 

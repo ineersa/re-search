@@ -133,26 +133,17 @@ final class OrchestratorTickHandler
 
     private function abortRun(ResearchRun $run, OrchestratorState $state): void
     {
-        $sequence = $this->nextSequenceForRun($run);
-
-        $run->setStatus(ResearchRunStatus::ABORTED);
-        $run->setPhase(ResearchRunPhase::ABORTED);
-        $run->setFailureReason('Cancelled by user');
-        $run->setCompletedAt(new \DateTimeImmutable());
-        $run->setOrchestratorStateJson($state->toJson());
-        $run->setOrchestrationVersion($run->getOrchestrationVersion() + 1);
-
-        $step = new ResearchStep();
-        $step->setRun($run);
-        $step->setSequence($sequence);
-        $step->setType('run_aborted');
-        $step->setTurnNumber($state->turnNumber);
-        $step->setSummary('Run cancelled by user');
-        $step->setPayloadJson(null);
-        $run->addStep($step);
-
-        $this->entityManager->persist($step);
-        $this->eventPublisher->publishComplete($run->getRunUuid(), ['status' => ResearchRunStatus::ABORTED->value]);
+        $this->finalizeRun(
+            $run,
+            $state,
+            ResearchRunStatus::ABORTED,
+            ResearchRunPhase::ABORTED,
+            'Cancelled by user',
+            'run_aborted',
+            'Run cancelled by user',
+            null,
+            ['status' => ResearchRunStatus::ABORTED->value]
+        );
     }
 
     private function markUnexpectedFailure(string $runId, string $reason): void
@@ -162,32 +153,59 @@ final class OrchestratorTickHandler
             return;
         }
 
-        $sequence = $this->nextSequenceForRun($run);
-
-        $run->setStatus(ResearchRunStatus::FAILED);
-        $run->setPhase(ResearchRunPhase::FAILED);
-        $run->setFailureReason($reason);
-        $run->setCompletedAt(new \DateTimeImmutable());
-        $run->setOrchestrationVersion($run->getOrchestrationVersion() + 1);
-
         try {
             $state = OrchestratorState::fromJson($run->getOrchestratorStateJson());
         } catch (\Throwable) {
             $state = new OrchestratorState();
         }
+
+        $this->finalizeRun(
+            $run,
+            $state,
+            ResearchRunStatus::FAILED,
+            ResearchRunPhase::FAILED,
+            $reason,
+            'run_failed',
+            'Unhandled orchestrator exception',
+            $this->encodeJson(new OrchestratorUnexpectedFailurePayload($reason)),
+            ['status' => ResearchRunStatus::FAILED->value, 'reason' => $reason]
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $completeMeta
+     */
+    private function finalizeRun(
+        ResearchRun $run,
+        OrchestratorState $state,
+        ResearchRunStatus $status,
+        ResearchRunPhase $phase,
+        string $failureReason,
+        string $stepType,
+        string $stepSummary,
+        ?string $stepPayloadJson,
+        array $completeMeta,
+    ): void {
+        $sequence = $this->nextSequenceForRun($run);
+
+        $run->setStatus($status);
+        $run->setPhase($phase);
+        $run->setFailureReason($failureReason);
+        $run->setCompletedAt(new \DateTimeImmutable());
         $run->setOrchestratorStateJson($state->toJson());
+        $run->setOrchestrationVersion($run->getOrchestrationVersion() + 1);
 
         $step = new ResearchStep();
         $step->setRun($run);
         $step->setSequence($sequence);
-        $step->setType('run_failed');
+        $step->setType($stepType);
         $step->setTurnNumber($state->turnNumber);
-        $step->setSummary('Unhandled orchestrator exception');
-        $step->setPayloadJson($this->encodeJson(new OrchestratorUnexpectedFailurePayload($reason)));
+        $step->setSummary($stepSummary);
+        $step->setPayloadJson($stepPayloadJson);
         $run->addStep($step);
 
         $this->entityManager->persist($step);
-        $this->eventPublisher->publishComplete($runId, ['status' => ResearchRunStatus::FAILED->value, 'reason' => $reason]);
+        $this->eventPublisher->publishComplete($run->getRunUuid(), $completeMeta);
     }
 
     /**

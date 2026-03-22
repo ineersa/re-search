@@ -7,3 +7,5 @@
 7. Check maintenance
 8. Implement auth, command to create users
 9. Unlimited requests for logged users
+10. Check stop functionality
+11. Not working streaming and answer!!!

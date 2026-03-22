@@ -8,50 +8,35 @@ use App\Entity\ResearchOperation;
 use App\Entity\Enum\ResearchOperationStatus;
 use App\Entity\Enum\ResearchOperationType;
 use App\Repository\ResearchOperationRepository;
-use App\Research\Message\Llm\Dto\LlmMessageWindowEntry;
-use App\Research\Message\Llm\Dto\LlmMessageWindowToolCall;
 use App\Research\Message\Llm\Dto\LlmOperationRequest;
 use App\Research\Message\Llm\Dto\LlmOperationResultPayload;
 use App\Research\Message\Llm\Dto\LlmOperationResultToolCall;
 use App\Research\Message\Orchestrator\OrchestratorTick;
+use App\Research\Orchestration\OrchestratorOperationPayloadMapper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
-use Symfony\AI\Platform\Message\Message;
-use Symfony\AI\Platform\Message\MessageBag;
-use Symfony\AI\Platform\Message\MessageInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
-use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
 use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Normalizer\ArrayDenormalizer;
-use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
-use Symfony\Component\Serializer\Serializer;
 
 #[AsMessageHandler(fromTransport: 'llm')]
 final class ExecuteLlmOperationHandler
 {
-    private readonly Serializer $requestSerializer;
-
     public function __construct(
         private readonly ResearchOperationRepository $operationRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly PlatformInterface $platform,
         private readonly ToolboxInterface $toolbox,
+        private readonly OrchestratorOperationPayloadMapper $payloadMapper,
         private readonly MessageBusInterface $bus,
         #[Autowire('%research.model%')]
         private readonly string $defaultModel,
     ) {
-        $this->requestSerializer = new Serializer(
-            [new DateTimeNormalizer(), new ArrayDenormalizer(), new ObjectNormalizer()],
-            [new JsonEncoder()]
-        );
     }
 
     public function __invoke(ExecuteLlmOperation $message): void
@@ -72,7 +57,7 @@ final class ExecuteLlmOperationHandler
         if (ResearchOperationType::LLM_CALL !== $operation->getType()) {
             $operation->setStatus(ResearchOperationStatus::FAILED);
             $operation->setErrorMessage('Attempted to execute a non-LLM operation on the llm queue.');
-            $operation->setResultPayloadJson($this->encodeJson([
+            $operation->setResultPayloadJson($this->payloadMapper->encodeJson([
                 'errorClass' => \UnexpectedValueException::class,
                 'errorMessage' => 'Operation type mismatch for llm worker.',
             ]));
@@ -98,7 +83,7 @@ final class ExecuteLlmOperationHandler
         try {
             $request = $this->decodeRequestPayload($operation->getRequestPayloadJson());
             $model = $this->resolveModel($request);
-            $messages = $this->decodeMessages($request);
+            $messages = $this->payloadMapper->toMessageBag($request);
             $options = $this->buildOptions($request);
 
             $result = $this->platform->invoke($model, $messages, $options)->getResult();
@@ -110,7 +95,7 @@ final class ExecuteLlmOperationHandler
         } catch (\Throwable $exception) {
             $operation->setStatus(ResearchOperationStatus::FAILED);
             $operation->setErrorMessage($exception->getMessage());
-            $operation->setResultPayloadJson($this->encodeJson([
+            $operation->setResultPayloadJson($this->payloadMapper->encodeJson([
                 'errorClass' => $exception::class,
                 'errorMessage' => $exception->getMessage(),
             ]));
@@ -123,7 +108,7 @@ final class ExecuteLlmOperationHandler
 
     private function decodeRequestPayload(string $requestPayloadJson): LlmOperationRequest
     {
-        return $this->requestSerializer->deserialize($requestPayloadJson, LlmOperationRequest::class, 'json');
+        return $this->payloadMapper->decodeLlmRequest($requestPayloadJson);
     }
 
     private function resolveModel(LlmOperationRequest $request): string
@@ -134,80 +119,6 @@ final class ExecuteLlmOperationHandler
         }
 
         return $model;
-    }
-
-    private function decodeMessages(LlmOperationRequest $request): MessageBag
-    {
-        $entries = $this->decodeMessageWindowEntries($request->messages);
-        $messages = [];
-
-        foreach ($entries as $entry) {
-            $message = $this->messageWindowEntryToMessage($entry);
-            if ($message instanceof MessageInterface) {
-                $messages[] = $message;
-            }
-        }
-
-        return new MessageBag(...$messages);
-    }
-
-    /**
-     * @param list<array<string, mixed>> $rawMessages
-     *
-     * @return list<LlmMessageWindowEntry>
-     */
-    private function decodeMessageWindowEntries(array $rawMessages): array
-    {
-        /** @var list<LlmMessageWindowEntry> $entries */
-        $entries = $this->requestSerializer->denormalize($rawMessages, LlmMessageWindowEntry::class.'[]');
-
-        return $entries;
-    }
-
-    private function messageWindowEntryToMessage(LlmMessageWindowEntry $entry): ?MessageInterface
-    {
-        $role = strtolower(trim($entry->role));
-
-        return match ($role) {
-            'system' => Message::forSystem($entry->content),
-            'user' => Message::ofUser($entry->content),
-            'assistant' => Message::ofAssistant($entry->content, $this->decodeAssistantToolCalls($entry->toolCalls)),
-            'tool' => Message::ofToolCall(
-                new ToolCall(
-                    null !== $entry->toolCallId && '' !== trim($entry->toolCallId) ? $entry->toolCallId : 'call_unknown',
-                    null !== $entry->name && '' !== trim($entry->name) ? $entry->name : 'unknown_tool',
-                    $entry->arguments
-                ),
-                $entry->content
-            ),
-            default => null,
-        };
-    }
-
-    /**
-     * @param mixed $rawToolCalls
-     *
-     * @return list<ToolCall>
-     */
-    private function decodeAssistantToolCalls(mixed $rawToolCalls): array
-    {
-        if (!\is_array($rawToolCalls)) {
-            return [];
-        }
-
-        /** @var list<LlmMessageWindowToolCall> $entries */
-        $entries = $this->requestSerializer->denormalize($rawToolCalls, LlmMessageWindowToolCall::class.'[]');
-
-        $toolCalls = [];
-        foreach ($entries as $entry) {
-            $toolCalls[] = new ToolCall(
-                '' !== trim($entry->id) ? $entry->id : 'call_unknown',
-                '' !== trim($entry->name) ? $entry->name : 'unknown_tool',
-                $entry->arguments
-            );
-        }
-
-        return $toolCalls;
     }
 
     /**
@@ -253,11 +164,11 @@ final class ExecuteLlmOperationHandler
             promptTokens: $usage['promptTokens'],
             completionTokens: $usage['completionTokens'],
             totalTokens: $usage['totalTokens'],
-            rawMetadata: $this->extractRawMetadata($result),
+            rawMetadata: $this->payloadMapper->extractRawMetadata($result),
             resultClass: $result::class,
         );
 
-        return $this->encodeJson($payload);
+        return $this->payloadMapper->encodeJson($payload);
     }
 
     /**
@@ -281,33 +192,4 @@ final class ExecuteLlmOperationHandler
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function extractRawMetadata(ResultInterface $result): array
-    {
-        $normalized = [];
-        foreach ($result->getMetadata()->all() as $key => $value) {
-            try {
-                $json = $this->requestSerializer->serialize($value, 'json');
-                $normalized[(string) $key] = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
-            } catch (\Throwable) {
-                continue;
-            }
-        }
-
-        return $normalized;
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    private function encodeJson(object|array $payload): string
-    {
-        try {
-            return $this->requestSerializer->serialize($payload, 'json');
-        } catch (\Throwable) {
-            return '{"serialization_error":"Unable to encode payload."}';
-        }
-    }
 }

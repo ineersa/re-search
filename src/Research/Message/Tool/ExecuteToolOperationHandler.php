@@ -12,32 +12,25 @@ use App\Research\Message\Orchestrator\OrchestratorTick;
 use App\Research\Message\Tool\Dto\ToolOperationErrorPayload;
 use App\Research\Message\Tool\Dto\ToolOperationRequest;
 use App\Research\Message\Tool\Dto\ToolOperationResultPayload;
+use App\Research\Orchestration\OrchestratorOperationPayloadMapper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Agent\Toolbox\ToolResultConverter;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
-use Symfony\Component\Serializer\Serializer;
 
 #[AsMessageHandler(fromTransport: 'tool')]
 final readonly class ExecuteToolOperationHandler
 {
-    private Serializer $serializer;
-
     public function __construct(
         private ResearchOperationRepository $operationRepository,
         private EntityManagerInterface $entityManager,
         private ToolboxInterface $toolbox,
         private MessageBusInterface $bus,
+        private OrchestratorOperationPayloadMapper $payloadMapper,
         private ToolResultConverter $toolResultConverter = new ToolResultConverter(),
     ) {
-        $this->serializer = new Serializer(
-            [new ObjectNormalizer()],
-            [new JsonEncoder()]
-        );
     }
 
     public function __invoke(ExecuteToolOperation $message): void
@@ -58,7 +51,7 @@ final readonly class ExecuteToolOperationHandler
         if (ResearchOperationType::TOOL_CALL !== $operation->getType()) {
             $operation->setStatus(ResearchOperationStatus::FAILED);
             $operation->setErrorMessage('Attempted to execute a non-tool operation on the tool queue.');
-            $operation->setResultPayloadJson($this->encodeJson(new ToolOperationErrorPayload(
+            $operation->setResultPayloadJson($this->payloadMapper->encodeJson(new ToolOperationErrorPayload(
                 \UnexpectedValueException::class,
                 'Operation type mismatch for tool worker.'
             )));
@@ -93,7 +86,7 @@ final readonly class ExecuteToolOperationHandler
 
             $operation->setStatus(ResearchOperationStatus::SUCCEEDED);
             $operation->setErrorMessage(null);
-            $operation->setResultPayloadJson($this->encodeJson(new ToolOperationResultPayload(
+            $operation->setResultPayloadJson($this->payloadMapper->encodeJson(new ToolOperationResultPayload(
                 $callId,
                 $toolName,
                 $arguments,
@@ -103,7 +96,7 @@ final readonly class ExecuteToolOperationHandler
         } catch (\Throwable $exception) {
             $operation->setStatus(ResearchOperationStatus::FAILED);
             $operation->setErrorMessage($exception->getMessage());
-            $operation->setResultPayloadJson($this->encodeJson(new ToolOperationErrorPayload(
+            $operation->setResultPayloadJson($this->payloadMapper->encodeJson(new ToolOperationErrorPayload(
                 $exception::class,
                 $exception->getMessage()
             )));
@@ -116,7 +109,7 @@ final readonly class ExecuteToolOperationHandler
 
     private function decodeRequestPayload(string $requestPayloadJson): ToolOperationRequest
     {
-        return $this->serializer->deserialize($requestPayloadJson, ToolOperationRequest::class, 'json');
+        return $this->payloadMapper->decodeToolRequest($requestPayloadJson);
     }
 
     private function extractToolName(ToolOperationRequest $request): string
@@ -137,17 +130,5 @@ final readonly class ExecuteToolOperationHandler
         }
 
         return 'op_'.($operationId ?? 0);
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    private function encodeJson(object|array $payload): string
-    {
-        try {
-            return $this->serializer->serialize($payload, 'json');
-        } catch (\Throwable) {
-            return '{"serialization_error":"Unable to encode payload."}';
-        }
     }
 }
