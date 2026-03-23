@@ -12,6 +12,7 @@ final readonly class TracePruneResult
         public int $prunedRuns,
         public int $alreadyPrunedRuns,
         public int $stepsDeleted,
+        public int $operationsDeleted,
         public bool $dryRun,
     ) {
     }

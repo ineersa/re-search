@@ -35,17 +35,23 @@ final class ResearchTracePruner
         $prunedRuns = 0;
         $alreadyPrunedRuns = 0;
         $stepsDeleted = 0;
+        $operationsDeleted = 0;
 
         foreach ($eligibleRunIds as $runId) {
             $stepStats = $this->connection->fetchAssociative(
                 'SELECT COUNT(*) AS total_steps, SUM(CASE WHEN type = :prunedType THEN 1 ELSE 0 END) AS pruned_steps FROM research_step WHERE run_id = :runId',
                 ['prunedType' => self::PRUNED_STEP_TYPE, 'runId' => $runId]
             );
+            $totalOperations = (int) $this->connection->fetchOne(
+                'SELECT COUNT(*) FROM research_operation WHERE run_id = :runId',
+                ['runId' => $runId]
+            );
 
             $totalSteps = (int) ($stepStats['total_steps'] ?? 0);
             $prunedSteps = (int) ($stepStats['pruned_steps'] ?? 0);
+            $hasSinglePrunedMarker = 1 === $totalSteps && 1 === $prunedSteps;
 
-            if (1 === $totalSteps && 1 === $prunedSteps) {
+            if ($hasSinglePrunedMarker && 0 === $totalOperations) {
                 ++$alreadyPrunedRuns;
 
                 continue;
@@ -53,7 +59,8 @@ final class ResearchTracePruner
 
             if ($dryRun) {
                 ++$prunedRuns;
-                $stepsDeleted += $totalSteps;
+                $stepsDeleted += $hasSinglePrunedMarker ? 0 : $totalSteps;
+                $operationsDeleted += $totalOperations;
 
                 continue;
             }
@@ -72,29 +79,35 @@ final class ResearchTracePruner
             $this->connection->beginTransaction();
 
             try {
-                $deleted = $this->connection->executeStatement('DELETE FROM research_step WHERE run_id = :runId', ['runId' => $runId]);
+                $deletedSteps = 0;
+                if (!$hasSinglePrunedMarker) {
+                    $deletedSteps = $this->connection->executeStatement('DELETE FROM research_step WHERE run_id = :runId', ['runId' => $runId]);
 
-                $this->connection->insert('research_step', [
-                    'run_id' => $runId,
-                    'sequence' => 1,
-                    'type' => self::PRUNED_STEP_TYPE,
-                    'turn_number' => 0,
-                    'tool_name' => null,
-                    'tool_arguments_json' => null,
-                    'tool_signature' => null,
-                    'summary' => $summary,
-                    'payload_json' => $payload,
-                    'prompt_tokens' => null,
-                    'completion_tokens' => null,
-                    'total_tokens' => null,
-                    'estimated_tokens' => false,
-                    'created_at' => $now->format('Y-m-d H:i:s'),
-                ]);
+                    $this->connection->insert('research_step', [
+                        'run_id' => $runId,
+                        'sequence' => 1,
+                        'type' => self::PRUNED_STEP_TYPE,
+                        'turn_number' => 0,
+                        'tool_name' => null,
+                        'tool_arguments_json' => null,
+                        'tool_signature' => null,
+                        'summary' => $summary,
+                        'payload_json' => $payload,
+                        'prompt_tokens' => null,
+                        'completion_tokens' => null,
+                        'total_tokens' => null,
+                        'estimated_tokens' => false,
+                        'created_at' => $now->format('Y-m-d H:i:s'),
+                    ]);
+                }
+
+                $deletedOperations = $this->connection->executeStatement('DELETE FROM research_operation WHERE run_id = :runId', ['runId' => $runId]);
 
                 $this->connection->commit();
 
                 ++$prunedRuns;
-                $stepsDeleted += $deleted;
+                $stepsDeleted += $deletedSteps;
+                $operationsDeleted += $deletedOperations;
             } catch (\Throwable $e) {
                 $this->connection->rollBack();
 
@@ -108,6 +121,7 @@ final class ResearchTracePruner
             prunedRuns: $prunedRuns,
             alreadyPrunedRuns: $alreadyPrunedRuns,
             stepsDeleted: $stepsDeleted,
+            operationsDeleted: $operationsDeleted,
             dryRun: $dryRun,
         );
 
@@ -117,6 +131,7 @@ final class ResearchTracePruner
             'prunedRuns' => $result->prunedRuns,
             'alreadyPrunedRuns' => $result->alreadyPrunedRuns,
             'stepsDeleted' => $result->stepsDeleted,
+            'operationsDeleted' => $result->operationsDeleted,
             'dryRun' => $result->dryRun,
         ]);
 

@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:research:prune-traces',
-    description: 'Compacts research traces and keeps only the most recent runs per client fully detailed.',
+    description: 'Compacts research traces/operations and keeps only the most recent runs per client fully detailed.',
 )]
 final class ResearchPruneTracesCommand extends Command
 {
@@ -54,6 +54,7 @@ final class ResearchPruneTracesCommand extends Command
             ['Pruned runs' => (string) $result->prunedRuns],
             ['Already pruned' => (string) $result->alreadyPrunedRuns],
             ['Deleted steps' => (string) $result->stepsDeleted],
+            ['Deleted operations' => (string) $result->operationsDeleted],
         );
 
         $io->success($result->dryRun ? 'Dry-run completed.' : 'Trace pruning completed.');

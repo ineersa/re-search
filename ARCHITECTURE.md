@@ -135,6 +135,8 @@ Tracks execution lifecycle for LLM/tool units of work:
 - request/result payload JSON and error message
 - started/completed timestamps
 
+Operational note: maintenance pruning compacts old runs by removing `research_operation` rows for runs beyond the per-client keep window.
+
 ### `research_step` (append-only timeline)
 
 Stores trace/audit history used by history and inspect views:
@@ -142,6 +144,8 @@ Stores trace/audit history used by history and inspect views:
 - sequence, step type, turn number
 - summaries, tool metadata, payload JSON
 - token snapshot fields where applicable
+
+Operational note: maintenance pruning compacts old runs by replacing full step history with a single `trace_pruned` marker step.
 
 ## Event Contract and Streaming
 
