@@ -64,6 +64,22 @@ final class MercureEventPublisher implements EventPublisherInterface
     /**
      * @param array<string, mixed> $meta
      */
+    public function publishPhase(string $runId, string $phase, string $status, string $message, array $meta = []): void
+    {
+        $payload = [
+            'type' => 'phase',
+            'phase' => $phase,
+            'status' => $status,
+            'message' => $message,
+            'meta' => $meta,
+        ];
+
+        $this->publish($runId, $payload);
+    }
+
+    /**
+     * @param array<string, mixed> $meta
+     */
     public function publishComplete(string $runId, array $meta = []): void
     {
         $payload = [

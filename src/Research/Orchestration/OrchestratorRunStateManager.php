@@ -36,6 +36,13 @@ final class OrchestratorRunStateManager
         $run->setPhase(ResearchRunStatus::ABORTED === $status ? ResearchRunPhase::ABORTED : ResearchRunPhase::FAILED);
         $run->setFailureReason($failureReason);
         $run->setCompletedAt(new \DateTimeImmutable());
+        $this->eventPublisher->publishPhase(
+            $run->getRunUuid(),
+            $run->getPhaseValue(),
+            $run->getStatusValue(),
+            $stepSummary,
+            ['turnNumber' => $turnNumber],
+        );
         if (ResearchRunStatus::LOOP_STOPPED === $status) {
             $run->setLoopDetected(true);
         }

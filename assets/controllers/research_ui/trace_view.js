@@ -15,6 +15,16 @@ import { escapeHtml } from './escape_html.js';
  */
 
 /**
+ * @typedef {object} TraceProgress
+ * @property {'queued'|'running'|'waiting_llm'|'waiting_tools'|'completed'|'failed'|'aborted'|null} phase
+ * @property {string|null} status
+ * @property {boolean} hasRunStarted
+ * @property {number} llmTurns
+ * @property {number} toolCallsCompleted
+ * @property {string|null} phaseMessage
+ */
+
+/**
  * @param {string} stepType
  * @param {string} toolName
  * @param {string} summary
@@ -48,13 +58,17 @@ export function buildTraceItem(stepType, toolName, summary, args, link, result =
 }
 
 /**
- * @param {{ toolCalls: TraceCall[], traceBody: HTMLElement }} ctx
+ * @param {{ toolCalls: TraceCall[], traceBody: HTMLElement, progress: TraceProgress }} ctx
  */
 export function renderTrace(ctx) {
-    const { toolCalls, traceBody } = ctx;
+    const { toolCalls, traceBody, progress } = ctx;
+    const progressPanel = renderTraceProgress(progress);
 
     if (toolCalls.length === 0) {
-        traceBody.innerHTML = '<p class="trace-empty">Trace was pruned. Full trace is available only for the most recent 10 runs.</p>';
+        const emptyMessage = isTerminalPhase(progress.phase) && progress.hasRunStarted
+            ? 'Trace was pruned. Full trace is available only for the most recent 10 runs.'
+            : 'No trace events yet.';
+        traceBody.innerHTML = `${progressPanel}<p class="trace-empty">${escapeHtml(emptyMessage)}</p>`;
 
         return;
     }
@@ -79,8 +93,60 @@ export function renderTrace(ctx) {
         )
         .join('');
 
-    traceBody.innerHTML = items;
+    traceBody.innerHTML = `${progressPanel}${items}`;
     attachTraceClickHandlers(traceBody);
+}
+
+/**
+ * @param {TraceProgress} progress
+ * @returns {string}
+ */
+function renderTraceProgress(progress) {
+    const phase = progress.phase || 'queued';
+    const title = phaseTitle(phase, progress.phaseMessage);
+    const statusIcon = isTerminalPhase(phase)
+        ? '<span class="text-emerald-400">✓</span>'
+        : '<span class="inline-block h-2 w-2 animate-pulse rounded-full bg-sky-400"></span>';
+    const toolCallsCounter = `<p class="mt-2 mb-0 text-[11px] text-gray-500">Tool calls finished: ${progress.toolCallsCompleted}</p>`;
+
+    return `
+            <section class="border border-[#2a2a2a] bg-[#121212] p-3 trace-progress">
+                <p class="m-0 text-xs uppercase tracking-wider text-gray-500">Run status</p>
+                <p class="mt-1 mb-0 flex items-center gap-2 text-sm text-gray-200">${statusIcon}<span>${escapeHtml(title)}</span></p>
+                ${toolCallsCounter}
+            </section>
+        `;
+}
+
+/**
+ * @param {TraceProgress['phase']} phase
+ * @param {string|null} phaseMessage
+ * @returns {string}
+ */
+function phaseTitle(phase, phaseMessage) {
+    if (phaseMessage && phaseMessage.trim().length > 0) {
+        return phaseMessage;
+    }
+
+    const labels = {
+        queued: 'Forming initial query',
+        running: 'Starting run',
+        waiting_llm: 'Waiting for LLM response',
+        waiting_tools: 'Waiting for tool call results',
+        completed: 'Research complete',
+        failed: 'Research failed',
+        aborted: 'Research aborted',
+    };
+
+    return labels[phase || 'queued'] || 'Running';
+}
+
+/**
+ * @param {TraceProgress['phase']} phase
+ * @returns {boolean}
+ */
+function isTerminalPhase(phase) {
+    return phase === 'completed' || phase === 'failed' || phase === 'aborted';
 }
 
 /**

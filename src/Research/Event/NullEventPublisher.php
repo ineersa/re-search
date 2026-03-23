@@ -21,6 +21,10 @@ final class NullEventPublisher implements EventPublisherInterface
     {
     }
 
+    public function publishPhase(string $runId, string $phase, string $status, string $message, array $meta = []): void
+    {
+    }
+
     public function publishComplete(string $runId, array $meta = []): void
     {
     }

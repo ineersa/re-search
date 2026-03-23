@@ -53,6 +53,16 @@ Citation format (mandatory):
   ² https://other.com/doc (lines L5, L22)
 - Reuse the same superscript for multiple claims from the same source.
 
+Strict citation constraints (must follow exactly):
+- Do not use bracket citations like 【...】 or [1] style markers.
+- In the references block, each line must start with a superscript number, then a plain URL, then line numbers in parentheses.
+- Every URL and line number must come from previously reviewed tool output in this run.
+
+Final self-check before responding:
+- Confirm there is exactly one "## References" section.
+- Confirm every reference line matches: ¹ https://... (lines L12, L18)
+- If any rule fails, rewrite your answer before sending.
+
 Budget and constraints:
 - Hard token cap: 75000
 - Budget reminders are sparse by design: one strategic reminder around 20k-30k tokens used, then late warnings near 60k+.

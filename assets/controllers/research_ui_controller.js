@@ -2,7 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import { renderAnswerBody as renderAnswerBodyView, renderAnswerReferences as renderAnswerReferencesView } from './research_ui/answer_view.js';
 import { escapeHtml } from './research_ui/escape_html.js';
 import { jumpToTraceStep as scrollToTraceStep } from './research_ui/jump_trace.js';
-import { buildNoAnswerHtml, formatStatus } from './research_ui/run_format.js';
+import { buildNoAnswerHtml } from './research_ui/run_format.js';
 import { buildTraceItem, renderTrace as renderTraceView } from './research_ui/trace_view.js';
 
 /**
@@ -28,7 +28,6 @@ export default class extends Controller {
         'answerReferences',
         'trace',
         'traceBody',
-        'status',
         'historyFrame',
         'tabs',
         'results',
@@ -56,6 +55,7 @@ export default class extends Controller {
         this.eventSource = null;
         this.activeTab = 'answer';
         this.toolCalls = [];
+        this.runProgress = this.createInitialRunProgress();
 
         this.showAnswerTab();
     }
@@ -74,6 +74,7 @@ export default class extends Controller {
 
         this.cancelRun();
         this.toolCalls = [];
+        this.runProgress = this.createInitialRunProgress();
         this.accumulatedMarkdown = '';
         this.renderMode = 'rendered';
         this.answerStreamingStarted = false;
@@ -82,13 +83,11 @@ export default class extends Controller {
 
         this.element.classList.add('is-searching');
         this.element.classList.remove('is-complete');
-        this.statusTarget.classList.remove('text-white');
-        this.statusTarget.classList.add('text-gray-400');
-        this.statusTarget.textContent = 'Agent is researching...';
         this.streamTarget.innerHTML = '';
         this.answerBodyTarget.innerHTML = '';
         this.answerReferencesTarget.innerHTML = '';
         this.traceBodyTarget.innerHTML = '';
+        this.renderTrace();
         this.answerTarget.scrollTop = 0;
         this.traceTarget.scrollTop = 0;
         this.updateRenderModeToggleVisibility(false);
@@ -131,12 +130,16 @@ export default class extends Controller {
 
             if (!response.ok) {
                 if (response.status === 429) {
-                    this.statusTarget.classList.remove('text-gray-400');
-                    this.statusTarget.classList.add('text-amber-400');
                     this.element.classList.remove('is-searching');
                     this.element.classList.add('is-complete');
                     const retrySec = data.retryAfter ?? 600;
-                    this.statusTarget.textContent = `Rate limited — retry in ${Math.ceil(retrySec / 60)} min`;
+                    this.runProgress = {
+                        ...this.runProgress,
+                        status: 'throttled',
+                        phase: 'failed',
+                        phaseMessage: `Rate limited — retry in ${Math.ceil(retrySec / 60)} min`,
+                    };
+                    this.renderTrace();
                 } else {
                     this.setError(data.error || 'Failed to start research');
                 }
@@ -198,6 +201,9 @@ export default class extends Controller {
             case 'complete':
                 this.completeRun(payload);
                 break;
+            case 'phase':
+                this.updatePhase(payload);
+                break;
             default:
                 break;
         }
@@ -205,6 +211,8 @@ export default class extends Controller {
 
     appendActivity(payload) {
         const { stepType, summary, meta = {} } = payload;
+
+        this.applyActivityToProgress(stepType, summary);
 
         const toolName = meta.tool || stepType;
         const args = meta.arguments || {};
@@ -217,6 +225,24 @@ export default class extends Controller {
         this.toolCalls.push(traceItem);
         this.renderTrace();
         this.renderAnswerReferences();
+    }
+
+    updatePhase(payload) {
+        const phase = typeof payload.phase === 'string' ? payload.phase : null;
+        const status = typeof payload.status === 'string' ? payload.status : this.runProgress.status;
+        const message = typeof payload.message === 'string' ? payload.message : null;
+        const isEnteringWaitingLlm = phase === 'waiting_llm' && this.runProgress.phase !== 'waiting_llm';
+
+        this.runProgress = {
+            ...this.runProgress,
+            phase,
+            status,
+            phaseMessage: message,
+            hasRunStarted: this.runProgress.hasRunStarted || (typeof phase === 'string' && phase !== 'queued'),
+            llmTurns: isEnteringWaitingLlm ? this.runProgress.llmTurns + 1 : this.runProgress.llmTurns,
+        };
+
+        this.renderTrace();
     }
 
     appendAnswer(payload) {
@@ -289,7 +315,11 @@ export default class extends Controller {
         const { meta = {} } = payload;
         const remaining = meta.remaining;
         if (typeof remaining === 'number' && remaining < 10000) {
-            this.statusTarget.textContent = `Researching… ~${Math.round(remaining / 1000)}k tokens left`;
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: `Researching… ~${Math.round(remaining / 1000)}k tokens left`,
+            };
+            this.renderTrace();
         }
     }
 
@@ -299,30 +329,20 @@ export default class extends Controller {
 
         this.element.classList.remove('is-searching');
         this.element.classList.add('is-complete');
-        this.statusTarget.classList.remove('text-gray-400');
-        this.statusTarget.classList.add('text-white');
 
         const meta = payload.meta || {};
         const status = meta.status || 'completed';
         const reason = meta.reason || '';
 
-        if (status === 'completed') {
-            this.statusTarget.textContent = 'Research complete';
-        } else if (status === 'budget_exhausted') {
-            this.statusTarget.textContent = 'Budget exhausted';
-        } else if (status === 'loop_stopped') {
-            this.statusTarget.textContent = 'Stopped (loop detected)';
-        } else if (status === 'timed_out') {
-            this.statusTarget.textContent = 'Research timed out';
-        } else if (status === 'throttled') {
-            this.statusTarget.textContent = 'Rate limited — try again later';
-        } else if (status === 'aborted') {
-            this.statusTarget.textContent = 'Research aborted';
-        } else if (status === 'failed') {
-            this.statusTarget.textContent = reason || 'Research failed';
-        } else {
-            this.statusTarget.textContent = 'Research complete';
-        }
+        const phaseMessage = this.statusLabelForCompletion(status, reason);
+
+        this.runProgress = {
+            ...this.runProgress,
+            status,
+            phase: status === 'aborted' ? 'aborted' : (status === 'completed' ? 'completed' : 'failed'),
+            phaseMessage,
+        };
+        this.renderTrace();
 
         this.streamTarget.innerHTML = '';
         this.showAnswerTab();
@@ -335,7 +355,11 @@ export default class extends Controller {
             return;
         }
         if (this.eventSource?.readyState === EventSource.CONNECTING) {
-            this.statusTarget.textContent = 'Reconnecting…';
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: 'Reconnecting…',
+            };
+            this.renderTrace();
         }
     }
 
@@ -350,9 +374,13 @@ export default class extends Controller {
         if (this.element?.classList?.contains('is-searching')) {
             this.element.classList.remove('is-searching');
             this.element.classList.add('is-complete');
-            this.statusTarget.textContent = 'Stopped';
-            this.statusTarget.classList.remove('text-gray-400');
-            this.statusTarget.classList.add('text-white');
+            this.runProgress = {
+                ...this.runProgress,
+                status: 'aborted',
+                phase: 'aborted',
+                phaseMessage: 'Stopped',
+            };
+            this.renderTrace();
         }
     }
 
@@ -369,7 +397,11 @@ export default class extends Controller {
         }
         this.authorizeMercure(this.currentRunId).then(() => {
             this.subscribeToMercure(this.currentMercureTopic);
-            this.statusTarget.textContent = 'Reconnecting…';
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: 'Reconnecting…',
+            };
+            this.renderTrace();
         });
     }
 
@@ -382,13 +414,17 @@ export default class extends Controller {
 
     setError(message) {
         this.cancelRun();
-        this.statusTarget.textContent = escapeHtml(message);
-        this.statusTarget.classList.remove('text-gray-400');
-        this.statusTarget.classList.add('text-red-400');
+        this.runProgress = {
+            ...this.runProgress,
+            status: 'failed',
+            phase: 'failed',
+            phaseMessage: message,
+        };
+        this.renderTrace();
     }
 
     renderTrace() {
-        renderTraceView({ toolCalls: this.toolCalls, traceBody: this.traceBodyTarget });
+        renderTraceView({ toolCalls: this.toolCalls, traceBody: this.traceBodyTarget, progress: this.runProgress });
     }
 
     reloadHistoryFrame() {
@@ -466,13 +502,11 @@ export default class extends Controller {
 
                     return buildTraceItem(step.type, step.toolName || step.type, step.summary || '', args, url, result, sequence, turnNumber);
                 });
+            this.runProgress = this.buildProgressFromHistory(run, steps);
             this.renderTrace();
 
             this.element.classList.remove('is-searching');
             this.element.classList.add('is-complete');
-            this.statusTarget.classList.remove('text-gray-400');
-            this.statusTarget.classList.add('text-white');
-            this.statusTarget.textContent = formatStatus(run);
 
             this.streamTarget.innerHTML = '';
             if (run.finalAnswerMarkdown) {
@@ -582,5 +616,108 @@ export default class extends Controller {
         if (visible) {
             this.updateRenderModeToggleLabel();
         }
+    }
+
+    createInitialRunProgress() {
+        return {
+            phase: 'queued',
+            status: 'running',
+            hasRunStarted: false,
+            llmTurns: 0,
+            toolCallsCompleted: 0,
+            phaseMessage: 'Forming initial query',
+        };
+    }
+
+    applyActivityToProgress(stepType, summary) {
+        if (stepType === 'run_started') {
+            this.runProgress = {
+                ...this.runProgress,
+                hasRunStarted: true,
+                phaseMessage: summary || this.runProgress.phaseMessage,
+            };
+
+            return;
+        }
+
+        if (stepType === 'tool_succeeded' || stepType === 'tool_failed') {
+            this.runProgress = {
+                ...this.runProgress,
+                toolCallsCompleted: this.runProgress.toolCallsCompleted + 1,
+                phaseMessage: summary || this.runProgress.phaseMessage,
+            };
+
+            return;
+        }
+
+        if (stepType === 'assistant_reasoning' || stepType === 'llm_retry' || stepType === 'answer_invalid_format' || stepType === 'assistant_empty') {
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: summary || this.runProgress.phaseMessage,
+            };
+
+            return;
+        }
+
+        if (stepType === 'loop_detected') {
+            this.runProgress = {
+                ...this.runProgress,
+                phase: 'failed',
+                status: 'loop_stopped',
+                phaseMessage: summary || this.runProgress.phaseMessage,
+            };
+        }
+    }
+
+    buildProgressFromHistory(run, steps) {
+        const progress = this.createInitialRunProgress();
+        progress.phase = typeof run.phase === 'string' ? run.phase : 'queued';
+        progress.status = typeof run.status === 'string' ? run.status : 'running';
+        progress.phaseMessage = null;
+        const llmTurns = new Set();
+
+        for (const step of steps) {
+            if (step.type === 'run_started') {
+                progress.hasRunStarted = true;
+            }
+
+            if (Number.isInteger(step.turnNumber) && step.turnNumber >= 0) {
+                llmTurns.add(step.turnNumber);
+            }
+
+            if (step.type === 'tool_succeeded' || step.type === 'tool_failed') {
+                progress.toolCallsCompleted += 1;
+            }
+        }
+
+        progress.llmTurns = llmTurns.size;
+
+        return progress;
+    }
+
+    statusLabelForCompletion(status, reason) {
+        if (status === 'completed') {
+            return 'Research complete';
+        }
+        if (status === 'budget_exhausted') {
+            return 'Budget exhausted';
+        }
+        if (status === 'loop_stopped') {
+            return 'Stopped (loop detected)';
+        }
+        if (status === 'timed_out') {
+            return 'Research timed out';
+        }
+        if (status === 'throttled') {
+            return 'Rate limited — try again later';
+        }
+        if (status === 'aborted') {
+            return 'Research aborted';
+        }
+        if (status === 'failed') {
+            return reason || 'Research failed';
+        }
+
+        return 'Research complete';
     }
 }

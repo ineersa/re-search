@@ -38,6 +38,13 @@ final class OrchestratorTransitionService
             $run->setPhase(ResearchRunPhase::FAILED);
             $run->setFailureReason('Research timed out after '.self::WALL_CLOCK_TIMEOUT_SECONDS.' seconds');
             $run->setCompletedAt(new \DateTimeImmutable());
+            $this->eventPublisher->publishPhase(
+                $run->getRunUuid(),
+                $run->getPhaseValue(),
+                $run->getStatusValue(),
+                'Research timed out',
+                ['turnNumber' => $state->turnNumber],
+            );
 
             $this->stepRecorder->persistStep($run, $sequence, 'run_failed', $state->turnNumber, 'Wall-clock timeout', null);
             $this->eventPublisher->publishComplete($run->getRunUuid(), ['status' => ResearchRunStatus::TIMED_OUT->value]);

@@ -32,7 +32,7 @@ final class OrchestratorTurnProcessor
     private const DUPLICATE_TOOL_SIGNATURE_LIMIT = 2;
     private const ANSWER_ONLY_MESSAGE = 'Do not use any tools. Provide only your best final answer from the evidence gathered so far. Do not make further tool calls.';
     private const ANSWER_ONLY_RETRY_MESSAGE = 'You requested tools but answer-only mode is active. Provide your best final answer from the evidence gathered. No tool calls allowed.';
-    private const REWRITE_FORMAT_MESSAGE = "Rewrite your previous answer to satisfy the citation format exactly.\nDo not call tools. Reuse only already gathered evidence.\nRequirements:\n- End with a section header exactly: ## References\n- Each reference line must match this template: ¹ https://example.com/page (lines L12, L18)\n- Replace any citation markers like 【...】 with superscript numbers.";
+    private const REWRITE_FORMAT_MESSAGE = "Rewrite your previous answer to satisfy the citation format exactly.\nDo not call tools. Reuse only already gathered evidence.\nPreserve the same factual claims and source coverage from your previous answer; only fix formatting.\nRequirements:\n- End with a section header exactly: ## References\n- Each reference line must match this template: ¹ https://example.com/page (lines L12, L18)\n- Line ranges are allowed (for example: lines L334-L340).\n- Replace any citation markers like 【...】 with superscript numbers.";
 
     public function __construct(
         private readonly ResearchOperationRepository $operationRepository,
@@ -86,6 +86,10 @@ final class OrchestratorTurnProcessor
         $completionTokens = $this->payloadMapper->toNullableInt($result->completionTokens);
         $totalTokens = $this->payloadMapper->toNullableInt($result->totalTokens);
         $rawMetadata = $result->rawMetadata;
+        $reasoningText = null;
+        if (\is_string($result->reasoningText) && '' !== trim($result->reasoningText)) {
+            $reasoningText = trim($result->reasoningText);
+        }
 
         $this->llmInvocationRecorder->record(
             $run,
@@ -106,6 +110,17 @@ final class OrchestratorTurnProcessor
             $this->stepRecorder->persistTokenSnapshot($run, $sequence, $state->turnNumber, $promptTokens, $completionTokens, $totalTokens, $newBudgetUsed);
         }
         $this->eventPublisher->publishBudget($run->getRunUuid(), $this->runStateManager->budgetMeta($run, $newBudgetUsed));
+
+        if (null !== $reasoningText) {
+            $summary = \strlen($reasoningText) > 480 ? substr($reasoningText, 0, 480).'...' : $reasoningText;
+            $payload = $this->encodeJson(['reasoning' => $reasoningText]);
+            $reasoningSequence = $this->stepRecorder->persistStep($run, $sequence, 'assistant_reasoning', $state->turnNumber, $summary, $payload);
+            $this->eventPublisher->publishActivity($run->getRunUuid(), 'assistant_reasoning', $summary, [
+                'reasoning' => $reasoningText,
+                'sequence' => $reasoningSequence,
+                'turnNumber' => $state->turnNumber,
+            ]);
+        }
 
         if (!$isFinal && [] === $toolCalls && '' === trim($assistantText)) {
             ++$state->emptyResponseRetries;
@@ -144,9 +159,8 @@ final class OrchestratorTurnProcessor
             return $this->queueCurrentLlmTurn($run, $state, $sequence);
         }
 
-        $state->emptyResponseRetries = 0;
-
         if ($isFinal) {
+            $state->emptyResponseRetries = 0;
             $formatValidation = $this->validateFinalAnswerFormat($assistantText);
             if (!$formatValidation['valid']) {
                 ++$state->finalFormatRetries;
@@ -199,6 +213,7 @@ final class OrchestratorTurnProcessor
             $run->setPhase(ResearchRunPhase::COMPLETED);
             $run->setFailureReason(null);
             $run->setCompletedAt(new \DateTimeImmutable());
+            $this->publishPhase($run, 'Research complete');
 
             $this->stepRecorder->persistStep($run, $sequence, 'assistant_final', $state->turnNumber, $assistantText, null);
             $this->runStateManager->publishFinalAnswer($run->getRunUuid(), $assistantText);
@@ -208,6 +223,8 @@ final class OrchestratorTurnProcessor
 
             return NextAction::none();
         }
+
+        $state->emptyResponseRetries = 0;
 
         if ([] !== $toolCalls) {
             $assistantToolCalls = [];
@@ -240,6 +257,7 @@ final class OrchestratorTurnProcessor
                     $run->setLoopDetected(true);
                     $run->setFailureReason('Duplicate tool call detected (third identical call): '.$signature);
                     $run->setCompletedAt(new \DateTimeImmutable());
+                    $this->publishPhase($run, 'Stopped: duplicate tool call detected');
 
                     $loopSequence = $this->stepRecorder->persistStep($run, $sequence, 'loop_detected', $state->turnNumber, $signature, null);
                     $this->eventPublisher->publishActivity($run->getRunUuid(), 'loop_detected', 'Stopping: duplicate call', [
@@ -261,6 +279,7 @@ final class OrchestratorTurnProcessor
 
             $run->setPhase(ResearchRunPhase::WAITING_TOOLS);
             $run->setStatus(ResearchRunStatus::RUNNING);
+            $this->publishPhase($run, 'Waiting for tool call results', ['turnNumber' => $state->turnNumber]);
             $this->runStateManager->persistState($run, $state);
 
             return NextAction::dispatchTools($toolOperationKeys);
@@ -455,6 +474,7 @@ final class OrchestratorTurnProcessor
 
         $run->setStatus(ResearchRunStatus::RUNNING);
         $run->setPhase(ResearchRunPhase::WAITING_LLM);
+        $this->publishPhase($run, 'Waiting for LLM response', ['turnNumber' => $state->turnNumber]);
         $this->runStateManager->persistState($run, $state);
 
         return NextAction::dispatchLlm($operation->getIdempotencyKey());
@@ -568,6 +588,20 @@ final class OrchestratorTurnProcessor
     }
 
     /**
+     * @param array<string, mixed> $meta
+     */
+    private function publishPhase(ResearchRun $run, string $message, array $meta = []): void
+    {
+        $this->eventPublisher->publishPhase(
+            $run->getRunUuid(),
+            $run->getPhaseValue(),
+            $run->getStatusValue(),
+            $message,
+            $meta,
+        );
+    }
+
+    /**
      * @return array{valid: bool, issues: list<string>}
      */
     private function validateFinalAnswerFormat(string $markdown): array
@@ -603,7 +637,8 @@ final class OrchestratorTurnProcessor
             if ([] === $referenceLines) {
                 $issues[] = 'References section is empty.';
             } else {
-                $referenceLinePattern = '/^'.$superscriptPattern.'\s+https?:\/\/\S+\s+\(lines\s+L\d+(?:,\s*L\d+)*\)\s*$/u';
+                $lineToken = 'L\d+(?:\s*[-–—‑]\s*(?:L)?\d+)?';
+                $referenceLinePattern = '/^'.$superscriptPattern.'\s+https?:\/\/\S+\s+\(lines\s+'.$lineToken.'(?:,\s*'.$lineToken.')*\)\s*$/u';
                 foreach ($referenceLines as $line) {
                     if (1 !== preg_match($referenceLinePattern, $line)) {
                         $issues[] = sprintf('Invalid reference line format: %s', $line);

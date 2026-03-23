@@ -194,6 +194,13 @@ final class OrchestratorTickHandler
         $run->setCompletedAt(new \DateTimeImmutable());
         $run->setOrchestratorStateJson($state->toJson());
         $run->setOrchestrationVersion($run->getOrchestrationVersion() + 1);
+        $this->eventPublisher->publishPhase(
+            $run->getRunUuid(),
+            $run->getPhaseValue(),
+            $run->getStatusValue(),
+            $stepSummary,
+            ['turnNumber' => $state->turnNumber],
+        );
 
         $step = new ResearchStep();
         $step->setRun($run);

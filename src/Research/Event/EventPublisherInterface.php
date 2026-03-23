@@ -30,6 +30,13 @@ interface EventPublisherInterface
     public function publishBudget(string $runId, array $meta): void;
 
     /**
+     * Publish a run phase/status transition for live progress UI.
+     *
+     * @param array<string, mixed> $meta
+     */
+    public function publishPhase(string $runId, string $phase, string $status, string $message, array $meta = []): void;
+
+    /**
      * Publish run completion.
      *
      * @param array<string, mixed> $meta

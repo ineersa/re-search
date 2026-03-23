@@ -55,7 +55,7 @@ class ResearchRunRepository extends ServiceEntityRepository
     }
 
     /**
-     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: int|null, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
+     * @return array{run: array{id: string, query: string, status: string, phase: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: int|null, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
      */
     public function findRunWithSteps(string $runUuid): ?array
     {
@@ -84,6 +84,7 @@ class ResearchRunRepository extends ServiceEntityRepository
                 'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
                 'status' => $run->getStatusValue(),
+                'phase' => $run->getPhaseValue(),
                 'finalAnswerMarkdown' => $run->getFinalAnswerMarkdown(),
                 'tokenBudgetUsed' => $run->getTokenBudgetUsed(),
                 'tokenBudgetHardCap' => $run->getTokenBudgetHardCap(),
@@ -99,7 +100,7 @@ class ResearchRunRepository extends ServiceEntityRepository
     }
 
     /**
-     * @return array{run: array{id: string, query: string, status: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: int|null, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
+     * @return array{run: array{id: string, query: string, status: string, phase: string, finalAnswerMarkdown: string|null, tokenBudgetUsed: int|null, tokenBudgetHardCap: int|null, tokenBudgetEstimated: bool, loopDetected: bool, answerOnlyTriggered: bool, failureReason: string|null, createdAt: \DateTimeInterface|null, completedAt: \DateTimeInterface|null}, steps: list<array{id: int|null, sequence: int, type: string, turnNumber: int|null, toolName: string|null, summary: string|null, payloadJson: string|null, createdAt: \DateTimeInterface|null}>}|null
      */
     public function findRunWithStepsForClient(string $runUuid, string $clientKey): ?array
     {
@@ -128,6 +129,7 @@ class ResearchRunRepository extends ServiceEntityRepository
                 'id' => $run->getRunUuid(),
                 'query' => $run->getQuery(),
                 'status' => $run->getStatusValue(),
+                'phase' => $run->getPhaseValue(),
                 'finalAnswerMarkdown' => $run->getFinalAnswerMarkdown(),
                 'tokenBudgetUsed' => $run->getTokenBudgetUsed(),
                 'tokenBudgetHardCap' => $run->getTokenBudgetHardCap(),

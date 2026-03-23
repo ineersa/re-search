@@ -21,7 +21,9 @@ use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
+use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
+use Symfony\AI\Platform\Result\ThinkingContent;
 use Symfony\AI\Platform\Result\ToolCallResult;
 use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -95,10 +97,11 @@ final class ExecuteLlmOperationHandler
             $options = $this->buildOptions($request);
 
             $result = $this->invokeWithRetry($operation, $model, $messages, $options);
+            [$normalizedResult, $metadataSource, $reasoningText] = $this->normalizePlatformResult($result);
 
             $operation->setStatus(ResearchOperationStatus::SUCCEEDED);
             $operation->setErrorMessage(null);
-            $operation->setResultPayloadJson($this->encodeResultPayload($result));
+            $operation->setResultPayloadJson($this->encodeResultPayload($normalizedResult, $metadataSource, $reasoningText));
             $operation->setCompletedAt(new \DateTimeImmutable());
         } catch (\Throwable $exception) {
             $operation->setStatus(ResearchOperationStatus::FAILED);
@@ -142,20 +145,21 @@ final class ExecuteLlmOperationHandler
             unset($options['tools']);
         }
 
-        $options['stream'] = false;
-        unset($options['stream_options']);
+        $options['stream'] = true;
+        $options['stream_options'] = ['include_usage' => true];
 
         return $options;
     }
 
-    private function encodeResultPayload(ResultInterface $result): string
+    private function encodeResultPayload(ResultInterface $result, ?ResultInterface $metadataSource = null, ?string $reasoningText = null): string
     {
         $assistantText = '';
         $toolCalls = [];
-        $isFinal = true;
+        $isFinal = false;
 
         if ($result instanceof TextResult) {
             $assistantText = $result->getContent();
+            $isFinal = '' !== trim($assistantText);
         } elseif ($result instanceof ToolCallResult) {
             $isFinal = false;
             foreach ($result->getContent() as $toolCall) {
@@ -163,7 +167,8 @@ final class ExecuteLlmOperationHandler
             }
         }
 
-        $usage = $this->extractTokenUsage($result);
+        $usageSource = $metadataSource ?? $result;
+        $usage = $this->extractTokenUsage($usageSource);
 
         $payload = new LlmOperationResultPayload(
             assistantText: $assistantText,
@@ -172,8 +177,9 @@ final class ExecuteLlmOperationHandler
             promptTokens: $usage['promptTokens'],
             completionTokens: $usage['completionTokens'],
             totalTokens: $usage['totalTokens'],
-            rawMetadata: $this->payloadMapper->extractRawMetadata($result),
+            rawMetadata: $this->payloadMapper->extractRawMetadata($usageSource),
             resultClass: $result::class,
+            reasoningText: $reasoningText,
         );
 
         return $this->payloadMapper->encodeJson($payload);
@@ -197,6 +203,45 @@ final class ExecuteLlmOperationHandler
                 $this->recordRetryAttempt($operation, $attempt, $exception);
             }
         }
+    }
+
+    /**
+     * @return array{0: ResultInterface, 1: ResultInterface, 2: ?string}
+     */
+    private function normalizePlatformResult(ResultInterface $result): array
+    {
+        if (!$result instanceof StreamResult) {
+            return [$result, $result, null];
+        }
+
+        $assistantText = '';
+        $reasoningBuffer = '';
+        $toolCalls = [];
+
+        foreach ($result->getContent() as $chunk) {
+            if (\is_string($chunk)) {
+                $assistantText .= $chunk;
+
+                continue;
+            }
+
+            if ($chunk instanceof ThinkingContent) {
+                $reasoningBuffer .= $chunk->thinking;
+
+                continue;
+            }
+
+            if ($chunk instanceof ToolCallResult) {
+                $toolCalls = $chunk->getContent();
+            }
+        }
+
+        $reasoningText = '' !== trim($reasoningBuffer) ? trim($reasoningBuffer) : null;
+        if ([] !== $toolCalls) {
+            return [new ToolCallResult(...$toolCalls), $result, $reasoningText];
+        }
+
+        return [new TextResult($assistantText), $result, $reasoningText];
     }
 
     private function isRetriableTimeout(\Throwable $exception): bool

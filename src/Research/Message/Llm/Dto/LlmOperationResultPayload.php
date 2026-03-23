@@ -19,6 +19,7 @@ final readonly class LlmOperationResultPayload
         public ?int $totalTokens,
         public array $rawMetadata,
         public string $resultClass,
+        public ?string $reasoningText = null,
     ) {
     }
 }
