@@ -3,7 +3,7 @@ import { renderAnswerBody as renderAnswerBodyView, renderAnswerReferences as ren
 import { escapeHtml } from './research_ui/escape_html.js';
 import { jumpToTraceStep as scrollToTraceStep } from './research_ui/jump_trace.js';
 import { buildNoAnswerHtml } from './research_ui/run_format.js';
-import { buildTraceItem, renderTrace as renderTraceView } from './research_ui/trace_view.js';
+import { buildTraceItem, renderRunStatus as renderRunStatusView, renderTrace as renderTraceView } from './research_ui/trace_view.js';
 
 /**
  * Research UI controller: submits real runs, consumes Mercure events,
@@ -30,6 +30,7 @@ export default class extends Controller {
         'traceBody',
         'historyFrame',
         'tabs',
+        'runStatus',
         'results',
         'sidebar',
         'sidebarOverlay',
@@ -210,7 +211,7 @@ export default class extends Controller {
     appendActivity(payload) {
         const { stepType, summary, meta = {} } = payload;
 
-        this.applyActivityToProgress(stepType, summary);
+        this.applyActivityToProgress(stepType, summary, meta);
 
         if (stepType === 'assistant_stream') {
             this.appendAssistantStreamChunk(summary, meta);
@@ -402,6 +403,9 @@ export default class extends Controller {
 
     renderTrace() {
         renderTraceView({ toolCalls: this.toolCalls, traceBody: this.traceBodyTarget, progress: this.runProgress });
+        if (this.hasRunStatusTarget) {
+            renderRunStatusView({ progress: this.runProgress, runStatus: this.runStatusTarget });
+        }
     }
 
     reloadHistoryFrame() {
@@ -602,26 +606,37 @@ export default class extends Controller {
             hasRunStarted: false,
             llmTurns: 0,
             toolCallsCompleted: 0,
-            phaseMessage: 'Forming initial query',
+            phaseMessage: 'Planning first step',
         };
     }
 
-    applyActivityToProgress(stepType, summary) {
+    applyActivityToProgress(stepType, summary, meta = {}) {
         if (stepType === 'run_started') {
             this.runProgress = {
                 ...this.runProgress,
                 hasRunStarted: true,
-                phaseMessage: summary || this.runProgress.phaseMessage,
+                phaseMessage: 'Planning first step',
             };
 
             return;
         }
 
-        if (stepType === 'tool_succeeded' || stepType === 'tool_failed') {
+        if (stepType === 'tool_succeeded') {
+            const toolName = typeof meta.tool === 'string' ? meta.tool.trim() : '';
             this.runProgress = {
                 ...this.runProgress,
                 toolCallsCompleted: this.runProgress.toolCallsCompleted + 1,
-                phaseMessage: summary || this.runProgress.phaseMessage,
+                phaseMessage: toolName ? `Planning next step after ${toolName}` : 'Planning next step',
+            };
+
+            return;
+        }
+
+        if (stepType === 'tool_failed') {
+            this.runProgress = {
+                ...this.runProgress,
+                toolCallsCompleted: this.runProgress.toolCallsCompleted + 1,
+                phaseMessage: 'Recovering from tool error',
             };
 
             return;
@@ -630,7 +645,7 @@ export default class extends Controller {
         if (stepType === 'assistant_reasoning' || stepType === 'llm_retry' || stepType === 'answer_invalid_format' || stepType === 'assistant_empty') {
             this.runProgress = {
                 ...this.runProgress,
-                phaseMessage: summary || this.runProgress.phaseMessage,
+                phaseMessage: 'Planning next step',
             };
 
             return;
@@ -639,7 +654,7 @@ export default class extends Controller {
         if (stepType === 'assistant_stream') {
             this.runProgress = {
                 ...this.runProgress,
-                phaseMessage: 'Streaming model output',
+                phaseMessage: 'Writing answer',
             };
 
             return;
@@ -650,7 +665,7 @@ export default class extends Controller {
                 ...this.runProgress,
                 phase: 'failed',
                 status: 'loop_stopped',
-                phaseMessage: summary || this.runProgress.phaseMessage,
+                phaseMessage: summary || 'Stopped: loop detected',
             };
         }
     }

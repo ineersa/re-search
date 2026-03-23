@@ -109,9 +109,19 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-4 border-b border-[#333] px-4 pt-4" data-research-ui-target="tabs" data-active-tab="answer">
-                        <button class="border-none bg-transparent pb-3 font-semibold text-white border-b-2 border-white cursor-pointer tab-btn" type="button" data-tab="answer" data-action="click->research-ui#switchTab">Answer</button>
-                        <button class="border-none bg-transparent pb-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-white cursor-pointer tab-btn" type="button" data-tab="trace" data-action="click->research-ui#switchTab">Trace</button>
+                    <div class="flex items-end justify-between gap-3 border-b border-[#333] px-4 pt-4" data-research-ui-target="tabs" data-active-tab="answer">
+                        <div class="flex gap-4">
+                            <button class="border-none bg-transparent pb-3 font-semibold text-white border-b-2 border-white cursor-pointer tab-btn" type="button" data-tab="answer" data-action="click->research-ui#switchTab">Answer</button>
+                            <button class="border-none bg-transparent pb-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-white cursor-pointer tab-btn" type="button" data-tab="trace" data-action="click->research-ui#switchTab">Trace</button>
+                        </div>
+                        <div class="run-status-line pb-3 text-right text-[11px] text-gray-500 sm:text-xs whitespace-nowrap" data-research-ui-target="runStatus">
+                            <span class="run-status-count" style="text-transform: uppercase; letter-spacing: 0.08em;">Tool calls: 0</span>
+                            <span class="run-status-separator" style="margin: 0 0.45rem; color: #374151;">•</span>
+                            <span class="run-status-activity run-status-title-active" style="display: inline-flex; align-items: center; gap: 0.45rem;">
+                                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="display: inline-block; vertical-align: middle;"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="20 12"><animateTransform attributeName="transform" type="rotate" from="0 6 6" to="360 6 6" dur="0.9s" repeatCount="indefinite" /></circle></svg>
+                                <span>Planning first step</span>
+                            </span>
+                        </div>
                     </div>
 
                     <article class="max-h-[80vh] overflow-auto p-3 sm:p-4 font-mono text-sm" data-research-ui-target="answer">

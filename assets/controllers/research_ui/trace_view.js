@@ -63,13 +63,12 @@ export function buildTraceItem(stepType, toolName, summary, args, link, result =
  */
 export function renderTrace(ctx) {
     const { toolCalls, traceBody, progress } = ctx;
-    const progressPanel = renderTraceProgress(progress);
 
     if (toolCalls.length === 0) {
         const emptyMessage = isTerminalPhase(progress.phase) && progress.hasRunStarted
             ? 'Trace was pruned. Full trace is available only for the most recent 10 runs.'
             : 'No trace events yet.';
-        traceBody.innerHTML = `${progressPanel}<p class="trace-empty">${escapeHtml(emptyMessage)}</p>`;
+        traceBody.innerHTML = `<p class="trace-empty">${escapeHtml(emptyMessage)}</p>`;
 
         return;
     }
@@ -98,28 +97,24 @@ export function renderTrace(ctx) {
         )
         .join('');
 
-    traceBody.innerHTML = `${progressPanel}${items}`;
+    traceBody.innerHTML = items;
     attachTraceClickHandlers(traceBody);
 }
 
 /**
- * @param {TraceProgress} progress
- * @returns {string}
+ * @param {{ progress: TraceProgress, runStatus: HTMLElement }} ctx
  */
-function renderTraceProgress(progress) {
+export function renderRunStatus(ctx) {
+    const { progress, runStatus } = ctx;
     const phase = progress.phase || 'queued';
     const title = phaseTitle(phase, progress.phaseMessage);
-    const statusIcon = isTerminalPhase(phase)
-        ? '<span class="text-emerald-400">✓</span>'
-        : '<span class="inline-block h-2 w-2 animate-pulse rounded-full bg-sky-400"></span>';
-    const toolCallsCounter = `<p class="mt-2 mb-0 text-[11px] text-gray-500">Tool calls finished: ${progress.toolCallsCompleted}</p>`;
+    const titleClass = isTerminalPhase(phase) ? 'run-status-title-terminal' : 'run-status-title-active';
+    const marker = renderPhaseMarker(phase);
 
-    return `
-            <section class="border border-[#2a2a2a] bg-[#121212] p-3 trace-progress">
-                <p class="m-0 text-xs uppercase tracking-wider text-gray-500">Run status</p>
-                <p class="mt-1 mb-0 flex items-center gap-2 text-sm text-gray-200">${statusIcon}<span>${escapeHtml(title)}</span></p>
-                ${toolCallsCounter}
-            </section>
+    runStatus.innerHTML = `
+            <span class="run-status-count" style="text-transform: uppercase; letter-spacing: 0.08em;">Tool calls: ${progress.toolCallsCompleted}</span>
+            <span class="run-status-separator" style="margin: 0 0.45rem; color: #374151;">•</span>
+            <span class="run-status-activity ${titleClass}" style="display: inline-flex; align-items: center; gap: 0.45rem;">${marker}<span>${escapeHtml(title)}</span></span>
         `;
 }
 
@@ -129,21 +124,73 @@ function renderTraceProgress(progress) {
  * @returns {string}
  */
 function phaseTitle(phase, phaseMessage) {
-    if (phaseMessage && phaseMessage.trim().length > 0) {
-        return phaseMessage;
+    const normalizedPhaseMessage = normalizePhaseMessage(phaseMessage);
+    if (normalizedPhaseMessage) {
+        return normalizedPhaseMessage;
     }
 
     const labels = {
-        queued: 'Forming initial query',
-        running: 'Starting run',
-        waiting_llm: 'Waiting for LLM response',
-        waiting_tools: 'Waiting for tool call results',
-        completed: 'Research complete',
-        failed: 'Research failed',
-        aborted: 'Research aborted',
+        queued: 'Planning first step',
+        running: 'Planning next step',
+        waiting_llm: 'Waiting for model response',
+        waiting_tools: 'Waiting for tool results',
+        completed: 'Done',
+        failed: 'Stopped with an error',
+        aborted: 'Stopped',
     };
 
-    return labels[phase || 'queued'] || 'Running';
+    return labels[phase || 'queued'] || 'Planning next step';
+}
+
+/**
+ * @param {string|null} phaseMessage
+ * @returns {string|null}
+ */
+function normalizePhaseMessage(phaseMessage) {
+    if (!phaseMessage || phaseMessage.trim().length === 0) {
+        return null;
+    }
+
+    const message = phaseMessage.trim();
+    const lowerMessage = message.toLowerCase();
+
+    if (lowerMessage.startsWith('executed ')) {
+        return 'Planning next step';
+    }
+
+    if (lowerMessage.startsWith('tool error:')) {
+        return 'Recovering from tool error';
+    }
+
+    if (lowerMessage === 'forming initial query') {
+        return 'Planning first step';
+    }
+
+    if (lowerMessage === 'waiting for llm response') {
+        return 'Waiting for model response';
+    }
+
+    if (lowerMessage === 'waiting for tool call results') {
+        return 'Waiting for tool results';
+    }
+
+    if (lowerMessage === 'streaming model output') {
+        return 'Writing answer';
+    }
+
+    if (lowerMessage === 'research complete') {
+        return 'Done';
+    }
+
+    if (lowerMessage === 'research aborted') {
+        return 'Stopped';
+    }
+
+    if (lowerMessage === 'research failed') {
+        return 'Stopped with an error';
+    }
+
+    return message;
 }
 
 /**
@@ -152,6 +199,30 @@ function phaseTitle(phase, phaseMessage) {
  */
 function isTerminalPhase(phase) {
     return phase === 'completed' || phase === 'failed' || phase === 'aborted';
+}
+
+/**
+ * @param {TraceProgress['phase']} phase
+ * @returns {string}
+ */
+function renderPhaseMarker(phase) {
+    if (phase === 'completed') {
+        return '<span class="run-status-icon run-status-icon-done" aria-hidden="true" style="display: inline-flex; align-items: center; justify-content: center; width: 0.95rem; height: 0.95rem; border-radius: 999px; background: rgba(16, 185, 129, 0.18); color: #6ee7b7; font-size: 0.65rem; line-height: 1;">✓</span>';
+    }
+
+    if (phase === 'failed') {
+        return '<span class="run-status-icon run-status-icon-failed" aria-hidden="true" style="display: inline-flex; align-items: center; justify-content: center; width: 0.95rem; height: 0.95rem; border-radius: 999px; background: rgba(244, 63, 94, 0.2); color: #fda4af; font-size: 0.65rem; line-height: 1;">!</span>';
+    }
+
+    if (phase === 'aborted') {
+        return '<span class="run-status-icon run-status-icon-aborted" aria-hidden="true" style="display: inline-flex; align-items: center; justify-content: center; width: 0.95rem; height: 0.95rem; border-radius: 999px; background: rgba(245, 158, 11, 0.2); color: #fcd34d; font-size: 0.6rem; line-height: 1;">■</span>';
+    }
+
+    if (phase === 'waiting_llm' || phase === 'waiting_tools') {
+        return '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="display: inline-block; vertical-align: middle;"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="20 12"><animateTransform attributeName="transform" type="rotate" from="0 6 6" to="360 6 6" dur="0.9s" repeatCount="indefinite" /></circle></svg>';
+    }
+
+    return '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="display: inline-block; vertical-align: middle;"><circle cx="6" cy="6" r="4" fill="#7dd3fc"><animate attributeName="opacity" values="1;0.35;1" dur="1.1s" repeatCount="indefinite" /></circle></svg>';
 }
 
 /**

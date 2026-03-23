@@ -93,3 +93,94 @@ code, pre, kbd, samp, tt, .font-mono {
     border-color: #60a5fa;
     box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
 }
+
+.run-status-line {
+    color: #6b7280;
+}
+
+.run-status-count {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.run-status-separator {
+    margin: 0 0.45rem;
+    color: #374151;
+}
+
+.run-status-activity {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.run-status-title-active {
+    color: #bae6fd;
+    font-weight: 500;
+}
+
+.run-status-title-terminal {
+    color: #d1d5db;
+}
+
+.run-status-spinner {
+    display: inline-block;
+    width: 0.78rem;
+    height: 0.78rem;
+    border: 2px solid #38bdf8;
+    border-top-color: transparent;
+    border-radius: 999px;
+    animation: run-status-spin 0.9s linear infinite;
+}
+
+.run-status-pulse {
+    position: relative;
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 999px;
+    background: #7dd3fc;
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
+    animation: run-status-pulse 1.25s ease-out infinite;
+}
+
+.run-status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.95rem;
+    height: 0.95rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    line-height: 1;
+}
+
+.run-status-icon-done {
+    color: #6ee7b7;
+    background: rgba(16, 185, 129, 0.18);
+}
+
+.run-status-icon-failed {
+    color: #fda4af;
+    background: rgba(244, 63, 94, 0.2);
+}
+
+.run-status-icon-aborted {
+    color: #fcd34d;
+    background: rgba(245, 158, 11, 0.2);
+}
+
+@keyframes run-status-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes run-status-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.6);
+    }
+
+    100% {
+        box-shadow: 0 0 0 7px rgba(56, 189, 248, 0);
+    }
+}
