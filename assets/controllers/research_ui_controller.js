@@ -212,6 +212,13 @@ export default class extends Controller {
 
         this.applyActivityToProgress(stepType, summary);
 
+        if (stepType === 'assistant_stream') {
+            this.appendAssistantStreamChunk(summary, meta);
+            this.renderTrace();
+
+            return;
+        }
+
         const toolName = meta.tool || stepType;
         const args = meta.arguments || {};
         const link = meta.url || meta.link || null;
@@ -223,6 +230,27 @@ export default class extends Controller {
         this.toolCalls.push(traceItem);
         this.renderTrace();
         this.renderAnswerReferences();
+    }
+
+    appendAssistantStreamChunk(summary, meta = {}) {
+        const textChunk = typeof summary === 'string' ? summary : '';
+        if (textChunk.length === 0) {
+            return;
+        }
+
+        const turnNumber = Number.isInteger(meta.turnNumber) ? meta.turnNumber : (Number.isInteger(meta.turn) ? meta.turn : null);
+        const last = this.toolCalls.length > 0 ? this.toolCalls[this.toolCalls.length - 1] : null;
+        const sameTurn = Number.isInteger(turnNumber)
+            ? (Number.isInteger(last?.turnNumber) && last.turnNumber === turnNumber)
+            : !Number.isInteger(last?.turnNumber);
+
+        if (last && last.type === 'assistant_stream' && sameTurn) {
+            last.message += textChunk;
+
+            return;
+        }
+
+        this.toolCalls.push(buildTraceItem('assistant_stream', 'assistant stream', textChunk, {}, null, null, null, turnNumber));
     }
 
     updatePhase(payload) {
@@ -603,6 +631,15 @@ export default class extends Controller {
             this.runProgress = {
                 ...this.runProgress,
                 phaseMessage: summary || this.runProgress.phaseMessage,
+            };
+
+            return;
+        }
+
+        if (stepType === 'assistant_stream') {
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: 'Streaming model output',
             };
 
             return;

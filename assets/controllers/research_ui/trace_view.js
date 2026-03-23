@@ -2,7 +2,7 @@ import { escapeHtml } from './escape_html.js';
 
 /**
  * @typedef {object} TraceCall
- * @property {'run_started'|'reasoning'|'trace_pruned'|'tool'} type
+ * @property {'run_started'|'reasoning'|'assistant_stream'|'trace_pruned'|'tool'} type
  * @property {string} label
  * @property {string} message
  * @property {Record<string, unknown>} arguments
@@ -38,14 +38,15 @@ import { escapeHtml } from './escape_html.js';
 export function buildTraceItem(stepType, toolName, summary, args, link, result = null, sequence = null, turnNumber = null) {
     const isRunStarted = stepType === 'run_started';
     const isReasoning = stepType === 'assistant_reasoning';
+    const isAssistantStream = stepType === 'assistant_stream';
     const isPruned = stepType === 'trace_pruned';
     const url = /** @type {string|null} */ (args.url || link || null);
     const query = /** @type {string|null} */ (args.query ?? null);
     const filter = /** @type {string|null} */ (args.query ?? args.selector ?? null);
 
     return {
-        type: isRunStarted ? 'run_started' : (isReasoning ? 'reasoning' : (isPruned ? 'trace_pruned' : 'tool')),
-        label: isReasoning ? 'reasoning' : (isPruned ? 'trace pruned' : toolName),
+        type: isRunStarted ? 'run_started' : (isReasoning ? 'reasoning' : (isAssistantStream ? 'assistant_stream' : (isPruned ? 'trace_pruned' : 'tool'))),
+        label: isReasoning ? 'reasoning' : (isAssistantStream ? 'assistant stream' : (isPruned ? 'trace pruned' : toolName)),
         message: summary || '',
         arguments: args,
         query,
@@ -82,6 +83,10 @@ export function renderTrace(ctx) {
 
                 if (call.type === 'reasoning') {
                     return renderTraceReasoning(index, call);
+                }
+
+                if (call.type === 'assistant_stream') {
+                    return renderTraceAssistantStream(index, call);
                 }
 
                 if (call.type === 'trace_pruned') {
@@ -241,6 +246,22 @@ function renderTraceReasoning(index, call) {
             <article class="border border-[#2f2f2f] bg-[#151515] p-3 trace-card" data-trace-index="${index}"${sequenceAttr}>
                 <p class="m-0 text-xs uppercase tracking-wider text-gray-500">#${index + 1} reasoning</p>
                 <p class="mt-1 leading-relaxed text-gray-300 whitespace-pre-wrap break-words">${safeMessage}</p>
+            </article>
+        `;
+}
+
+/**
+ * @param {number} index
+ * @param {TraceCall} call
+ */
+function renderTraceAssistantStream(index, call) {
+    const safeMessage = escapeHtml(call.message);
+    const sequenceAttr = Number.isInteger(call.sequence) ? ` data-step-sequence="${call.sequence}"` : '';
+
+    return `
+            <article class="border border-sky-700/40 bg-sky-950/20 p-3 trace-card" data-trace-index="${index}"${sequenceAttr}>
+                <p class="m-0 text-xs uppercase tracking-wider text-sky-400">#${index + 1} assistant stream</p>
+                <p class="mt-1 leading-relaxed text-sky-100 whitespace-pre-wrap break-words">${safeMessage}</p>
             </article>
         `;
 }

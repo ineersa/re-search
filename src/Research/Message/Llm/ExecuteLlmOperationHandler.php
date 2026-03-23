@@ -34,6 +34,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 final class ExecuteLlmOperationHandler
 {
     private const MAX_LLM_ATTEMPTS = 2;
+    private const TRACE_STREAM_CHUNK_SIZE = 160;
 
     public function __construct(
         private readonly ResearchOperationRepository $operationRepository,
@@ -97,7 +98,11 @@ final class ExecuteLlmOperationHandler
             $options = $this->buildOptions($request);
 
             $result = $this->invokeWithRetry($operation, $model, $messages, $options);
-            [$normalizedResult, $metadataSource, $reasoningText] = $this->normalizePlatformResult($result);
+            [$normalizedResult, $metadataSource, $reasoningText] = $this->normalizePlatformResult(
+                $result,
+                $runId,
+                $operation->getTurnNumber(),
+            );
 
             $operation->setStatus(ResearchOperationStatus::SUCCEEDED);
             $operation->setErrorMessage(null);
@@ -208,7 +213,7 @@ final class ExecuteLlmOperationHandler
     /**
      * @return array{0: ResultInterface, 1: ResultInterface, 2: ?string}
      */
-    private function normalizePlatformResult(ResultInterface $result): array
+    private function normalizePlatformResult(ResultInterface $result, string $runId, int $turnNumber): array
     {
         if (!$result instanceof StreamResult) {
             return [$result, $result, null];
@@ -217,10 +222,15 @@ final class ExecuteLlmOperationHandler
         $assistantText = '';
         $reasoningBuffer = '';
         $toolCalls = [];
+        $toolCallIndexesById = [];
+        $textStreamBuffer = '';
+        $streamChunkIndex = 0;
 
         foreach ($result->getContent() as $chunk) {
             if (\is_string($chunk)) {
                 $assistantText .= $chunk;
+                $textStreamBuffer .= $chunk;
+                $this->flushAssistantStreamBuffer($runId, $turnNumber, $textStreamBuffer, $streamChunkIndex);
 
                 continue;
             }
@@ -232,9 +242,24 @@ final class ExecuteLlmOperationHandler
             }
 
             if ($chunk instanceof ToolCallResult) {
-                $toolCalls = $chunk->getContent();
+                foreach ($chunk->getContent() as $toolCall) {
+                    $toolCallId = method_exists($toolCall, 'getId') ? $toolCall->getId() : null;
+                    if (\is_string($toolCallId) && '' !== trim($toolCallId)) {
+                        if (array_key_exists($toolCallId, $toolCallIndexesById)) {
+                            $toolCalls[$toolCallIndexesById[$toolCallId]] = $toolCall;
+
+                            continue;
+                        }
+
+                        $toolCallIndexesById[$toolCallId] = \count($toolCalls);
+                    }
+
+                    $toolCalls[] = $toolCall;
+                }
             }
         }
+
+        $this->flushAssistantStreamBuffer($runId, $turnNumber, $textStreamBuffer, $streamChunkIndex, true);
 
         $reasoningText = '' !== trim($reasoningBuffer) ? trim($reasoningBuffer) : null;
         if ([] !== $toolCalls) {
@@ -242,6 +267,47 @@ final class ExecuteLlmOperationHandler
         }
 
         return [new TextResult($assistantText), $result, $reasoningText];
+    }
+
+    private function flushAssistantStreamBuffer(
+        string $runId,
+        int $turnNumber,
+        string &$buffer,
+        int &$chunkIndex,
+        bool $force = false,
+    ): void {
+        if ('' === $buffer) {
+            return;
+        }
+
+        while (mb_strlen($buffer) >= self::TRACE_STREAM_CHUNK_SIZE) {
+            $chunk = mb_substr($buffer, 0, self::TRACE_STREAM_CHUNK_SIZE);
+            $buffer = mb_substr($buffer, self::TRACE_STREAM_CHUNK_SIZE);
+            $this->publishAssistantStreamChunk($runId, $turnNumber, $chunk, $chunkIndex);
+        }
+
+        if (!$force) {
+            return;
+        }
+
+        if ('' !== $buffer) {
+            $this->publishAssistantStreamChunk($runId, $turnNumber, $buffer, $chunkIndex);
+            $buffer = '';
+        }
+    }
+
+    private function publishAssistantStreamChunk(string $runId, int $turnNumber, string $chunk, int &$chunkIndex): void
+    {
+        if ('' === $chunk) {
+            return;
+        }
+
+        $this->eventPublisher->publishActivity($runId, 'assistant_stream', $chunk, [
+            'turnNumber' => $turnNumber,
+            'chunkIndex' => $chunkIndex,
+        ]);
+
+        ++$chunkIndex;
     }
 
     private function isRetriableTimeout(\Throwable $exception): bool
