@@ -121,6 +121,7 @@
         }
     },
     "require-dev": {
+        "dama/doctrine-test-bundle": "^8.6",
         "friendsofphp/php-cs-fixer": "^3.94.2",
         "matesofmate/common": "dev-main",
         "matesofmate/composer-extension": "dev-main",

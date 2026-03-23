@@ -9,7 +9,7 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /**
- * Enforces research submit rate limits using IP + session identity.
+ * Enforces research submit rate limits per client IP.
  */
 final class ResearchThrottle
 {
@@ -19,25 +19,32 @@ final class ResearchThrottle
     }
 
     /**
-     * Consume one token for the current request. Throws TooManyRequestsHttpException if limit exceeded.
+     * Check if one token is available for the current request without consuming it. Throws TooManyRequestsHttpException if limit exceeded.
      */
-    public function consume(Request $request): void
+    public function peek(Request $request): void
     {
-        $identifier = $this->buildIdentifier($request);
+        $identifier = $this->clientIp($request);
         $limiter = $this->researchSubmitLimiter->create($identifier);
 
-        $limit = $limiter->consume(1);
-        if (false === $limit->isAccepted()) {
-            $retryAfter = $limit->getRetryAfter()->getTimestamp();
-            throw new TooManyRequestsHttpException($retryAfter - time(), 'Research request rate limit exceeded. Please try again later.');
+        $limit = $limiter->consume(0);
+        if ($limit->getRemainingTokens() < 1) {
+            // Coarse hint for daily sliding window; UI copy matches ("retry tomorrow").
+            throw new TooManyRequestsHttpException(86400, 'Research request rate limit exceeded. Please try again later.');
         }
     }
 
-    private function buildIdentifier(Request $request): string
+    /**
+     * Consume one token for the given client key.
+     */
+    public function consumeByClientKey(string $clientKey): void
     {
-        $ip = $request->getClientIp() ?? 'unknown';
-        $sessionId = $request->hasSession() ? $request->getSession()->getId() : 'no-session';
+        $ip = explode('|', $clientKey)[0];
+        $limiter = $this->researchSubmitLimiter->create($ip);
+        $limiter->consume(1);
+    }
 
-        return $ip.'|'.$sessionId;
+    private function clientIp(Request $request): string
+    {
+        return $request->getClientIp() ?? 'unknown';
     }
 }

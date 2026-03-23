@@ -51,7 +51,6 @@ export default class extends Controller {
     answerStreamingStarted = false;
 
     connect() {
-        this.timer = null;
         this.eventSource = null;
         this.activeTab = 'answer';
         this.toolCalls = [];
@@ -132,12 +131,11 @@ export default class extends Controller {
                 if (response.status === 429) {
                     this.element.classList.remove('is-searching');
                     this.element.classList.add('is-complete');
-                    const retrySec = data.retryAfter ?? 600;
                     this.runProgress = {
                         ...this.runProgress,
                         status: 'throttled',
                         phase: 'failed',
-                        phaseMessage: `Rate limited — retry in ${Math.ceil(retrySec / 60)} min`,
+                        phaseMessage: 'Rate limited - retry tomorrow!',
                     };
                     this.renderTrace();
                 } else {
@@ -247,12 +245,6 @@ export default class extends Controller {
 
     appendAnswer(payload) {
         const { markdown, isFinal } = payload;
-        if (isFinal && markdown && this.accumulatedMarkdown.trim().length === 0 && !this.answerStreamingStarted) {
-            this.playbackFinalAnswer(markdown);
-
-            return;
-        }
-
         if (markdown) {
             const hadContentBefore = this.accumulatedMarkdown.trim().length > 0;
             this.accumulatedMarkdown += markdown;
@@ -270,45 +262,6 @@ export default class extends Controller {
         }
 
         this.renderAnswerReferences();
-    }
-
-    playbackFinalAnswer(markdown) {
-        if (this.timer) {
-            clearTimeout(this.timer);
-            this.timer = null;
-        }
-
-        const chunkSize = 72;
-        const delayMs = 22;
-        let index = 0;
-
-        const tick = () => {
-            const next = markdown.slice(index, index + chunkSize);
-            if (next.length > 0) {
-                const hadContentBefore = this.accumulatedMarkdown.trim().length > 0;
-                this.accumulatedMarkdown += next;
-                this.renderAnswerBody();
-
-                if (!this.answerStreamingStarted && !hadContentBefore && this.accumulatedMarkdown.trim().length > 0) {
-                    this.answerStreamingStarted = true;
-                    this.showAnswerTab();
-                }
-            }
-
-            index += chunkSize;
-            if (index < markdown.length) {
-                this.timer = setTimeout(tick, delayMs);
-
-                return;
-            }
-
-            this.timer = null;
-            this.updateRenderModeToggleVisibility(true);
-            this.showAnswerTab();
-            this.renderAnswerReferences();
-        };
-
-        tick();
     }
 
     updateBudget(payload) {
@@ -364,10 +317,6 @@ export default class extends Controller {
     }
 
     cancelRun() {
-        if (this.timer) {
-            clearTimeout(this.timer);
-            this.timer = null;
-        }
         this.closeEventSource();
         this.updateCancelButtonVisibility(false);
 

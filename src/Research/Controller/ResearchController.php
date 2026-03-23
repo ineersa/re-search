@@ -120,25 +120,23 @@ final class ResearchController extends AbstractController
         $clientKey = $this->buildClientKey($request);
 
         try {
-            $throttle->consume($request);
-        } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException $e) {
+            $throttle->peek($request);
+        } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException) {
             $run = new ResearchRun();
             $run->setQuery('' !== $query ? $query : '(throttled)');
             $run->setQueryHash('' !== $query ? hash('sha256', $query) : '');
             $run->setClientKey($clientKey);
             $run->setStatus(ResearchRunStatus::THROTTLED);
-            $run->setFailureReason('Rate limit exceeded. Please try again later.');
+            $run->setFailureReason('Rate limited - retry tomorrow!');
             $entityManager->persist($run);
             $entityManager->flush();
-
-            $retryAfter = $e->getHeaders()['Retry-After'] ?? 600;
 
             return new JsonResponse([
                 'status' => ResearchRunStatus::THROTTLED->value,
                 'runId' => $run->getRunUuid(),
-                'retryAfter' => (int) $retryAfter,
+                'retryAfter' => 86400,
             ], Response::HTTP_TOO_MANY_REQUESTS, [
-                'Retry-After' => (string) $retryAfter,
+                'Retry-After' => '86400',
             ]);
         }
 

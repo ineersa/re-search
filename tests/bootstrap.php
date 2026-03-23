@@ -15,7 +15,7 @@ if ($_SERVER['APP_DEBUG'] ?? false) {
     umask(0000);
 }
 
-// In-memory SQLite: run migrations once per test process
+// Test DATABASE_URL (see .env.test): run migrations once per test process
 if (($_SERVER['APP_ENV'] ?? '') === 'test') {
     $kernel = new \App\Kernel('test', true);
     $kernel->boot();

@@ -1,6 +1,0 @@
-# In-memory SQLite for tests - no real database writes
-# Override dbname_suffix (from main doctrine.yaml when@test) as it breaks :memory:
-doctrine:
-    dbal:
-        url: 'sqlite:///:memory:'
-        dbname_suffix: null

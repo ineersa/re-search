@@ -12,6 +12,8 @@ use App\Research\Orchestration\Dto\OrchestratorState;
 
 final class OrchestratorRunStateManager
 {
+    private const FINAL_ANSWER_CHUNK_SIZE = 320;
+
     public function __construct(
         private readonly OrchestratorStepRecorder $stepRecorder,
         private readonly EventPublisherInterface $eventPublisher,
@@ -93,6 +95,29 @@ final class OrchestratorRunStateManager
 
     public function publishFinalAnswer(string $runId, string $markdown): void
     {
-        $this->eventPublisher->publishAnswer($runId, $markdown, true);
+        foreach ($this->chunkAnswer($markdown) as $chunk) {
+            $this->eventPublisher->publishAnswer($runId, $chunk, false);
+        }
+
+        $this->eventPublisher->publishAnswer($runId, '', true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function chunkAnswer(string $markdown): array
+    {
+        if ('' === $markdown) {
+            return [];
+        }
+
+        $chunkPattern = '/.{1,'.self::FINAL_ANSWER_CHUNK_SIZE.'}/us';
+        if (false === preg_match_all($chunkPattern, $markdown, $matches)) {
+            return [$markdown];
+        }
+
+        $chunks = $matches[0] ?? [];
+
+        return [] === $chunks ? [$markdown] : $chunks;
     }
 }

@@ -27,7 +27,7 @@ sequenceDiagram
     participant M as Mercure
 
     B->>C: POST /research/runs
-    C->>T: consume()
+    C->>T: peek() / consume(0)
     T-->>C: accepted
     C->>DB: create ResearchRun (queued)
     C->>OQ: OrchestratorTick(runId)
@@ -52,8 +52,9 @@ sequenceDiagram
             TH->>MCP: execute websearch tool
             TH->>DB: persist operation result
             TH->>OQ: OrchestratorTick(runId)
-        else terminal (none)
+        else terminal (final answer)
             OTP->>DB: persist final answer + status
+            OTP->>T: consumeByClientKey(clientKey) [on completed only]
         end
 
         OTP->>M: publish activity/answer/budget/complete
@@ -72,13 +73,14 @@ All handlers are intentionally short and finite. Long work is split across multi
 ## Request Lifecycle
 
 1. **Submission**: frontend sends query to `ResearchController::submit()`.
-2. **Rate limit gate**: `ResearchThrottle` checks `IP|Session ID` using Symfony RateLimiter.
+2. **Rate limit preflight**: `ResearchThrottle::peek()` checks client IP quota via Symfony RateLimiter (`consume(0)`, no token consumption).
 3. **Run creation**: `ResearchRun` is stored with `status=queued`, `phase=queued`, and a Mercure topic.
 4. **Initial tick dispatch**: controller dispatches `OrchestratorTick(runId)` directly to the `orchestrator` transport.
 5. **Orchestrator transition**: `OrchestratorTickHandler` acquires a per-run lock and delegates to `OrchestratorTransitionService`.
 6. **LLM/tools fan-out**: transition logic creates `ResearchOperation` rows and dispatches either LLM or tool operation messages.
 7. **Worker completion feedback**: LLM/tool handlers persist operation results and dispatch a new `OrchestratorTick`.
 8. **Run completion**: when terminal, final answer and status are persisted and a `complete` event is published.
+9. **Token consumption on success**: one limiter token is consumed only when a run reaches `completed` (not on failed/aborted/throttled runs).
 
 ## Orchestrator State Machine
 
@@ -176,7 +178,11 @@ The answer/reference UI consumes streamed markdown and maps references back to t
 
 `App\Research\Throttle\ResearchThrottle`:
 
-- identifier: `IP|Session ID`
+- identifier: client IP only (`Request::getClientIp()`)
+- policy: Symfony `sliding_window`, interval `1 day`
+- per-day limit: `%env(int:RESEARCH_SUBMIT_RATE_LIMIT)%` (production default is `2`, set in `.env.prod`)
+- submit behavior: `peek()` uses `consume(0)` to check quota before run creation (no token spent at submit time)
+- token spend point: `consumeByClientKey()` is called after successful finalization (`status=completed`)
 - on limit exceed: request is recorded as `throttled`, API returns `429` with `Retry-After`
 
 ### Runtime safeguards (tick transitions)

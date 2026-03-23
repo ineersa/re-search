@@ -1,7 +1,7 @@
-# Research submit throttling: IP + session identity — 10 requests per day
+# Research submit throttling: per client IP (limit from RESEARCH_SUBMIT_RATE_LIMIT)
 framework:
     rate_limiter:
         research_submit:
             policy: 'sliding_window'
-            limit: 10
+            limit: '%env(int:RESEARCH_SUBMIT_RATE_LIMIT)%'
             interval: '1 day'

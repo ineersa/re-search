@@ -1956,8 +1956,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  * }
  * @psalm-type MercureConfig = array{
  *     hubs?: array<string, array{ // Default: []
- *         url?: scalar|Param|null, // URL of the hub's publish endpoint
- *         public_url?: scalar|Param|null, // URL of the hub's public endpoint // Default: null
+ *         url?: scalar|Param|null, // URL of the hub's publish endpoint // Default: null
+ *         public_url?: scalar|Param|null, // URL of the hub's public endpoint
  *         jwt?: string|array{ // JSON Web Token configuration.
  *             value?: scalar|Param|null, // JSON Web Token to use to publish to this hub.
  *             provider?: scalar|Param|null, // The ID of a service to call to provide the JSON Web Token.
@@ -1974,6 +1974,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     default_hub?: scalar|Param|null,
  *     default_cookie_lifetime?: int|Param, // Default lifetime of the cookie containing the JWT, in seconds. Defaults to the value of "framework.session.cookie_lifetime". // Default: null
  *     enable_profiler?: bool|Param, // Deprecated: The child node "enable_profiler" at path "mercure.enable_profiler" is deprecated. // Enable Symfony Web Profiler integration.
+ * }
+ * @psalm-type DamaDoctrineTestConfig = array{
+ *     enable_static_connection?: mixed, // Default: true
+ *     enable_static_meta_data_cache?: bool|Param, // Default: true
+ *     enable_static_query_cache?: bool|Param, // Default: true
+ *     connection_keys?: list<mixed>,
  * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
@@ -2049,6 +2055,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         ai?: AiConfig,
  *         stof_doctrine_extensions?: StofDoctrineExtensionsConfig,
  *         mercure?: MercureConfig,
+ *         dama_doctrine_test?: DamaDoctrineTestConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,
