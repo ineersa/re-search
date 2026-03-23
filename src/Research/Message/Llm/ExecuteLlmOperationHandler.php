@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Research\Message\Llm;
 
-use App\Entity\ResearchOperation;
 use App\Entity\Enum\ResearchOperationStatus;
 use App\Entity\Enum\ResearchOperationType;
+use App\Entity\ResearchOperation;
+use App\Entity\ResearchStep;
 use App\Repository\ResearchOperationRepository;
+use App\Repository\ResearchStepRepository;
+use App\Research\Event\EventPublisherInterface;
 use App\Research\Message\Llm\Dto\LlmOperationRequest;
 use App\Research\Message\Llm\Dto\LlmOperationResultPayload;
 use App\Research\Message\Llm\Dto\LlmOperationResultToolCall;
@@ -15,6 +18,7 @@ use App\Research\Message\Orchestrator\OrchestratorTick;
 use App\Research\Orchestration\OrchestratorOperationPayloadMapper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
+use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
@@ -27,12 +31,16 @@ use Symfony\Component\Messenger\MessageBusInterface;
 #[AsMessageHandler(fromTransport: 'llm')]
 final class ExecuteLlmOperationHandler
 {
+    private const MAX_LLM_ATTEMPTS = 2;
+
     public function __construct(
         private readonly ResearchOperationRepository $operationRepository,
+        private readonly ResearchStepRepository $stepRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly PlatformInterface $platform,
         private readonly ToolboxInterface $toolbox,
         private readonly OrchestratorOperationPayloadMapper $payloadMapper,
+        private readonly EventPublisherInterface $eventPublisher,
         private readonly MessageBusInterface $bus,
         #[Autowire('%research.model%')]
         private readonly string $defaultModel,
@@ -86,7 +94,7 @@ final class ExecuteLlmOperationHandler
             $messages = $this->payloadMapper->toMessageBag($request);
             $options = $this->buildOptions($request);
 
-            $result = $this->platform->invoke($model, $messages, $options)->getResult();
+            $result = $this->invokeWithRetry($operation, $model, $messages, $options);
 
             $operation->setStatus(ResearchOperationStatus::SUCCEEDED);
             $operation->setErrorMessage(null);
@@ -172,6 +180,66 @@ final class ExecuteLlmOperationHandler
     }
 
     /**
+     * @param array<string, mixed> $options
+     */
+    private function invokeWithRetry(ResearchOperation $operation, string $model, MessageBag $messages, array $options): ResultInterface
+    {
+        $attempt = 0;
+        while (true) {
+            ++$attempt;
+            try {
+                return $this->platform->invoke($model, $messages, $options)->getResult();
+            } catch (\Throwable $exception) {
+                if ($attempt >= self::MAX_LLM_ATTEMPTS || !$this->isRetriableTimeout($exception)) {
+                    throw $exception;
+                }
+
+                $this->recordRetryAttempt($operation, $attempt, $exception);
+            }
+        }
+    }
+
+    private function isRetriableTimeout(\Throwable $exception): bool
+    {
+        $message = mb_strtolower($exception->getMessage());
+
+        return str_contains($message, 'idle timeout')
+            || str_contains($message, 'timed out')
+            || str_contains($message, 'timeout reached');
+    }
+
+    private function recordRetryAttempt(ResearchOperation $operation, int $attempt, \Throwable $exception): void
+    {
+        $run = $operation->getRun();
+        $sequence = $this->stepRepository->nextSequenceForRun($run);
+        $summary = sprintf('LLM timeout on attempt %d/%d, retrying', $attempt, self::MAX_LLM_ATTEMPTS);
+        $payload = $this->payloadMapper->encodeJson([
+            'attempt' => $attempt,
+            'maxAttempts' => self::MAX_LLM_ATTEMPTS,
+            'errorClass' => $exception::class,
+            'errorMessage' => $exception->getMessage(),
+        ]);
+
+        $step = (new ResearchStep())
+            ->setRun($run)
+            ->setSequence($sequence)
+            ->setType('llm_retry')
+            ->setTurnNumber($operation->getTurnNumber())
+            ->setSummary($summary)
+            ->setPayloadJson($payload);
+        $this->entityManager->persist($step);
+        $this->entityManager->flush();
+
+        $this->eventPublisher->publishActivity($run->getRunUuid(), 'llm_retry', $summary, [
+            'attempt' => $attempt,
+            'maxAttempts' => self::MAX_LLM_ATTEMPTS,
+            'error' => $exception->getMessage(),
+            'sequence' => $sequence,
+            'turnNumber' => $operation->getTurnNumber(),
+        ]);
+    }
+
+    /**
      * @return array{promptTokens: int|null, completionTokens: int|null, totalTokens: int|null}
      */
     private function extractTokenUsage(ResultInterface $result): array
@@ -191,5 +259,4 @@ final class ExecuteLlmOperationHandler
             'totalTokens' => $tokenUsage->getTotalTokens(),
         ];
     }
-
 }

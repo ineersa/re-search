@@ -213,14 +213,12 @@ HTTP cancel endpoint wiring and Stop-button backend integration are not yet comp
 - **`OrchestratorOperationPayloadMapper`**: canonical payload codec/normalizer for orchestrator and workers.
 - **`OrchestratorLlmInvocationRecorder`**: persists `llm_invocation` trace steps.
 - **`OrchestratorStepRecorder`**: persists timeline steps and token snapshots.
-- **`OrchestratorRunStateManager`**: persists state, updates budget counters, streams final answers.
+- **`OrchestratorRunStateManager`**: persists state, updates budget counters, publishes final answers.
 - **`ExecuteLlmOperationHandler`**: performs model invocation and persists operation result.
 - **`ExecuteToolOperationHandler`**: executes toolbox call and persists operation result.
 - **`RunOrchestratorLock`**: per-run non-blocking lock abstraction.
 - **`MercureEventPublisher`**: publishes `activity/answer/budget/complete` events.
 - **`WebSearchTool`**: MCP-backed `websearch_search`, `websearch_open`, `websearch_find`.
-
-Note: `RunOrchestrator` remains in the codebase as legacy implementation reference; active runtime uses tick-based orchestration.
 
 ## Development and Debugging
 

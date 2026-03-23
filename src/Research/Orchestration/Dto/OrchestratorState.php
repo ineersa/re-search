@@ -21,6 +21,7 @@ final class OrchestratorState implements \JsonSerializable
         public array $toolSignatureCounts = [],
         public int $consecutiveToolFailures = 0,
         public int $emptyResponseRetries = 0,
+        public int $finalFormatRetries = 0,
     ) {
     }
 
@@ -51,6 +52,7 @@ final class OrchestratorState implements \JsonSerializable
             toolSignatureCounts: self::normalizeSignatureCounts($decoded['toolSignatureCounts'] ?? []),
             consecutiveToolFailures: max(0, (int) ($decoded['consecutiveToolFailures'] ?? 0)),
             emptyResponseRetries: max(0, (int) ($decoded['emptyResponseRetries'] ?? 0)),
+            finalFormatRetries: max(0, (int) ($decoded['finalFormatRetries'] ?? 0)),
         );
     }
 
@@ -184,6 +186,7 @@ final class OrchestratorState implements \JsonSerializable
             'toolSignatureCounts' => $this->toolSignatureCounts,
             'consecutiveToolFailures' => $this->consecutiveToolFailures,
             'emptyResponseRetries' => $this->emptyResponseRetries,
+            'finalFormatRetries' => $this->finalFormatRetries,
         ];
     }
 

@@ -31,6 +31,7 @@ services:
         arguments:
             $baseUrl: '%env(LLAMACPP_BASE_URL)%'
             $apiKey: '%env(LLAMACPP_API_KEY)%'
+            $httpClient: '@research.llama_http_client'
         tags:
             - { name: ai.platform, platform: llama }
 
@@ -67,13 +68,6 @@ services:
             $tools: ['@App\Research\Tool\WebSearchTool']
 
     Symfony\AI\Agent\Toolbox\ToolboxInterface: '@Symfony\AI\Agent\Toolbox\Toolbox'
-
-    # Research orchestration - orchestrator uses platform directly (Option B)
-    App\Research\Orchestration\RunOrchestrator:
-        arguments:
-            $platform: '@Symfony\AI\Platform\PlatformInterface'
-            $model: '%research.model%'
-            $toolbox: '@Symfony\AI\Agent\Toolbox\ToolboxInterface'
 
     App\Research\ResearchTaskPromptBuilder:
         arguments:

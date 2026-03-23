@@ -12,8 +12,6 @@ use App\Research\Orchestration\Dto\OrchestratorState;
 
 final class OrchestratorRunStateManager
 {
-    private const ANSWER_STREAM_CHUNK_CHARS = 320;
-
     public function __construct(
         private readonly OrchestratorStepRecorder $stepRecorder,
         private readonly EventPublisherInterface $eventPublisher,
@@ -88,42 +86,6 @@ final class OrchestratorRunStateManager
 
     public function publishFinalAnswer(string $runId, string $markdown): void
     {
-        if ('' === $markdown) {
-            $this->eventPublisher->publishAnswer($runId, '', true);
-
-            return;
-        }
-
-        foreach ($this->chunkAnswer($markdown) as $chunk) {
-            if ('' === $chunk) {
-                continue;
-            }
-
-            $this->eventPublisher->publishAnswer($runId, $chunk, false);
-        }
-
-        $this->eventPublisher->publishAnswer($runId, '', true);
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function chunkAnswer(string $markdown): array
-    {
-        $chars = preg_split('//u', $markdown, -1, \PREG_SPLIT_NO_EMPTY);
-        if (!\is_array($chars) || [] === $chars) {
-            return [$markdown];
-        }
-
-        $chunks = [];
-        $totalChars = \count($chars);
-        for ($offset = 0; $offset < $totalChars; $offset += self::ANSWER_STREAM_CHUNK_CHARS) {
-            $chunk = implode('', \array_slice($chars, $offset, self::ANSWER_STREAM_CHUNK_CHARS));
-            if ('' !== $chunk) {
-                $chunks[] = $chunk;
-            }
-        }
-
-        return [] === $chunks ? [$markdown] : $chunks;
+        $this->eventPublisher->publishAnswer($runId, $markdown, true);
     }
 }

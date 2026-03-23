@@ -10,7 +10,7 @@ ai:
         #    api_key: '%env(OPENAI_API_KEY)%'
 
     agent:
-        # web_research: thin agent for tool wiring; real orchestration in RunOrchestrator (Option B)
+        # web_research: thin agent for tool wiring; orchestration handled by message-driven pipeline
         # Agent configuration
         # see https://symfony.com/doc/current/ai/bundles/ai-bundle.html
 

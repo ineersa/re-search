@@ -133,12 +133,6 @@ parameters:
 			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
 
 		-
-			message: '#^Unused App\\Research\\Orchestration\\RunOrchestrator\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Orchestration/RunOrchestrator.php
-
-		-
 			message: '#^Unused App\\Research\\Event\\MercureEventPublisher\:\:__construct$#'
 			identifier: shipmonk.deadMethod
 			count: 1
@@ -233,4 +227,3 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Schedule.php
-

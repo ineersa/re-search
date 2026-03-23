@@ -221,6 +221,12 @@ export default class extends Controller {
 
     appendAnswer(payload) {
         const { markdown, isFinal } = payload;
+        if (isFinal && markdown && this.accumulatedMarkdown.trim().length === 0 && !this.answerStreamingStarted) {
+            this.playbackFinalAnswer(markdown);
+
+            return;
+        }
+
         if (markdown) {
             const hadContentBefore = this.accumulatedMarkdown.trim().length > 0;
             this.accumulatedMarkdown += markdown;
@@ -238,6 +244,45 @@ export default class extends Controller {
         }
 
         this.renderAnswerReferences();
+    }
+
+    playbackFinalAnswer(markdown) {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+
+        const chunkSize = 72;
+        const delayMs = 22;
+        let index = 0;
+
+        const tick = () => {
+            const next = markdown.slice(index, index + chunkSize);
+            if (next.length > 0) {
+                const hadContentBefore = this.accumulatedMarkdown.trim().length > 0;
+                this.accumulatedMarkdown += next;
+                this.renderAnswerBody();
+
+                if (!this.answerStreamingStarted && !hadContentBefore && this.accumulatedMarkdown.trim().length > 0) {
+                    this.answerStreamingStarted = true;
+                    this.showAnswerTab();
+                }
+            }
+
+            index += chunkSize;
+            if (index < markdown.length) {
+                this.timer = setTimeout(tick, delayMs);
+
+                return;
+            }
+
+            this.timer = null;
+            this.updateRenderModeToggleVisibility(true);
+            this.showAnswerTab();
+            this.renderAnswerReferences();
+        };
+
+        tick();
     }
 
     updateBudget(payload) {
@@ -397,7 +442,7 @@ export default class extends Controller {
             this.heroTarget.style.display = 'none';
 
             this.toolCalls = steps
-                .filter((step) => step.type === 'run_started' || step.type === 'assistant_reasoning' || step.type === 'tool_succeeded' || step.type === 'trace_pruned')
+                .filter((step) => step.type === 'run_started' || step.type === 'assistant_reasoning' || step.type === 'tool_succeeded' || step.type === 'trace_pruned' || step.type === 'llm_retry' || step.type === 'answer_invalid_format')
                 .map((step) => {
                     const meta = step.payloadJson ? (() => {
                         try {

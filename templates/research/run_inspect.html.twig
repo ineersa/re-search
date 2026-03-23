@@ -21,7 +21,7 @@
                     {% elseif run.status == 'running' %}bg-amber-900/50 text-amber-300
                     {% elseif run.status == 'failed' or run.status == 'timed_out' %}bg-red-900/50 text-red-300
                     {% else %}bg-gray-700/50 text-gray-300{% endif %}">
-                    {{ run.status }}
+                    {{ run.status.value }}
                 </span>
                 <span class="text-gray-500">{{ run.tokenBudgetUsed }} / {{ run.tokenBudgetHardCap }} tokens</span>
                 {% if run.loopDetected %}<span class="text-amber-400">Loop detected</span>{% endif %}
@@ -73,7 +73,7 @@
                     {% if item.prettyMessages is not empty or item.prettyTools is not empty or item.prettyRawMetadata is not empty or item.prettyToolArgs is not empty or item.prettyPayload is not empty %}
                     <div class="border-t border-[#222] px-4 pb-4 pt-2">
                         {% if item.prettyTools is not empty %}
-                        <details class="group mb-2" {% if step.type == 'llm_invocation' %}open{% endif %}>
+                        <details class="group mb-2">
                             <summary class="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-400">Tools (definitions)</summary>
                             <pre class="mt-2 overflow-x-auto rounded bg-[#0a0a0a] p-3 text-xs text-gray-300"><code class="language-json">{{ item.prettyTools|e }}</code></pre>
                         </details>
@@ -85,7 +85,7 @@
                         </details>
                         {% endif %}
                         {% if item.prettyMessages is not empty %}
-                        <details class="group mb-2" open>
+                        <details class="group mb-2">
                             <summary class="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-400">Messages (request)</summary>
                             <pre class="mt-2 overflow-x-auto rounded bg-[#0a0a0a] p-3 text-xs text-gray-300"><code class="language-json">{{ item.prettyMessages|e }}</code></pre>
                         </details>

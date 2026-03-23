@@ -2,6 +2,13 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
+    http_client:
+        scoped_clients:
+            research.llama_http_client:
+                base_uri: '%env(LLAMACPP_BASE_URL)%'
+                timeout: 120
+                max_duration: 120
+
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 

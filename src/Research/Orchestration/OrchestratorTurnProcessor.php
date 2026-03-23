@@ -26,11 +26,13 @@ final class OrchestratorTurnProcessor
     private const ANSWER_ONLY_THRESHOLD = 5_000;
     private const MAX_TURNS = 75;
     private const MAX_EMPTY_RESPONSE_RETRIES = 5;
+    private const MAX_FINAL_FORMAT_RETRIES = 3;
     private const MAX_CONSECUTIVE_TOOL_FAILURES = 3;
     private const MAX_TOOL_RESULT_CHARS = 20_000;
     private const DUPLICATE_TOOL_SIGNATURE_LIMIT = 2;
     private const ANSWER_ONLY_MESSAGE = 'Do not use any tools. Provide only your best final answer from the evidence gathered so far. Do not make further tool calls.';
     private const ANSWER_ONLY_RETRY_MESSAGE = 'You requested tools but answer-only mode is active. Provide your best final answer from the evidence gathered. No tool calls allowed.';
+    private const REWRITE_FORMAT_MESSAGE = "Rewrite your previous answer to satisfy the citation format exactly.\nDo not call tools. Reuse only already gathered evidence.\nRequirements:\n- End with a section header exactly: ## References\n- Each reference line must match this template: ¹ https://example.com/page (lines L12, L18)\n- Replace any citation markers like 【...】 with superscript numbers.";
 
     public function __construct(
         private readonly ResearchOperationRepository $operationRepository,
@@ -145,6 +147,51 @@ final class OrchestratorTurnProcessor
         $state->emptyResponseRetries = 0;
 
         if ($isFinal) {
+            $formatValidation = $this->validateFinalAnswerFormat($assistantText);
+            if (!$formatValidation['valid']) {
+                ++$state->finalFormatRetries;
+
+                $summary = 'Final answer rejected: invalid citation format. Expected: "## References" lines like "¹ https://example.com/page (lines L12, L18)".';
+                $payload = $this->encodeJson([
+                    'retry' => $state->finalFormatRetries,
+                    'maxRetries' => self::MAX_FINAL_FORMAT_RETRIES,
+                    'issues' => $formatValidation['issues'],
+                    'assistantText' => $assistantText,
+                ]);
+                $invalidSequence = $this->stepRecorder->persistStep($run, $sequence, 'answer_invalid_format', $state->turnNumber, $summary, $payload);
+                $this->eventPublisher->publishActivity($run->getRunUuid(), 'answer_invalid_format', $summary, [
+                    'retry' => $state->finalFormatRetries,
+                    'maxRetries' => self::MAX_FINAL_FORMAT_RETRIES,
+                    'issues' => $formatValidation['issues'],
+                    'sequence' => $invalidSequence,
+                    'turnNumber' => $state->turnNumber,
+                ]);
+
+                if ($state->finalFormatRetries >= self::MAX_FINAL_FORMAT_RETRIES) {
+                    $this->failRun(
+                        $run,
+                        $state,
+                        $sequence,
+                        $state->turnNumber,
+                        ResearchRunStatus::FAILED,
+                        'Model failed to produce valid citation format after retries',
+                        'run_failed',
+                        'Final answer citation format invalid',
+                        ['status' => ResearchRunStatus::FAILED->value, 'reason' => 'Final answer citation format invalid']
+                    );
+
+                    return NextAction::none();
+                }
+
+                $state->appendAssistantMessage($assistantText);
+                $state->answerOnly = true;
+                $run->setAnswerOnlyTriggered(true);
+                ++$state->turnNumber;
+                $state->appendUserMessage(self::REWRITE_FORMAT_MESSAGE);
+
+                return $this->queueCurrentLlmTurn($run, $state, $sequence);
+            }
+
             $state->appendAssistantMessage($assistantText);
 
             $run->setFinalAnswerMarkdown($assistantText);
@@ -399,7 +446,9 @@ final class OrchestratorTurnProcessor
         }
 
         if ($state->answerOnly) {
-            $state->appendUserMessage(self::ANSWER_ONLY_MESSAGE);
+            if (!$this->lastUserMessageEquals($state, self::REWRITE_FORMAT_MESSAGE)) {
+                $state->appendUserMessage(self::ANSWER_ONLY_MESSAGE);
+            }
         }
 
         $operation = $this->operationFactory->getOrCreateLlmOperation($run, $state->turnNumber, $state, !$state->answerOnly);
@@ -498,6 +547,75 @@ final class OrchestratorTurnProcessor
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function lastUserMessageEquals(OrchestratorState $state, string $expected): bool
+    {
+        $messageWindow = $state->messageWindow;
+        if ([] === $messageWindow) {
+            return false;
+        }
+
+        $last = $messageWindow[array_key_last($messageWindow)] ?? null;
+        if (!\is_array($last)) {
+            return false;
+        }
+
+        $role = $last['role'] ?? null;
+        $content = $last['content'] ?? null;
+
+        return 'user' === $role && \is_string($content) && $content === $expected;
+    }
+
+    /**
+     * @return array{valid: bool, issues: list<string>}
+     */
+    private function validateFinalAnswerFormat(string $markdown): array
+    {
+        $issues = [];
+        if ('' === trim($markdown)) {
+            return ['valid' => false, 'issues' => ['Answer is empty.']];
+        }
+
+        $superscriptPattern = '[\x{00B9}\x{00B2}\x{00B3}\x{2074}-\x{2079}]';
+        if (str_contains($markdown, '【')) {
+            $issues[] = 'Contains unsupported bracket citation markers (【...】).';
+        }
+
+        $lines = preg_split('/\R/u', $markdown) ?: [];
+        $referenceHeaderIndex = null;
+        foreach ($lines as $index => $line) {
+            if (1 === preg_match('/^##\s+References\s*$/i', trim($line))) {
+                $referenceHeaderIndex = $index;
+
+                break;
+            }
+        }
+
+        if (null === $referenceHeaderIndex) {
+            $issues[] = 'Missing "## References" section.';
+        } else {
+            $referenceLines = array_values(array_filter(
+                array_map(static fn (string $line): string => trim($line), array_slice($lines, $referenceHeaderIndex + 1)),
+                static fn (string $line): bool => '' !== $line
+            ));
+
+            if ([] === $referenceLines) {
+                $issues[] = 'References section is empty.';
+            } else {
+                $referenceLinePattern = '/^'.$superscriptPattern.'\s+https?:\/\/\S+\s+\(lines\s+L\d+(?:,\s*L\d+)*\)\s*$/u';
+                foreach ($referenceLines as $line) {
+                    if (1 !== preg_match($referenceLinePattern, $line)) {
+                        $issues[] = sprintf('Invalid reference line format: %s', $line);
+                    }
+                }
+            }
+        }
+
+        return [
+            'valid' => [] === $issues,
+            'issues' => $issues,
+        ];
     }
 
 }
