@@ -8,6 +8,7 @@ use App\Entity\ResearchOperation;
 use App\Entity\Enum\ResearchOperationStatus;
 use App\Entity\Enum\ResearchOperationType;
 use App\Repository\ResearchOperationRepository;
+use App\Repository\ResearchRunRepository;
 use App\Research\Message\Orchestrator\OrchestratorTick;
 use App\Research\Message\Tool\Dto\ToolOperationErrorPayload;
 use App\Research\Message\Tool\Dto\ToolOperationRequest;
@@ -25,6 +26,7 @@ final readonly class ExecuteToolOperationHandler
 {
     public function __construct(
         private ResearchOperationRepository $operationRepository,
+        private ResearchRunRepository $runRepository,
         private EntityManagerInterface $entityManager,
         private ToolboxInterface $toolbox,
         private MessageBusInterface $bus,
@@ -74,6 +76,20 @@ final readonly class ExecuteToolOperationHandler
         $operation->setErrorMessage(null);
         $this->entityManager->flush();
 
+        if ($this->isRunCancelled($runId)) {
+            $operation->setStatus(ResearchOperationStatus::FAILED);
+            $operation->setErrorMessage('Run cancelled by user');
+            $operation->setResultPayloadJson($this->payloadMapper->encodeJson(new ToolOperationErrorPayload(
+                \RuntimeException::class,
+                'Run cancelled by user'
+            )));
+            $operation->setCompletedAt(new \DateTimeImmutable());
+            $this->entityManager->flush();
+            $this->bus->dispatch(new OrchestratorTick($runId));
+
+            return;
+        }
+
         try {
             $request = $this->decodeRequestPayload($operation->getRequestPayloadJson());
             $toolName = $this->extractToolName($request);
@@ -105,6 +121,11 @@ final readonly class ExecuteToolOperationHandler
 
         $this->entityManager->flush();
         $this->bus->dispatch(new OrchestratorTick($runId));
+    }
+
+    private function isRunCancelled(string $runId): bool
+    {
+        return $this->runRepository->isCancellationRequestedOrTerminal($runId);
     }
 
     private function decodeRequestPayload(string $requestPayloadJson): ToolOperationRequest

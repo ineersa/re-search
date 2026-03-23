@@ -96,22 +96,40 @@ code, pre, kbd, samp, tt, .font-mono {
 
 .run-status-line {
     color: #6b7280;
+    display: inline-grid;
+    grid-auto-flow: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    line-height: 1;
 }
 
 .run-status-count {
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    min-height: 0.875rem;
 }
 
 .run-status-separator {
-    margin: 0 0.45rem;
     color: #374151;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    min-height: 0.875rem;
 }
 
 .run-status-activity {
-    display: inline-flex;
+    display: inline-grid;
+    grid-auto-flow: column;
     align-items: center;
     gap: 0.45rem;
+    line-height: 1;
+    min-height: 0.875rem;
+    margin-bottom: -2px;
 }
 
 .run-status-title-active {
@@ -155,8 +173,11 @@ code, pre, kbd, samp, tt, .font-mono {
 }
 
 .run-status-icon-done {
-    color: #6ee7b7;
-    background: rgba(16, 185, 129, 0.18);
+    color: #22c55e;
+    background: transparent;
+    width: auto;
+    height: auto;
+    border-radius: 0;
 }
 
 .run-status-icon-failed {

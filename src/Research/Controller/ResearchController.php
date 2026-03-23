@@ -165,6 +165,41 @@ final class ResearchController extends AbstractController
         ], Response::HTTP_ACCEPTED);
     }
 
+    #[Route('/research/runs/{id}/stop', name: 'app_research_stop', methods: ['POST'])]
+    public function stop(
+        string $id,
+        Request $request,
+        ResearchRunRepository $runRepository,
+        EntityManagerInterface $entityManager,
+        MessageBusInterface $bus,
+    ): Response {
+        $clientKey = $this->buildClientKey($request);
+        $run = $runRepository->findOneBy(['runUuid' => $id, 'clientKey' => $clientKey]);
+
+        if (!$run instanceof ResearchRun) {
+            throw $this->createNotFoundException('Research run not found.');
+        }
+
+        if ($run->getStatus()->isTerminal()) {
+            return new JsonResponse([
+                'status' => $run->getStatusValue(),
+                'runId' => $run->getRunUuid(),
+            ]);
+        }
+
+        if (null === $run->getCancelRequestedAt()) {
+            $run->setCancelRequestedAt(new \DateTimeImmutable());
+            $entityManager->flush();
+        }
+
+        $bus->dispatch(new OrchestratorTick($run->getRunUuid()));
+
+        return new JsonResponse([
+            'status' => 'stopping',
+            'runId' => $run->getRunUuid(),
+        ], Response::HTTP_ACCEPTED);
+    }
+
     private function buildClientKey(Request $request): string
     {
         $ip = $request->getClientIp() ?? 'unknown';

@@ -42,6 +42,7 @@ export default class extends Controller {
         mercureHubUrl: { type: String, default: '' },
         submitUrl: { type: String, default: '/research/runs' },
         runUrl: { type: String, default: '' },
+        stopUrl: { type: String, default: '' },
         historyFrameUrl: { type: String, default: '' },
         mercureAuthUrl: { type: String, default: '' },
     };
@@ -56,12 +57,25 @@ export default class extends Controller {
         this.activeTab = 'answer';
         this.toolCalls = [];
         this.runProgress = this.createInitialRunProgress();
+        this.stopRequested = false;
+        this.terminalHandled = false;
+        this.finalAnswerReceived = false;
+        this.finalizeTimerId = null;
+        this.handlePageHide = () => this.closeEventSource();
+        window.addEventListener('pagehide', this.handlePageHide);
+        window.addEventListener('beforeunload', this.handlePageHide);
 
         this.showAnswerTab();
     }
 
     disconnect() {
-        this.cancelRun();
+        if (this.handlePageHide) {
+            window.removeEventListener('pagehide', this.handlePageHide);
+            window.removeEventListener('beforeunload', this.handlePageHide);
+            this.handlePageHide = null;
+        }
+
+        this.closeEventSource();
     }
 
     submit(event) {
@@ -73,6 +87,9 @@ export default class extends Controller {
         }
 
         this.cancelRun();
+        this.stopRequested = false;
+        this.terminalHandled = false;
+        this.finalAnswerReceived = false;
         this.toolCalls = [];
         this.runProgress = this.createInitialRunProgress();
         this.accumulatedMarkdown = '';
@@ -152,6 +169,10 @@ export default class extends Controller {
 
             await this.authorizeMercure(runId);
             this.subscribeToMercure(mercureTopic);
+
+            if (this.stopRequested) {
+                await this.requestRunStop(runId);
+            }
         } catch (err) {
             this.setError(err.message || 'Network error');
         }
@@ -186,6 +207,20 @@ export default class extends Controller {
         }
 
         const { type } = payload;
+
+        if (this.stopRequested) {
+            if (type === 'complete') {
+                this.completeRun(payload);
+
+                return;
+            }
+
+            if (type === 'phase') {
+                this.updatePhase(payload);
+            }
+
+            return;
+        }
 
         switch (type) {
             case 'activity':
@@ -259,6 +294,7 @@ export default class extends Controller {
         const status = typeof payload.status === 'string' ? payload.status : this.runProgress.status;
         const message = typeof payload.message === 'string' ? payload.message : null;
         const isEnteringWaitingLlm = phase === 'waiting_llm' && this.runProgress.phase !== 'waiting_llm';
+        const terminalByPhase = phase === 'completed' || phase === 'failed' || phase === 'aborted';
 
         this.runProgress = {
             ...this.runProgress,
@@ -268,6 +304,17 @@ export default class extends Controller {
             hasRunStarted: this.runProgress.hasRunStarted || (typeof phase === 'string' && phase !== 'queued'),
             llmTurns: isEnteringWaitingLlm ? this.runProgress.llmTurns + 1 : this.runProgress.llmTurns,
         };
+
+        if (!this.terminalHandled && this.stopRequested && terminalByPhase) {
+            void this.completeRun({
+                meta: {
+                    status: typeof status === 'string' ? status : (phase === 'aborted' ? 'aborted' : 'failed'),
+                    reason: message || '',
+                },
+            });
+
+            return;
+        }
 
         this.renderTrace();
     }
@@ -288,6 +335,30 @@ export default class extends Controller {
         if (isFinal) {
             this.updateRenderModeToggleVisibility(true);
             this.showAnswerTab();
+            this.finalAnswerReceived = true;
+
+            if (this.finalizeTimerId !== null) {
+                window.clearTimeout(this.finalizeTimerId);
+            }
+            this.finalizeTimerId = window.setTimeout(() => {
+                if (!this.terminalHandled && this.finalAnswerReceived) {
+                    void this.completeRun({
+                        meta: {
+                            status: 'completed',
+                        },
+                    });
+                }
+            }, 1800);
+
+            if (!this.terminalHandled) {
+                this.runProgress = {
+                    ...this.runProgress,
+                    status: 'completed',
+                    phase: 'completed',
+                    phaseMessage: 'Done',
+                };
+                this.renderTrace();
+            }
         }
 
         this.renderAnswerReferences();
@@ -305,16 +376,31 @@ export default class extends Controller {
         }
     }
 
-    completeRun(payload = {}) {
-        this.closeEventSource();
-        this.updateCancelButtonVisibility(false);
+    async completeRun(payload = {}) {
+        if (this.terminalHandled) {
+            return;
+        }
+        this.terminalHandled = true;
 
-        this.element.classList.remove('is-searching');
-        this.element.classList.add('is-complete');
+        if (this.finalizeTimerId !== null) {
+            window.clearTimeout(this.finalizeTimerId);
+            this.finalizeTimerId = null;
+        }
 
         const meta = payload.meta || {};
         const status = meta.status || 'completed';
         const reason = meta.reason || '';
+
+        this.closeEventSource();
+
+        this.updateCancelButtonVisibility(false);
+        this.stopRequested = false;
+        this.currentRunId = null;
+        this.currentMercureTopic = null;
+        this.finalAnswerReceived = status === 'completed';
+
+        this.element.classList.remove('is-searching');
+        this.element.classList.add('is-complete');
 
         const phaseMessage = this.statusLabelForCompletion(status, reason);
 
@@ -327,7 +413,20 @@ export default class extends Controller {
         this.renderTrace();
 
         this.streamTarget.innerHTML = '';
+
+        if (this.accumulatedMarkdown.trim().length > 0) {
+            this.renderAnswerBody();
+            this.updateRenderModeToggleVisibility(true);
+        } else if (this.answerBodyTarget.innerHTML.trim().length === 0) {
+            this.answerBodyTarget.innerHTML = buildNoAnswerHtml({
+                status,
+                failureReason: reason,
+            }, escapeHtml);
+            this.updateRenderModeToggleVisibility(false);
+        }
+
         this.showAnswerTab();
+        this.renderAnswerReferences();
 
         this.reloadHistoryFrame();
     }
@@ -346,8 +445,16 @@ export default class extends Controller {
     }
 
     cancelRun() {
+        if (this.finalizeTimerId !== null) {
+            window.clearTimeout(this.finalizeTimerId);
+            this.finalizeTimerId = null;
+        }
+
         this.closeEventSource();
         this.updateCancelButtonVisibility(false);
+        this.currentMercureTopic = null;
+        this.stopRequested = false;
+        this.finalAnswerReceived = false;
 
         if (this.element?.classList?.contains('is-searching')) {
             this.element.classList.remove('is-searching');
@@ -360,13 +467,75 @@ export default class extends Controller {
             };
             this.renderTrace();
         }
+
+        this.currentRunId = null;
+    }
+
+    async stopRun(event) {
+        event.preventDefault();
+
+        this.stopRequested = true;
+
+        const runId = this.currentRunId;
+
+        this.updateCancelButtonVisibility(true);
+        if (this.hasCancelBtnTarget) {
+            this.cancelBtnTarget.disabled = true;
+            this.cancelBtnTarget.textContent = 'Stopping...';
+        }
+        this.runProgress = {
+            ...this.runProgress,
+            phaseMessage: 'Stopping...',
+        };
+        this.renderTrace();
+
+        if (!runId) {
+            return;
+        }
+
+        try {
+            await this.requestRunStop(runId);
+        } catch (error) {
+            void error;
+        }
     }
 
     closeEventSource() {
         if (this.eventSource) {
+            this.eventSource.onmessage = null;
+            this.eventSource.onerror = null;
             this.eventSource.close();
             this.eventSource = null;
         }
+    }
+
+    async requestRunStop(runId) {
+        const template = this.stopUrlValue || `/research/runs/${runId}/stop`;
+        const stopUrl = template.replace('__ID__', runId);
+        await fetch(stopUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+        });
+    }
+
+    async fetchRunSnapshot(runId) {
+        const template = this.runUrlValue || `/research/runs/${runId}`;
+        const runUrl = template.replace('__ID__', runId);
+        const response = await fetch(runUrl, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch run snapshot');
+        }
+
+        return response.json();
     }
 
     reconnect() {
@@ -388,6 +557,11 @@ export default class extends Controller {
             return;
         }
         this.cancelBtnTarget.hidden = !visible;
+
+        if (!visible) {
+            this.cancelBtnTarget.disabled = false;
+            this.cancelBtnTarget.textContent = 'Stop';
+        }
     }
 
     setError(message) {
@@ -428,6 +602,8 @@ export default class extends Controller {
     }
 
     async loadHistoryItem(event) {
+        this.cancelRun();
+
         const runId = event.currentTarget.dataset.runId;
         if (!runId) {
             return;
@@ -720,5 +896,15 @@ export default class extends Controller {
         }
 
         return 'Research complete';
+    }
+
+    isTerminalStatus(status) {
+        return status === 'completed'
+            || status === 'budget_exhausted'
+            || status === 'loop_stopped'
+            || status === 'timed_out'
+            || status === 'throttled'
+            || status === 'aborted'
+            || status === 'failed';
     }
 }

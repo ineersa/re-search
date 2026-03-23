@@ -40,6 +40,23 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(400);
     }
 
+    public function testStopReturns202ForActiveRun(): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/research/runs', ['query' => 'How does Mercure work?']);
+
+        self::assertResponseStatusCodeSame(202);
+        $data = json_decode($client->getResponse()->getContent(), true);
+        self::assertIsArray($data);
+        self::assertArrayHasKey('runId', $data);
+
+        $client->request('POST', '/research/runs/'.$data['runId'].'/stop');
+
+        self::assertResponseStatusCodeSame(202);
+        $stopPayload = json_decode($client->getResponse()->getContent(), true);
+        self::assertSame('stopping', $stopPayload['status'] ?? null);
+    }
+
     public function testInspectReturns404WhenNotDev(): void
     {
         $client = static::createClient();

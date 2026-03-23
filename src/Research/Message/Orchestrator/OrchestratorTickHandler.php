@@ -66,6 +66,11 @@ final class OrchestratorTickHandler
                 return;
             }
 
+            $this->entityManager->refresh($run);
+            if ($run->getStatus()->isTerminal()) {
+                return;
+            }
+
             $state = OrchestratorState::fromJson($run->getOrchestratorStateJson());
 
             if (null !== $run->getCancelRequestedAt()) {

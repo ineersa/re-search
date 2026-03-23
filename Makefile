@@ -87,8 +87,8 @@ root-sh: ## Open root shell in PHP container
 composer: ## Run composer command: make composer cmd='require symfony/mercure-bundle'
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) composer $(cmd)
 
-composer-install: ## Install PHP dependencies in running local container
-	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) composer install
+composer-install: ## Install PHP dependencies (works with or without a running container)
+	@$(COMPOSE_DEV) run --rm --entrypoint="" -u $$(id -u):$$(id -g) $(PHP_SERVICE) composer install --no-interaction
 
 composer-update: ## Update PHP dependencies in running local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) composer update

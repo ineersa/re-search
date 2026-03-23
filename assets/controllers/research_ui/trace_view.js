@@ -112,9 +112,9 @@ export function renderRunStatus(ctx) {
     const marker = renderPhaseMarker(phase);
 
     runStatus.innerHTML = `
-            <span class="run-status-count" style="text-transform: uppercase; letter-spacing: 0.08em;">Tool calls: ${progress.toolCallsCompleted}</span>
-            <span class="run-status-separator" style="margin: 0 0.45rem; color: #374151;">•</span>
-            <span class="run-status-activity ${titleClass}" style="display: inline-flex; align-items: center; gap: 0.45rem;">${marker}<span>${escapeHtml(title)}</span></span>
+            <span class="run-status-count">Tool calls: ${progress.toolCallsCompleted}</span>
+            <span class="run-status-separator">•</span>
+            <span class="run-status-activity ${titleClass}" style="position: relative; top: -1px;">${marker}<span>${escapeHtml(title)}</span></span>
         `;
 }
 
@@ -207,7 +207,7 @@ function isTerminalPhase(phase) {
  */
 function renderPhaseMarker(phase) {
     if (phase === 'completed') {
-        return '<span class="run-status-icon run-status-icon-done" aria-hidden="true" style="display: inline-flex; align-items: center; justify-content: center; width: 0.95rem; height: 0.95rem; border-radius: 999px; background: rgba(16, 185, 129, 0.18); color: #6ee7b7; font-size: 0.65rem; line-height: 1;">✓</span>';
+        return '<span aria-hidden="true" style="display: inline-block; color: #22c55e; font-size: 0.8rem; line-height: 1;">✓</span>';
     }
 
     if (phase === 'failed') {
@@ -215,14 +215,14 @@ function renderPhaseMarker(phase) {
     }
 
     if (phase === 'aborted') {
-        return '<span class="run-status-icon run-status-icon-aborted" aria-hidden="true" style="display: inline-flex; align-items: center; justify-content: center; width: 0.95rem; height: 0.95rem; border-radius: 999px; background: rgba(245, 158, 11, 0.2); color: #fcd34d; font-size: 0.6rem; line-height: 1;">■</span>';
+        return '<span class="run-status-icon run-status-icon-aborted" aria-hidden="true" style="display: inline-block; width: 0.65rem; height: 0.65rem; background: #ef4444; border-radius: 1px;"></span>';
     }
 
     if (phase === 'waiting_llm' || phase === 'waiting_tools') {
-        return '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="display: inline-block; vertical-align: middle;"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="20 12"><animateTransform attributeName="transform" type="rotate" from="0 6 6" to="360 6 6" dur="0.9s" repeatCount="indefinite" /></circle></svg>';
+        return '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="display: block; width: 0.78rem; height: 0.78rem; flex-shrink: 0;"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="20 12"><animateTransform attributeName="transform" type="rotate" from="0 6 6" to="360 6 6" dur="0.9s" repeatCount="indefinite" /></circle></svg>';
     }
 
-    return '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="display: inline-block; vertical-align: middle;"><circle cx="6" cy="6" r="4" fill="#7dd3fc"><animate attributeName="opacity" values="1;0.35;1" dur="1.1s" repeatCount="indefinite" /></circle></svg>';
+    return '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style="display: block; width: 0.78rem; height: 0.78rem; flex-shrink: 0;"><circle cx="6" cy="6" r="4" fill="#7dd3fc"><animate attributeName="opacity" values="1;0.35;1" dur="1.1s" repeatCount="indefinite" /></circle></svg>';
 }
 
 /**

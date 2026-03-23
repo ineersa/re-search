@@ -9,6 +9,7 @@ use App\Entity\Enum\ResearchOperationType;
 use App\Entity\ResearchOperation;
 use App\Entity\ResearchStep;
 use App\Repository\ResearchOperationRepository;
+use App\Repository\ResearchRunRepository;
 use App\Repository\ResearchStepRepository;
 use App\Research\Event\EventPublisherInterface;
 use App\Research\Message\Llm\Dto\LlmOperationRequest;
@@ -38,6 +39,7 @@ final class ExecuteLlmOperationHandler
 
     public function __construct(
         private readonly ResearchOperationRepository $operationRepository,
+        private readonly ResearchRunRepository $runRepository,
         private readonly ResearchStepRepository $stepRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly PlatformInterface $platform,
@@ -91,13 +93,27 @@ final class ExecuteLlmOperationHandler
         $operation->setErrorMessage(null);
         $this->entityManager->flush();
 
+        if ($this->isRunCancelled($runId)) {
+            $operation->setStatus(ResearchOperationStatus::FAILED);
+            $operation->setErrorMessage('Run cancelled by user');
+            $operation->setResultPayloadJson($this->payloadMapper->encodeJson([
+                'errorClass' => \RuntimeException::class,
+                'errorMessage' => 'Run cancelled by user',
+            ]));
+            $operation->setCompletedAt(new \DateTimeImmutable());
+            $this->entityManager->flush();
+            $this->bus->dispatch(new OrchestratorTick($runId));
+
+            return;
+        }
+
         try {
             $request = $this->decodeRequestPayload($operation->getRequestPayloadJson());
             $model = $this->resolveModel($request);
             $messages = $this->payloadMapper->toMessageBag($request);
             $options = $this->buildOptions($request);
 
-            $result = $this->invokeWithRetry($operation, $model, $messages, $options);
+            $result = $this->invokeWithRetry($operation, $model, $messages, $options, $runId);
             [$normalizedResult, $metadataSource, $reasoningText] = $this->normalizePlatformResult(
                 $result,
                 $runId,
@@ -193,10 +209,14 @@ final class ExecuteLlmOperationHandler
     /**
      * @param array<string, mixed> $options
      */
-    private function invokeWithRetry(ResearchOperation $operation, string $model, MessageBag $messages, array $options): ResultInterface
+    private function invokeWithRetry(ResearchOperation $operation, string $model, MessageBag $messages, array $options, string $runId): ResultInterface
     {
         $attempt = 0;
         while (true) {
+            if ($this->isRunCancelled($runId)) {
+                throw new \RuntimeException('Run cancelled by user');
+            }
+
             ++$attempt;
             try {
                 return $this->platform->invoke($model, $messages, $options)->getResult();
@@ -227,6 +247,10 @@ final class ExecuteLlmOperationHandler
         $streamChunkIndex = 0;
 
         foreach ($result->getContent() as $chunk) {
+            if ($this->isRunCancelled($runId)) {
+                throw new \RuntimeException('Run cancelled by user');
+            }
+
             if (\is_string($chunk)) {
                 $assistantText .= $chunk;
                 $textStreamBuffer .= $chunk;
@@ -298,7 +322,7 @@ final class ExecuteLlmOperationHandler
 
     private function publishAssistantStreamChunk(string $runId, int $turnNumber, string $chunk, int &$chunkIndex): void
     {
-        if ('' === $chunk) {
+        if ('' === $chunk || $this->isRunCancelled($runId)) {
             return;
         }
 
@@ -308,6 +332,11 @@ final class ExecuteLlmOperationHandler
         ]);
 
         ++$chunkIndex;
+    }
+
+    private function isRunCancelled(string $runId): bool
+    {
+        return $this->runRepository->isCancellationRequestedOrTerminal($runId);
     }
 
     private function isRetriableTimeout(\Throwable $exception): bool

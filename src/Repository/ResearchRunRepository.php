@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Enum\ResearchRunStatus;
 use App\Entity\ResearchRun;
 use App\Entity\ResearchStep;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -24,6 +25,26 @@ class ResearchRunRepository extends ServiceEntityRepository
         $run = $this->findOneBy(['runUuid' => $runUuid]);
 
         return $run instanceof ResearchRun ? $run : null;
+    }
+
+    public function isCancellationRequestedOrTerminal(string $runUuid): bool
+    {
+        $row = $this->getEntityManager()->getConnection()->fetchAssociative(
+            'SELECT cancel_requested_at, status FROM research_run WHERE run_uuid = :runUuid',
+            ['runUuid' => $runUuid]
+        );
+
+        if (false === $row) {
+            return true;
+        }
+
+        if (null !== ($row['cancel_requested_at'] ?? null)) {
+            return true;
+        }
+
+        $status = ResearchRunStatus::tryFrom((string) ($row['status'] ?? ''));
+
+        return $status?->isTerminal() ?? true;
     }
 
     /**
