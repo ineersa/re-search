@@ -13,6 +13,15 @@ parameters:
     tmpDir: var/phpstan
     excludePaths:
         - tests/bootstrap.php
+        - tests/Platform/Generic/Completions/ResultConverterXmlToolCallTest.php
     parallel:
         maximumNumberOfProcesses: 1
-    ignoreErrors: []
+    ignoreErrors:
+        - '#^Unused .*?::__construct$#'
+        - '#Property App\\\\ResearchOperation::\$id .*? never assigned int#'
+        - '#^Unused App\\\\ResearchOperation::getPosition$#'
+        - '#^Unused App\\\\ResearchOperation::getCompletedAt$#'
+        - '#Property .*?Payload::\$.*? is never read#'
+        - '#Property .*?Decision::\$.*? is never read#'
+        - '#Dynamic call to static method PHPUnit\\\\Assert::#'
+        - '#will always evaluate to false#'

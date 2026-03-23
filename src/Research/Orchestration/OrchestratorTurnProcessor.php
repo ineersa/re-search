@@ -22,7 +22,7 @@ use App\Research\Orchestration\Dto\NextAction;
 use App\Research\Orchestration\Dto\OrchestratorState;
 use App\Research\Throttle\ResearchThrottle;
 
-final class OrchestratorTurnProcessor
+final readonly class OrchestratorTurnProcessor
 {
     private const ANSWER_ONLY_THRESHOLD = 5_000;
     private const MAX_TURNS = 75;
@@ -34,15 +34,15 @@ final class OrchestratorTurnProcessor
     private const ANSWER_ONLY_RETRY_MESSAGE = 'You requested tools but answer-only mode is active. Provide your best final answer from the evidence gathered. No tool calls allowed.';
 
     public function __construct(
-        private readonly ResearchOperationRepository $operationRepository,
-        private readonly ResearchStepRepository $stepRepository,
-        private readonly OrchestratorOperationFactory $operationFactory,
-        private readonly OrchestratorStepRecorder $stepRecorder,
-        private readonly OrchestratorOperationPayloadMapper $payloadMapper,
-        private readonly OrchestratorLlmInvocationRecorder $llmInvocationRecorder,
-        private readonly OrchestratorRunStateManager $runStateManager,
-        private readonly EventPublisherInterface $eventPublisher,
-        private readonly ResearchThrottle $researchThrottle,
+        private ResearchOperationRepository $operationRepository,
+        private ResearchStepRepository $stepRepository,
+        private OrchestratorOperationFactory $operationFactory,
+        private OrchestratorStepRecorder $stepRecorder,
+        private OrchestratorOperationPayloadMapper $payloadMapper,
+        private OrchestratorLlmInvocationRecorder $llmInvocationRecorder,
+        private OrchestratorRunStateManager $runStateManager,
+        private EventPublisherInterface $eventPublisher,
+        private ResearchThrottle $researchThrottle,
     ) {
     }
 

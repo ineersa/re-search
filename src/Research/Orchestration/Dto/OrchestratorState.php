@@ -87,9 +87,9 @@ final class OrchestratorState implements \JsonSerializable
             'content' => $content,
             'toolCalls' => array_map(
                 static fn (array $toolCall): array => [
-                    'id' => (string) ($toolCall['id'] ?? ''),
-                    'name' => (string) ($toolCall['name'] ?? ''),
-                    'arguments' => \is_array($toolCall['arguments'] ?? null) ? $toolCall['arguments'] : [],
+                    'id' => $toolCall['id'],
+                    'name' => $toolCall['name'],
+                    'arguments' => $toolCall['arguments'],
                 ],
                 $toolCalls
             ),
@@ -108,70 +108,6 @@ final class OrchestratorState implements \JsonSerializable
             'arguments' => $arguments,
             'content' => $content,
         ];
-    }
-
-    public function toMessageBag(): MessageBag
-    {
-        $messages = [];
-
-        foreach ($this->messageWindow as $entry) {
-            $role = (string) ($entry['role'] ?? '');
-            $content = \is_string($entry['content'] ?? null) ? $entry['content'] : '';
-
-            if ('system' === $role) {
-                $messages[] = Message::forSystem($content);
-
-                continue;
-            }
-
-            if ('user' === $role) {
-                $messages[] = Message::ofUser($content);
-
-                continue;
-            }
-
-            if ('assistant' === $role) {
-                $toolCalls = [];
-                $rawToolCalls = $entry['toolCalls'] ?? [];
-                if (\is_array($rawToolCalls)) {
-                    foreach ($rawToolCalls as $rawToolCall) {
-                        if (!\is_array($rawToolCall)) {
-                            continue;
-                        }
-
-                        $toolCallId = \is_string($rawToolCall['id'] ?? null) && '' !== trim($rawToolCall['id'])
-                            ? $rawToolCall['id']
-                            : 'call_unknown';
-                        $toolName = \is_string($rawToolCall['name'] ?? null) && '' !== trim($rawToolCall['name'])
-                            ? $rawToolCall['name']
-                            : 'unknown_tool';
-                        $arguments = \is_array($rawToolCall['arguments'] ?? null) ? $rawToolCall['arguments'] : [];
-
-                        $toolCalls[] = new ToolCall($toolCallId, $toolName, $arguments);
-                    }
-                }
-
-                $messages[] = Message::ofAssistant($content, $toolCalls);
-
-                continue;
-            }
-
-            if ('tool' !== $role) {
-                continue;
-            }
-
-            $callId = \is_string($entry['toolCallId'] ?? null) && '' !== trim($entry['toolCallId'])
-                ? $entry['toolCallId']
-                : 'call_unknown';
-            $toolName = \is_string($entry['name'] ?? null) && '' !== trim($entry['name'])
-                ? $entry['name']
-                : 'unknown_tool';
-            $arguments = \is_array($entry['arguments'] ?? null) ? $entry['arguments'] : [];
-
-            $messages[] = Message::ofToolCall(new ToolCall($callId, $toolName, $arguments), $content);
-        }
-
-        return new MessageBag(...$messages);
     }
 
     /**

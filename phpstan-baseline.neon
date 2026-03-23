@@ -1,6 +1,24 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Property App\\Entity\\ResearchOperation\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Entity/ResearchOperation.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchOperation\:\:getCompletedAt$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchOperation.php
+
+		-
+			message: '#^Unused App\\Entity\\ResearchOperation\:\:getPosition$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/ResearchOperation.php
+
+		-
 			message: '#^Property App\\Entity\\ResearchRun\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
 			identifier: property.unusedType
 			count: 1
@@ -25,12 +43,6 @@ parameters:
 			path: src/Platform/LlamaCpp/Contract/ToolCallNormalizer.php
 
 		-
-			message: '#^Unused App\\Research\\History\\HistoryLoader\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/History/HistoryLoader.php
-
-		-
 			message: '#^Unused App\\Research\\History\\HistoryLoader\:\:loadRecent$#'
 			identifier: shipmonk.deadMethod
 			count: 1
@@ -53,6 +65,12 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/History/HistoryLoaderInterface.php
+
+		-
+			message: '#^Unused App\\Research\\Mcp\\McpWebSearchClient\:\:disconnect$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Research/Mcp/McpWebSearchClient.php
 
 		-
 			message: '#^Property App\\Research\\Orchestration\\Dto\\BudgetState\:\:\$answerOnly is never read$#'
@@ -81,12 +99,6 @@ parameters:
 		-
 			message: '#^Property App\\Research\\Orchestration\\Dto\\BudgetState\:\:\$usedTokens is never read$#'
 			identifier: shipmonk.deadProperty.neverRead
-			count: 1
-			path: src/Research/Orchestration/Dto/BudgetState.php
-
-		-
-			message: '#^Unused App\\Research\\Orchestration\\Dto\\BudgetState\:\:__construct$#'
-			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/Orchestration/Dto/BudgetState.php
 
@@ -127,58 +139,10 @@ parameters:
 			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
 
 		-
-			message: '#^Unused App\\Research\\Orchestration\\Dto\\ResearchTurnInput\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Orchestration/Dto/ResearchTurnInput.php
-
-		-
-			message: '#^Unused App\\Research\\Event\\MercureEventPublisher\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Event/MercureEventPublisher.php
-
-		-
-			message: '#^Unused App\\Research\\Mercure\\ResearchTopicFactory\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Mercure/ResearchTopicFactory.php
-
-		-
-			message: '#^Method App\\Research\\Platform\\ResearchPlatformFactory\:\:__construct\(\) has parameter \$platforms with generic class Symfony\\Component\\DependencyInjection\\ServiceLocator but does not specify its types: T$#'
+			message: '#^Method App\\Research\\Platform\\ResearchPlatformFactory\:\:__construct\(\) has parameter \$platforms with generic class Symfony\\Component\\DependencyInjection\\ServiceLocator but does not specify its types\: T$#'
 			identifier: missingType.generics
 			count: 1
 			path: src/Research/Platform/ResearchPlatformFactory.php
-
-		-
-			message: '#^Unused App\\Research\\Platform\\ResearchPlatformFactory\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Platform/ResearchPlatformFactory.php
-
-		-
-			message: '#^Unused App\\Research\\Throttle\\ResearchThrottle\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Throttle/ResearchThrottle.php
-
-		-
-			message: '#^Unused App\\Research\\Mcp\\McpWebSearchClient\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Mcp/McpWebSearchClient.php
-
-		-
-			message: '#^Unused App\\Research\\Mcp\\McpWebSearchClient\:\:disconnect$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Mcp/McpWebSearchClient.php
-
-		-
-			message: '#^Unused App\\Research\\Tool\\WebSearchTool\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Tool/WebSearchTool.php
 
 		-
 			message: '#^Unused App\\Research\\Tool\\WebSearchTool\:\:find$#'
@@ -197,33 +161,3 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Research/Tool/WebSearchTool.php
-
-		-
-			message: '#^Unused App\\Research\\Maintenance\\Message\\PruneResearchTracesMessageHandler\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Maintenance/Message/PruneResearchTracesMessageHandler.php
-
-		-
-			message: '#^Unused App\\Research\\Maintenance\\ResearchMaintenanceSchedule\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Maintenance/ResearchMaintenanceSchedule.php
-
-		-
-			message: '#^Unused App\\Research\\Maintenance\\ResearchTracePruner\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Maintenance/ResearchTracePruner.php
-
-		-
-			message: '#^Unused App\\Research\\Serializer\\LlmInvocationTraceSerializer\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Research/Serializer/LlmInvocationTraceSerializer.php
-
-		-
-			message: '#^Unused App\\Schedule\:\:__construct$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Schedule.php

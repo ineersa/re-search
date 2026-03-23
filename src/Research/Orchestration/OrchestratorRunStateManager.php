@@ -116,7 +116,7 @@ final class OrchestratorRunStateManager
             return [$markdown];
         }
 
-        $chunks = $matches[0] ?? [];
+        $chunks = $matches[0];
 
         return [] === $chunks ? [$markdown] : $chunks;
     }

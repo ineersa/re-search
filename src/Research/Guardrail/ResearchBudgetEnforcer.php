@@ -13,7 +13,7 @@ use App\Research\Guardrail\Exception\LoopDetectedException;
  * Token budget: hard cap 75_000 tokens per run.
  * Duplicate detection: allow same normalized tool call twice, stop on third.
  */
-final class ResearchBudgetEnforcer implements ResearchBudgetEnforcerInterface
+final class ResearchBudgetEnforcer
 {
     private const HARD_CAP_TOKENS = 75_000;
     private const DUPLICATE_CALL_LIMIT = 2;
@@ -33,6 +33,9 @@ final class ResearchBudgetEnforcer implements ResearchBudgetEnforcerInterface
         $this->tokenUsageByRun[$runId] = ($this->tokenUsageByRun[$runId] ?? 0) + $tokens;
     }
 
+    /**
+     * @param array<string, mixed> $arguments
+     */
     public function beforeToolCall(string $runId, string $toolName, array $arguments): void
     {
         $used = $this->tokenUsageByRun[$runId] ?? 0;
@@ -47,6 +50,9 @@ final class ResearchBudgetEnforcer implements ResearchBudgetEnforcerInterface
         }
     }
 
+    /**
+     * @param array<string, mixed> $arguments
+     */
     public function afterToolCall(string $runId, string $toolName, array $arguments, mixed $result): void
     {
         $signature = $this->normalizeSignature($toolName, $arguments);
