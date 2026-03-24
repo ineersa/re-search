@@ -60,7 +60,6 @@ final class OrchestratorLlmInvocationRecorder
                     fn (array $toolCall): ToolCallDecision => new ToolCallDecision(
                         name: $toolCall['name'],
                         arguments: $toolCall['arguments'],
-                        normalizedSignature: $this->payloadMapper->normalizeToolSignature($toolCall['name'], $toolCall['arguments'])
                     ),
                     $toolCalls
                 ),

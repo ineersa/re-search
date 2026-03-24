@@ -14,7 +14,6 @@ use App\Repository\ResearchRunRepository;
 use App\Repository\ResearchStepRepository;
 use App\Research\Event\EventPublisherInterface;
 use App\Research\Message\Llm\ExecuteLlmOperation;
-use App\Research\Message\Orchestrator\Dto\OrchestratorUnexpectedFailurePayload;
 use App\Research\Message\Tool\ExecuteToolOperation;
 use App\Research\Orchestration\Dto\NextAction;
 use App\Research\Orchestration\Dto\OrchestratorState;
@@ -172,7 +171,7 @@ final class OrchestratorTickHandler
             $reason,
             'run_failed',
             'Unhandled orchestrator exception',
-            $this->encodeJson(new OrchestratorUnexpectedFailurePayload($reason)),
+            $this->encodeJson(['error' => $reason]),
             ['status' => ResearchRunStatus::FAILED->value, 'reason' => $reason]
         );
     }

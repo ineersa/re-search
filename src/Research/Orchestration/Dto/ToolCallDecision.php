@@ -12,7 +12,6 @@ final readonly class ToolCallDecision
     public function __construct(
         public string $name,
         public array $arguments,
-        public string $normalizedSignature,
     ) {
     }
 }

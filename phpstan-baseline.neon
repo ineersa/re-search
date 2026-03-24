@@ -13,12 +13,6 @@ parameters:
 			path: src/Entity/ResearchOperation.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchOperation\:\:getPosition$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchOperation.php
-
-		-
 			message: '#^Property App\\Entity\\ResearchRun\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
 			identifier: property.unusedType
 			count: 1
@@ -29,6 +23,30 @@ parameters:
 			identifier: property.unusedType
 			count: 1
 			path: src/Entity/ResearchStep.php
+
+		-
+			message: '#^Property App\\Entity\\User\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Entity/User.php
+
+		-
+			message: '#^Unused App\\Entity\\User\:\:eraseCredentials$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/User.php
+
+		-
+			message: '#^Unused App\\Entity\\User\:\:getEmail$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/User.php
+
+		-
+			message: '#^Unused App\\Entity\\User\:\:getId$#'
+			identifier: shipmonk.deadMethod
+			count: 1
+			path: src/Entity/User.php
 
 		-
 			message: '#^Method App\\Platform\\LlamaCpp\\Contract\\ToolCallNormalizer\:\:normalize\(\) should return array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: array\<string, mixed\>\}\} but returns array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: non\-empty\-string\|false\}\}\.$#'

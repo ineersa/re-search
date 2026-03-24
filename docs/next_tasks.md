@@ -1,5 +1,3 @@
-10. TESTS!
-11. Testing errors/retry.
 12. Rate limit login page from bruteforce.
 13. Prod settings.
 14. Connect GLM.

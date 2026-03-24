@@ -18,10 +18,3 @@ parameters:
         maximumNumberOfProcesses: 1
     ignoreErrors:
         - '#^Unused .*?::__construct$#'
-        - '#Property App\\\\ResearchOperation::\$id .*? never assigned int#'
-        - '#^Unused App\\\\ResearchOperation::getPosition$#'
-        - '#^Unused App\\\\ResearchOperation::getCompletedAt$#'
-        - '#Property .*?Payload::\$.*? is never read#'
-        - '#Property .*?Decision::\$.*? is never read#'
-        - '#Dynamic call to static method PHPUnit\\\\Assert::#'
-        - '#will always evaluate to false#'
