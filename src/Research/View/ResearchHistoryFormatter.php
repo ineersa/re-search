@@ -9,6 +9,8 @@ namespace App\Research\View;
  */
 final class ResearchHistoryFormatter
 {
+    private const QUERY_PREVIEW_MAX_CHARS = 80;
+
     /**
      * @param array{
      *     id: string,
@@ -22,15 +24,17 @@ final class ResearchHistoryFormatter
      *     answerOnlyTriggered: bool,
      * } $run
      *
-     * @return array{id: string, query: string, timeAgo: string, statusLabel: string, budgetMeta: string}
+     * @return array{id: string, query: string, queryFull: string, timeAgo: string, statusLabel: string, budgetMeta: string}
      */
     public static function formatRow(array $run): array
     {
         $reference = $run['completedAt'] ?? $run['createdAt'];
+        $queryFull = $run['query'];
 
         return [
             'id' => $run['id'],
-            'query' => $run['query'],
+            'query' => self::truncateQueryPreview($queryFull),
+            'queryFull' => $queryFull,
             'timeAgo' => self::formatTimeAgo($reference),
             'statusLabel' => self::formatStatus($run['status']),
             'budgetMeta' => self::formatBudgetMeta($run),
@@ -108,5 +112,14 @@ final class ResearchHistoryFormatter
         }
 
         return implode(', ', $parts);
+    }
+
+    private static function truncateQueryPreview(string $query): string
+    {
+        if (mb_strlen($query) <= self::QUERY_PREVIEW_MAX_CHARS) {
+            return $query;
+        }
+
+        return mb_substr($query, 0, self::QUERY_PREVIEW_MAX_CHARS - 1).'…';
     }
 }

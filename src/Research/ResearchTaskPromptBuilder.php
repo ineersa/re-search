@@ -24,11 +24,31 @@ final class ResearchTaskPromptBuilder
         }
 
         $messages = new MessageBag(
-            Message::forSystem('You rewrite raw user queries into a concise web-research task brief. Return markdown only.'),
+            Message::forSystem(<<<SYSTEM
+You rewrite raw user queries into high-signal web-research task briefs for a subagent.
+Return markdown only.
+SYSTEM),
             Message::ofUser(<<<INPUT
-Rewrite the following user query into a single clear web-research task for the assistant.
-Keep the original intent, improve clarity, and ask for a direct comprehensive answer.
-Make it explicit that the task is for web research.
+Rewrite the user query into a concrete, execution-ready web-research task for another assistant.
+
+Output format:
+- `# Web Research Task`
+- `## Original User Query` (copy the user query verbatim)
+- `## Research Checklist` (numbered, length based on complexity)
+- `## Expected Deliverables` (bullets)
+
+Requirements:
+1. Preserve all technical details from the user query (frameworks, APIs, URLs, env vars, current vs new platform/provider names, constraints).
+2. In `## Original User Query`, copy the user query exactly (no paraphrasing, no omissions).
+3. Checklist length must match complexity:
+   - simple lookup/fact tasks: 1-3 items
+   - medium tasks: 4-6 items
+   - complex technical/comparative/debugging/integration tasks: 6-10 items
+4. Checklist items must be query-specific and include any important sub-questions needed to produce a complete answer.
+5. Add deliverables that define what the final answer must include (findings, references, implementation notes, risks/unknowns).
+6. Require direct official documentation URLs and citation line numbers for non-trivial factual claims.
+7. Keep it concise but specific (avoid generic filler language).
+8. Do not answer the research question itself; only produce the research task brief.
 
 User query:
 {$rawQuery}

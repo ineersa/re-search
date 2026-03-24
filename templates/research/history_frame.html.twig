@@ -10,7 +10,7 @@
                     data-run-id="{{ row.id }}"
                 >
                     <div class="min-w-0 flex-1">
-                        <p class="m-0 text-sm leading-tight text-gray-200">{{ row.query }}</p>
+                        <p class="m-0 text-sm leading-tight text-gray-200" title="{{ row.queryFull|e('html_attr') }}">{{ row.query }}</p>
                         <p class="mt-1 text-xs text-gray-500">{{ row.timeAgo }}</p>
                         <p class="mt-0.5 text-xs text-gray-600">
                             {{ row.statusLabel }}{% if row.budgetMeta %} · {{ row.budgetMeta }}{% endif %}
