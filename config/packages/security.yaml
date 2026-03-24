@@ -18,6 +18,10 @@ security:
         main:
             lazy: true
             provider: app_user_provider
+            # https://symfony.com/doc/current/security.html#limiting-login-attempts
+            login_throttling:
+                max_attempts: 3
+                interval: '10 minutes'
             form_login:
                 login_path: app_login
                 check_path: app_login
