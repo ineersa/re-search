@@ -52,12 +52,24 @@ services:
         tags:
             - { name: ai.platform, platform: generic }
 
-    # Platform from ai.yaml; factory selects via AI_PLATFORM env (llama|generic)
+    # Z.AI Platform
+    app.zai.platform:
+        class: Symfony\AI\Platform\Platform
+        factory: ['App\Platform\Zai\PlatformFactory', 'create']
+        arguments:
+            $baseUrl: '%env(ZAI_BASE_URL)%'
+            $apiKey: '%env(ZAI_API_KEY)%'
+            $httpClient: '@http_client'
+        tags:
+            - { name: ai.platform, platform: zai }
+
+    # Platform from ai.yaml; factory selects via AI_PLATFORM env (llama|generic|zai)
     App\Research\Platform\ResearchPlatformFactory:
         arguments:
             $platforms: !service_locator
                 llama: '@app.llama_cpp.platform'
                 generic: '@app.generic.platform'
+                zai: '@app.zai.platform'
             $platformName: '%env(AI_PLATFORM)%'
 
     Symfony\AI\Platform\PlatformInterface: '@App\Research\Platform\ResearchPlatformFactory'

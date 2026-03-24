@@ -4,10 +4,12 @@ ai:
         # see https://github.com/symfony/ai/tree/main/src/platform#platform-bridges
         #
         # Platform selected via AI_PLATFORM env; ResearchPlatformFactory resolves
-        # from container. llama=app.llama_cpp.platform, generic=ai.platform.generic.default
-
-        # openai:
-        #    api_key: '%env(OPENAI_API_KEY)%'
+        # from container.
+        #
+        # Available platforms:
+        # - llama: Local llama.cpp server (default)
+        # - zai: Z.AI cloud platform (https://docs.z.ai/)
+        # - generic: Generic OpenAI-compatible platform
 
     agent:
         # web_research: thin agent for tool wiring; orchestration handled by message-driven pipeline
