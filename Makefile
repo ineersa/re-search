@@ -12,7 +12,7 @@ HOST_GID := $(shell id -g)
 	sh root-sh composer composer-install composer-update \
 	messenger-clear \
 	console cc cache-warmup rate-limit-reset doctrine-migrate doctrine-diff doctrine-status \
-	messenger-consume scheduler-consume test cs-fix phpstan quality check config config-prod stop stop-prod \
+	messenger-consume scheduler-consume test test-coverage cs-fix phpstan quality check config config-prod stop stop-prod \
 	tailwind-setup tailwind-init tailwind-watch tailwind-build assets-compile
 
 help: ## Show all available commands
@@ -126,6 +126,10 @@ messenger-clear: ## Clear async and failed Messenger queues
 
 test: ## Run PHPUnit tests in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/phpunit
+
+test-coverage: ## Run PHPUnit with coverage reports (text, HTML, Clover)
+	@$(COMPOSE_DEV) exec $(PHP_SERVICE) sh -lc "mkdir -p /app/.phpunit.cache/code-coverage /app/var/coverage/html && chown -R $(HOST_UID):$(HOST_GID) /app/.phpunit.cache /app/var/coverage"
+	@$(COMPOSE_DEV) exec -e XDEBUG_MODE=coverage -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/phpunit --coverage-text --coverage-html var/coverage/html --coverage-clover var/coverage/clover.xml
 
 cs-fix: ## Run PHP CS Fixer in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php vendor/bin/php-cs-fixer fix

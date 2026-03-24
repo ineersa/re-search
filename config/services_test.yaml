@@ -1,0 +1,32 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Tests\Research\FixtureReplay\Support\TraceFixtureRuntime:
+        public: true
+
+    App\Tests\Research\FixtureReplay\Support\FixturePlatform:
+        public: true
+
+    App\Tests\Research\FixtureReplay\Support\FixtureMcpHttpResponseFactory:
+        public: true
+
+    tests.fixture_replay.mcp_http_client:
+        class: Symfony\Component\HttpClient\MockHttpClient
+        arguments:
+            - '@App\Tests\Research\FixtureReplay\Support\FixtureMcpHttpResponseFactory'
+
+    Symfony\AI\Platform\PlatformInterface: '@App\Tests\Research\FixtureReplay\Support\FixturePlatform'
+
+    App\Research\ResearchTaskPromptBuilder:
+        arguments:
+            $platform: null
+            $model: null
+
+    App\Research\Mcp\McpWebSearchClient:
+        arguments:
+            $httpClient: '@tests.fixture_replay.mcp_http_client'
+            $baseUrl: 'http://fixture-mcp.local/sse'
+
+    App\Research\Event\EventPublisherInterface: '@App\Research\Event\NullEventPublisher'

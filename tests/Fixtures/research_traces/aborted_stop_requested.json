@@ -1,0 +1,326 @@
+{
+    "schemaVersion": 1,
+    "scenario": "aborted_stop_requested",
+    "exportedAt": "2026-03-24T01:47:20+00:00",
+    "run": {
+        "runUuid": "b018222d-9383-405f-b38a-2d30ba4a57ba",
+        "queryPreview": "Who was the 16th president of the united states?",
+        "queryHash": "4296c479a5c5bd8bb91f22907c08ceeea61f0e992c64532ce863075e92c7a8b8",
+        "status": "aborted",
+        "phase": "aborted",
+        "tokenBudgetUsed": 1588,
+        "tokenBudgetHardCap": 75000,
+        "loopDetected": false,
+        "answerOnlyTriggered": false,
+        "failureReason": "Cancelled by user",
+        "finalAnswerLength": 0,
+        "finalAnswerSha1": null,
+        "createdAt": "2026-03-24T01:45:21+00:00",
+        "completedAt": "2026-03-24T01:45:45+00:00"
+    },
+    "operations": [
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "b018222d-9383-405f-b38a-2d30ba4a57ba:llm:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "bb6521b0eea9ecd442aa979b2b60e4158568dbfc",
+            "resultPayloadSha1": "a6d1892438d4820e25100294517e9331c126cd45",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 2,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1440,
+                "completionTokens": 91,
+                "totalTokens": 1531,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "b018222d-9383-405f-b38a-2d30ba4a57ba:tool:0:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "eafc11ae64f5582b1cee8e466170b59920620377",
+            "resultPayloadSha1": "2fb430f188c741843c03f8955db16c55bb1afb2d",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t0_p0",
+                "name": "websearch_search",
+                "normalizedSignature": "websearch_search:{\"query\":\"16th President of the United States\",\"topn\":\"5\"}",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t0_p0",
+                "name": "websearch_search",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ],
+                "resultLength": 26
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "b018222d-9383-405f-b38a-2d30ba4a57ba:llm:1",
+            "errorMessage": null,
+            "requestPayloadSha1": "b758ac12810cbfc3cd1ded152f7cabfc008a2aca",
+            "resultPayloadSha1": "e199143fb4709241094a914e2350dcae891f35df",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 4,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1513,
+                "completionTokens": 75,
+                "totalTokens": 1588,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "failed",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "b018222d-9383-405f-b38a-2d30ba4a57ba:tool:1:0",
+            "errorMessage": "Run cancelled by user",
+            "requestPayloadSha1": "d46c5930e432f76f5052d7fd9797416ac61a622c",
+            "resultPayloadSha1": "4a9f3716967cdb8a95eb4bd67629c4e1c43b5075",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t1_p0",
+                "name": "websearch_search",
+                "normalizedSignature": "websearch_search:{\"query\":\"who was the 16th president of the united states\",\"topn\":\"5\"}",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_error",
+                "errorClass": "RuntimeException",
+                "errorMessage": "Run cancelled by user"
+            }
+        }
+    ],
+    "steps": [
+        {
+            "sequence": 1,
+            "type": "run_started",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Conduct web research to identify the 16th President of the United States and provide a direct, comprehensive answer based on verified sources.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        },
+        {
+            "sequence": 2,
+            "type": "llm_invocation",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 0",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "e9ead2820862917371089dc11c17caffef4a2edb",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 2,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1531
+            }
+        },
+        {
+            "sequence": 3,
+            "type": "token_snapshot",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1531 total used",
+            "promptTokens": 1440,
+            "completionTokens": 91,
+            "totalTokens": 1531,
+            "estimatedTokens": false,
+            "payloadSha1": "4dd5eb3f0d0e1b84a7eb07767980e980c627c34c",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1440,
+                "completionTokens": 91,
+                "totalTokens": 1531,
+                "totalUsed": 1531
+            }
+        },
+        {
+            "sequence": 4,
+            "type": "assistant_reasoning",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "The user wants to know who was the 16th President of the United States. I need to conduct web research to find this information and verify it with sources. Let me start with a web search.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "b531fc12f3ab8e8059d2ec7067b6f4762a5e4c0c",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 5,
+            "type": "tool_succeeded",
+            "turnNumber": 0,
+            "toolName": "websearch_search",
+            "toolSignature": "websearch_search:{\"query\":\"16th President of the United States\",\"topn\":\"5\"}",
+            "summary": "Executed websearch_search",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "afde965e3bb8ea0057f5c6e1e92811c910d716c8",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 26,
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            }
+        },
+        {
+            "sequence": 6,
+            "type": "llm_invocation",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 1",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "2633d47c017ad3905c8d22fe747e108ab57829cd",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 4,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1588
+            }
+        },
+        {
+            "sequence": 7,
+            "type": "token_snapshot",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1588 total used",
+            "promptTokens": 1513,
+            "completionTokens": 75,
+            "totalTokens": 1588,
+            "estimatedTokens": false,
+            "payloadSha1": "04bff3ab3b7860bb7dfdc6e23274e9288285c512",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1513,
+                "completionTokens": 75,
+                "totalTokens": 1588,
+                "totalUsed": 1588
+            }
+        },
+        {
+            "sequence": 8,
+            "type": "assistant_reasoning",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "The initial search failed with a 404 error. Let me try again with a slightly different query.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "6789742b86f63c3980d8b2acd328240ef7ae09a2",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 9,
+            "type": "run_aborted",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Run cancelled by user",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        }
+    ],
+    "expected": {
+        "finalStatus": "aborted",
+        "finalPhase": "aborted",
+        "terminalStepType": "run_aborted",
+        "mustContainStepTypes": [
+            "run_aborted"
+        ],
+        "mustNotContainStepTypes": [
+            "assistant_final",
+            "run_failed",
+            "loop_detected"
+        ]
+    }
+}

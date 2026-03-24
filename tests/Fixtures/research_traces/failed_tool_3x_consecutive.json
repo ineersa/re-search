@@ -1,0 +1,480 @@
+{
+    "schemaVersion": 1,
+    "scenario": "failed_tool_3x_consecutive",
+    "exportedAt": "2026-03-24T16:31:44+00:00",
+    "run": {
+        "runUuid": "daa39900-47da-464d-8a48-330b01295a89",
+        "queryPreview": "[fixture:tool-fail] generate tool-failure fixture",
+        "queryHash": "5edda3e7267894ac91f5ac1081ec1b5fc3fe0fbe50da5f7c8639c24273a2a3f7",
+        "status": "failed",
+        "phase": "failed",
+        "tokenBudgetUsed": 1520,
+        "tokenBudgetHardCap": 75000,
+        "loopDetected": false,
+        "answerOnlyTriggered": false,
+        "failureReason": "3 tool calls in a row failed. Model or tools may be unavailable.",
+        "finalAnswerLength": 0,
+        "finalAnswerSha1": null,
+        "createdAt": "2026-03-24T16:30:53+00:00",
+        "completedAt": "2026-03-24T16:30:59+00:00"
+    },
+    "operations": [
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "daa39900-47da-464d-8a48-330b01295a89:llm:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "52b04e131d325bdc0e3f232e9b9390e9ba625e4a",
+            "resultPayloadSha1": "09e3a3e1f378910e33eadd1e771a8bca65d33db9",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 2,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1400,
+                "completionTokens": 70,
+                "totalTokens": 1470,
+                "resultClass": "Fixture\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "failed",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "daa39900-47da-464d-8a48-330b01295a89:tool:0:0",
+            "errorMessage": "Fixture scenario forced tool failure",
+            "requestPayloadSha1": "668f95a14edc27f612cc7a763ec92684eb3efd17",
+            "resultPayloadSha1": "6c58b70ef834c2d1ee6a55c98248d504b5b69dbc",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t0_p0",
+                "name": "websearch_search",
+                "normalizedSignature": "websearch_search:{\"query\":\"fixture forced tool failure\",\"topn\":\"3\"}",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_error",
+                "errorClass": "RuntimeException",
+                "errorMessage": "Fixture scenario forced tool failure"
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "daa39900-47da-464d-8a48-330b01295a89:llm:1",
+            "errorMessage": null,
+            "requestPayloadSha1": "61bdce37f74643d200704bb5ccdc3e9734d44e06",
+            "resultPayloadSha1": "41ed045b5fa7ecc4c64435aa6e4eff6e9cc7751f",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 4,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1425,
+                "completionTokens": 70,
+                "totalTokens": 1495,
+                "resultClass": "Fixture\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "failed",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "daa39900-47da-464d-8a48-330b01295a89:tool:1:0",
+            "errorMessage": "Fixture scenario forced tool failure",
+            "requestPayloadSha1": "f4a2a0a5e07b2a4c7ce33d48f701d9685b37d88c",
+            "resultPayloadSha1": "6c58b70ef834c2d1ee6a55c98248d504b5b69dbc",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t1_p0",
+                "name": "websearch_search",
+                "normalizedSignature": "websearch_search:{\"query\":\"fixture forced tool failure\",\"topn\":\"3\"}",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_error",
+                "errorClass": "RuntimeException",
+                "errorMessage": "Fixture scenario forced tool failure"
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 2,
+            "position": 0,
+            "idempotencyKey": "daa39900-47da-464d-8a48-330b01295a89:llm:2",
+            "errorMessage": null,
+            "requestPayloadSha1": "a843520b05afecfbe473a867a7d8fe6017dde13f",
+            "resultPayloadSha1": "8e71eba380084ec8441abb69c5bb5f6ccf7b75a6",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 6,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1450,
+                "completionTokens": 70,
+                "totalTokens": 1520,
+                "resultClass": "Fixture\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "failed",
+            "turnNumber": 2,
+            "position": 0,
+            "idempotencyKey": "daa39900-47da-464d-8a48-330b01295a89:tool:2:0",
+            "errorMessage": "Fixture scenario forced tool failure",
+            "requestPayloadSha1": "d2fcad52b2cc2545677367e104e9e861f0dffee2",
+            "resultPayloadSha1": "6c58b70ef834c2d1ee6a55c98248d504b5b69dbc",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t2_p0",
+                "name": "websearch_search",
+                "normalizedSignature": "websearch_search:{\"query\":\"fixture forced tool failure\",\"topn\":\"3\"}",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_error",
+                "errorClass": "RuntimeException",
+                "errorMessage": "Fixture scenario forced tool failure"
+            }
+        }
+    ],
+    "steps": [
+        {
+            "sequence": 1,
+            "type": "run_started",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Web Research Task:  \nConduct comprehensive web research to identify and provide a detailed, ready-to-use tool-failure fixture example, including its purpose, implementation context, relevant use cases, and any available code snippets or documentation. The response should be clear, practical, and directly applicable to software development or testing environments where tool failures are simulated.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        },
+        {
+            "sequence": 2,
+            "type": "llm_invocation",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 0",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "65fdd95be57dbcd02ec3d794e805608e3746e187",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 2,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1470
+            }
+        },
+        {
+            "sequence": 3,
+            "type": "token_snapshot",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1470 total used",
+            "promptTokens": 1400,
+            "completionTokens": 70,
+            "totalTokens": 1470,
+            "estimatedTokens": false,
+            "payloadSha1": "4a7ce3cff56ee5d09f2a243b2aa50b78c43fa853",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1400,
+                "completionTokens": 70,
+                "totalTokens": 1470,
+                "totalUsed": 1470
+            }
+        },
+        {
+            "sequence": 4,
+            "type": "assistant_reasoning",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Attempting web search step in forced failure scenario.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "9db138f1ca32b1d8818f77cf8a31310a6995aced",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 5,
+            "type": "tool_failed",
+            "turnNumber": 0,
+            "toolName": "websearch_search",
+            "toolSignature": "websearch_search:{\"query\":\"fixture forced tool failure\",\"topn\":\"3\"}",
+            "summary": "websearch_search failed: Fixture scenario forced tool failure",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "af9fcb9c98affce4edb6ee3e5ceb493743fc03b9",
+            "payloadSummary": {
+                "kind": "tool_failed",
+                "error": "Fixture scenario forced tool failure",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            }
+        },
+        {
+            "sequence": 6,
+            "type": "llm_invocation",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 1",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "644e2fc26953b501c92627b0ab60c36c27a2ae5b",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 4,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1495
+            }
+        },
+        {
+            "sequence": 7,
+            "type": "token_snapshot",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1495 total used",
+            "promptTokens": 1425,
+            "completionTokens": 70,
+            "totalTokens": 1495,
+            "estimatedTokens": false,
+            "payloadSha1": "140391415cb71bd4f21db5bc3005572ad3ed0494",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1425,
+                "completionTokens": 70,
+                "totalTokens": 1495,
+                "totalUsed": 1495
+            }
+        },
+        {
+            "sequence": 8,
+            "type": "assistant_reasoning",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Attempting web search step in forced failure scenario.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "9db138f1ca32b1d8818f77cf8a31310a6995aced",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 9,
+            "type": "tool_failed",
+            "turnNumber": 1,
+            "toolName": "websearch_search",
+            "toolSignature": "websearch_search:{\"query\":\"fixture forced tool failure\",\"topn\":\"3\"}",
+            "summary": "websearch_search failed: Fixture scenario forced tool failure",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "af9fcb9c98affce4edb6ee3e5ceb493743fc03b9",
+            "payloadSummary": {
+                "kind": "tool_failed",
+                "error": "Fixture scenario forced tool failure",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            }
+        },
+        {
+            "sequence": 10,
+            "type": "llm_invocation",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 2",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "a897f2637da4368b3fc5ac58c6649a5ebd05a5d5",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 6,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1520
+            }
+        },
+        {
+            "sequence": 11,
+            "type": "token_snapshot",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1520 total used",
+            "promptTokens": 1450,
+            "completionTokens": 70,
+            "totalTokens": 1520,
+            "estimatedTokens": false,
+            "payloadSha1": "ca764e7c181403d9ccb6280755ed61b5151f2e90",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1450,
+                "completionTokens": 70,
+                "totalTokens": 1520,
+                "totalUsed": 1520
+            }
+        },
+        {
+            "sequence": 12,
+            "type": "assistant_reasoning",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Attempting web search step in forced failure scenario.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "9db138f1ca32b1d8818f77cf8a31310a6995aced",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 13,
+            "type": "tool_failed",
+            "turnNumber": 2,
+            "toolName": "websearch_search",
+            "toolSignature": "websearch_search:{\"query\":\"fixture forced tool failure\",\"topn\":\"3\"}",
+            "summary": "websearch_search failed: Fixture scenario forced tool failure",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "af9fcb9c98affce4edb6ee3e5ceb493743fc03b9",
+            "payloadSummary": {
+                "kind": "tool_failed",
+                "error": "Fixture scenario forced tool failure",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            }
+        },
+        {
+            "sequence": 14,
+            "type": "run_failed",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Consecutive tool failures",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        }
+    ],
+    "expected": {
+        "finalStatus": "failed",
+        "finalPhase": "failed",
+        "terminalStepType": "run_failed",
+        "mustContainStepTypes": [
+            "run_started",
+            "run_failed"
+        ],
+        "mustNotContainStepTypes": [
+            "assistant_final",
+            "run_aborted"
+        ]
+    }
+}

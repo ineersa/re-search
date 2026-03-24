@@ -1,0 +1,776 @@
+{
+    "schemaVersion": 1,
+    "scenario": "timed_out_wall_clock",
+    "exportedAt": "2026-03-24T01:41:57+00:00",
+    "run": {
+        "runUuid": "2ebcd920-d361-4b24-816e-93bc009c40f7",
+        "queryPreview": "Who was the 16th president of the united states?",
+        "queryHash": "4296c479a5c5bd8bb91f22907c08ceeea61f0e992c64532ce863075e92c7a8b8",
+        "status": "timed_out",
+        "phase": "failed",
+        "tokenBudgetUsed": 3534,
+        "tokenBudgetHardCap": 75000,
+        "loopDetected": false,
+        "answerOnlyTriggered": false,
+        "failureReason": "Research timed out after 900 seconds",
+        "finalAnswerLength": 0,
+        "finalAnswerSha1": null,
+        "createdAt": "2026-03-23T14:09:12+00:00",
+        "completedAt": "2026-03-23T15:10:00+00:00"
+    },
+    "operations": [
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:llm:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "2745385a9aed625f95cc7ef18c52d1a865bef947",
+            "resultPayloadSha1": "d9cd8922470857f7eef98c9e3b2b880a9c0b0e62",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 2,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1445,
+                "completionTokens": 100,
+                "totalTokens": 1545,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:tool:0:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "42600381e86c83d673c2703f9af3fef26a1af6e8",
+            "resultPayloadSha1": "8684fa48f5d5d6cb5179bf52a47653b44a233a59",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t0_p0",
+                "name": "websearch_search",
+                "normalizedSignature": "websearch_search:{\"query\":\"16th president of the United States\",\"topn\":\"5\"}",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t0_p0",
+                "name": "websearch_search",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ],
+                "resultLength": 3198
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:llm:1",
+            "errorMessage": null,
+            "requestPayloadSha1": "366090ae9aef869f5648bf44b11e4402689ce07c",
+            "resultPayloadSha1": "fbf786a01088ffc6d1f9348a7a0b9c9a8a8cc8e5",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 4,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 2322,
+                "completionTokens": 98,
+                "totalTokens": 2420,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:tool:1:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "3a9b713647f93861c3bf7612ab9eb9c179040125",
+            "resultPayloadSha1": "ece8658793fe638423fde98bfa935ab0e5b91e40",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t1_p0",
+                "name": "websearch_open",
+                "normalizedSignature": "websearch_open:{\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+                "argumentKeys": [
+                    "url"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t1_p0",
+                "name": "websearch_open",
+                "argumentKeys": [
+                    "url"
+                ],
+                "resultLength": 1922
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 2,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:llm:2",
+            "errorMessage": null,
+            "requestPayloadSha1": "20616f4ee65308514076cc53a08ad4e825f1fe8a",
+            "resultPayloadSha1": "2981e1db4d6637df207a2dac8148d464dec83ddc",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 6,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 3110,
+                "completionTokens": 190,
+                "totalTokens": 3300,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 2,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:tool:2:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "6eee352dd29c0f73b94f1556b4ff2f133b8352dd",
+            "resultPayloadSha1": "993842e8975f5bf1a8ad61010cfb3c383343e37c",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t2_p0",
+                "name": "websearch_find",
+                "normalizedSignature": "websearch_find:{\"contextLines\":\"10\",\"selector\":\"16th president\",\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t2_p0",
+                "name": "websearch_find",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ],
+                "resultLength": 376
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 3,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:llm:3",
+            "errorMessage": null,
+            "requestPayloadSha1": "98ad25f9c4c79ce8d289df9cb239c4a3a983b7ae",
+            "resultPayloadSha1": "d7b7125f8b5a43a29f684c73d3888a4b76b3ce51",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 8,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 3312,
+                "completionTokens": 79,
+                "totalTokens": 3391,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": false
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 3,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:tool:3:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "f18786d2f80cd71bdb7ae87ea394b4cac33450f9",
+            "resultPayloadSha1": "77047a1d1196998b7b2662ae13acc458eb4b8b24",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t3_p0",
+                "name": "websearch_find",
+                "normalizedSignature": "websearch_find:{\"contextLines\":\"10\",\"selector\":\"Abraham Lincoln was the 16th president\",\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t3_p0",
+                "name": "websearch_find",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ],
+                "resultLength": 133
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 4,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:llm:4",
+            "errorMessage": null,
+            "requestPayloadSha1": "54584fe1fedc3c3a26e8da86c62ad975e5e65894",
+            "resultPayloadSha1": "769c77c7f61653b8b366e12545355185c32116a0",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 10,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 3448,
+                "completionTokens": 86,
+                "totalTokens": 3534,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": false
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 4,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:tool:4:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "562bf3dcd68966bdffbdc23fec9bfbe0ebe96c4a",
+            "resultPayloadSha1": "0518fd32b32ec57301dcb34fc45a0ea947801397",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t4_p0",
+                "name": "websearch_find",
+                "normalizedSignature": "websearch_find:{\"contextLines\":\"10\",\"selector\":\"16th president of the United States (1861\\u201365)\",\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t4_p0",
+                "name": "websearch_find",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ],
+                "resultLength": 140
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 5,
+            "position": 0,
+            "idempotencyKey": "2ebcd920-d361-4b24-816e-93bc009c40f7:llm:5",
+            "errorMessage": null,
+            "requestPayloadSha1": "ba5039bd1e818c92cc994f9fcc471aa0d1b07747",
+            "resultPayloadSha1": "df00a297cf2800d819ba88473b15631c63e98ff2",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 12,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 3600,
+                "completionTokens": 64,
+                "totalTokens": 3664,
+                "resultClass": "Symfony\\AI\\Platform\\Result\\ToolCallResult",
+                "hasReasoningText": false
+            }
+        }
+    ],
+    "steps": [
+        {
+            "sequence": 1,
+            "type": "run_started",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "## Web Research Task\nConduct web research to identify the 16th President of the United States and provide a direct, comprehensive answer with verified historical details.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        },
+        {
+            "sequence": 2,
+            "type": "llm_invocation",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 0",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "5ff911dba2a0f4a36980ba6191d78f0b1a1ffcb3",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 2,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1545
+            }
+        },
+        {
+            "sequence": 3,
+            "type": "token_snapshot",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1545 total used",
+            "promptTokens": 1445,
+            "completionTokens": 100,
+            "totalTokens": 1545,
+            "estimatedTokens": false,
+            "payloadSha1": "c32ef226f55ad6c66b7f55689ef6245da55f152b",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1445,
+                "completionTokens": 100,
+                "totalTokens": 1545,
+                "totalUsed": 1545
+            }
+        },
+        {
+            "sequence": 4,
+            "type": "assistant_reasoning",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "The user is asking about the 16th President of the United States. This is a well-known historical fact, but I need to verify it using web search tools as required by the research task.\n\nLet me start by searching for this information.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "186a2baf75cf2d943b705f91d0e3b6582d4b5a9d",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 5,
+            "type": "tool_succeeded",
+            "turnNumber": 0,
+            "toolName": "websearch_search",
+            "toolSignature": "websearch_search:{\"query\":\"16th president of the United States\",\"topn\":\"5\"}",
+            "summary": "Executed websearch_search",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "f7c790c297332c47d6fb9167536ae03681259531",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 3198,
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            }
+        },
+        {
+            "sequence": 6,
+            "type": "llm_invocation",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 1",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "76a2465d1b90e74bac4e542c3ff83648fe3fe485",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 4,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 2420
+            }
+        },
+        {
+            "sequence": 7,
+            "type": "token_snapshot",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 2420 total used",
+            "promptTokens": 2322,
+            "completionTokens": 98,
+            "totalTokens": 2420,
+            "estimatedTokens": false,
+            "payloadSha1": "8bf03dfb8c616946b99dbfba35c377d94ec745bf",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 2322,
+                "completionTokens": 98,
+                "totalTokens": 2420,
+                "totalUsed": 2420
+            }
+        },
+        {
+            "sequence": 8,
+            "type": "assistant_reasoning",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "The search results clearly indicate that Abraham Lincoln was the 16th President of the United States. Multiple sources confirm this fact. Let me open one of the most authoritative sources (Britannica) to verify the details and get more comprehensive information about him.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "2a75bb13ed1f2ce155f5d226bb288e19ebb83c6b",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 9,
+            "type": "tool_succeeded",
+            "turnNumber": 1,
+            "toolName": "websearch_open",
+            "toolSignature": "websearch_open:{\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+            "summary": "Executed websearch_open",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "cbcff739be0eb55a1411dd16854b213aa1fa2e81",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 1922,
+                "argumentKeys": [
+                    "url"
+                ]
+            }
+        },
+        {
+            "sequence": 10,
+            "type": "llm_invocation",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 2",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "918d3f09e9370d8c90d2897c926406591ed5c6ce",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 6,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 3300
+            }
+        },
+        {
+            "sequence": 11,
+            "type": "token_snapshot",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 3300 total used",
+            "promptTokens": 3110,
+            "completionTokens": 190,
+            "totalTokens": 3300,
+            "estimatedTokens": false,
+            "payloadSha1": "0e3a1770493659170c795def6b548f726550c641",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 3110,
+                "completionTokens": 190,
+                "totalTokens": 3300,
+                "totalUsed": 3300
+            }
+        },
+        {
+            "sequence": 12,
+            "type": "assistant_reasoning",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "The Britannica page content shown in the tool output (lines 120-170) does not contain the specific biographical details about Abraham Lincoln being the 16th president. The search results summary earlier indicated that the page does contain this information, but the auto-mode window landed on the citation/share section at the end of the page. Let me try to find the specific claim using websearch_find on this URL, or open a different section of the page.\n\nLet me try to find the...",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "a42d957bbf75999ea544ec682651fac0b02d03cc",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 13,
+            "type": "tool_succeeded",
+            "turnNumber": 2,
+            "toolName": "websearch_find",
+            "toolSignature": "websearch_find:{\"contextLines\":\"10\",\"selector\":\"16th president\",\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+            "summary": "Executed websearch_find",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "9bf4139aa360aea14c1cbd1ca8f715272c2328bf",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 376,
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            }
+        },
+        {
+            "sequence": 14,
+            "type": "llm_invocation",
+            "turnNumber": 3,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 3",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "05b9a95496da4a525596ce36df49df78b4c72968",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 8,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 3391
+            }
+        },
+        {
+            "sequence": 15,
+            "type": "token_snapshot",
+            "turnNumber": 3,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 3391 total used",
+            "promptTokens": 3312,
+            "completionTokens": 79,
+            "totalTokens": 3391,
+            "estimatedTokens": false,
+            "payloadSha1": "7f68225e3c6fd43dd5c72f0824cf8a6b6c2c4485",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 3312,
+                "completionTokens": 79,
+                "totalTokens": 3391,
+                "totalUsed": 3391
+            }
+        },
+        {
+            "sequence": 16,
+            "type": "tool_succeeded",
+            "turnNumber": 3,
+            "toolName": "websearch_find",
+            "toolSignature": "websearch_find:{\"contextLines\":\"10\",\"selector\":\"Abraham Lincoln was the 16th president\",\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+            "summary": "Executed websearch_find",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "0ca2e70ad3de04030cbdca531609d2d03481094e",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 133,
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            }
+        },
+        {
+            "sequence": 17,
+            "type": "llm_invocation",
+            "turnNumber": 4,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 4",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "d9ac7936b2600b1c61aa4e8617df1f0df18e44f7",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 10,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 3534
+            }
+        },
+        {
+            "sequence": 18,
+            "type": "token_snapshot",
+            "turnNumber": 4,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 3534 total used",
+            "promptTokens": 3448,
+            "completionTokens": 86,
+            "totalTokens": 3534,
+            "estimatedTokens": false,
+            "payloadSha1": "5d4cdb227a812a1b69218bd88f4f4555660ac62c",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 3448,
+                "completionTokens": 86,
+                "totalTokens": 3534,
+                "totalUsed": 3534
+            }
+        },
+        {
+            "sequence": 19,
+            "type": "tool_succeeded",
+            "turnNumber": 4,
+            "toolName": "websearch_find",
+            "toolSignature": "websearch_find:{\"contextLines\":\"10\",\"selector\":\"16th president of the United States (1861\\u201365)\",\"url\":\"https:\\/\\/www.britannica.com\\/biography\\/Abraham-Lincoln\"}",
+            "summary": "Executed websearch_find",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "871586790fd1f9f3b889b65fd04a61141ff680f7",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 140,
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            }
+        },
+        {
+            "sequence": 20,
+            "type": "run_failed",
+            "turnNumber": 5,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Wall-clock timeout",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        }
+    ],
+    "expected": {
+        "finalStatus": "timed_out",
+        "finalPhase": "failed",
+        "terminalStepType": "run_failed",
+        "mustContainStepTypes": [
+            "run_started",
+            "run_failed"
+        ],
+        "mustNotContainStepTypes": [
+            "assistant_final",
+            "run_aborted"
+        ]
+    }
+}

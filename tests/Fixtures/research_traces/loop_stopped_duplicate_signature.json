@@ -1,0 +1,451 @@
+{
+    "schemaVersion": 1,
+    "scenario": "loop_stopped_duplicate_signature",
+    "exportedAt": "2026-03-24T16:29:34+00:00",
+    "run": {
+        "runUuid": "63bd4dea-0c86-464d-83ae-d529dbb53d67",
+        "queryPreview": "[fixture:loop] generate loop-stopped fixture",
+        "queryHash": "93aa2a45d018bc73ffa94e18d57e2088d6e6067892c84a49d24ede8e2a3a7ae5",
+        "status": "loop_stopped",
+        "phase": "failed",
+        "tokenBudgetUsed": 1655,
+        "tokenBudgetHardCap": 75000,
+        "loopDetected": true,
+        "answerOnlyTriggered": false,
+        "failureReason": "Duplicate tool call detected (third identical call): websearch_find:{\"contextLines\":\"5\",\"selector\":\"fixture loop signature\",\"url\":\"https:\\/\\/example.com\\/fixture-loop\"}",
+        "finalAnswerLength": 0,
+        "finalAnswerSha1": null,
+        "createdAt": "2026-03-24T16:28:42+00:00",
+        "completedAt": "2026-03-24T16:28:49+00:00"
+    },
+    "operations": [
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "63bd4dea-0c86-464d-83ae-d529dbb53d67:llm:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "235d9477177e6530a4c5da314b62417830876583",
+            "resultPayloadSha1": "a29d380e1324a8598b6408302987ce2ee40c8cdb",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 2,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1500,
+                "completionTokens": 95,
+                "totalTokens": 1595,
+                "resultClass": "Fixture\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "63bd4dea-0c86-464d-83ae-d529dbb53d67:tool:0:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "a2b1fb65c0e67b4de5fb53efda0c91a5d1b24fe7",
+            "resultPayloadSha1": "9e2e09fbb2feb52c011b474bfddbd5598bfda205",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t0_p0",
+                "name": "websearch_find",
+                "normalizedSignature": "websearch_find:{\"contextLines\":\"5\",\"selector\":\"fixture loop signature\",\"url\":\"https:\\/\\/example.com\\/fixture-loop\"}",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t0_p0",
+                "name": "websearch_find",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ],
+                "resultLength": 83
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "63bd4dea-0c86-464d-83ae-d529dbb53d67:llm:1",
+            "errorMessage": null,
+            "requestPayloadSha1": "d24e53b58aebee47d02b8fa8d30402794df24d75",
+            "resultPayloadSha1": "1aa2cfbe379e851d8d403fa2e11048b19a22a22b",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 4,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1530,
+                "completionTokens": 95,
+                "totalTokens": 1625,
+                "resultClass": "Fixture\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "63bd4dea-0c86-464d-83ae-d529dbb53d67:tool:1:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "806fc2aadf5361954aad38b39be09662e7f296ca",
+            "resultPayloadSha1": "3eecc5d31b4e648836cecb4660ccdf70f50dc215",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t1_p0",
+                "name": "websearch_find",
+                "normalizedSignature": "websearch_find:{\"contextLines\":\"5\",\"selector\":\"fixture loop signature\",\"url\":\"https:\\/\\/example.com\\/fixture-loop\"}",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t1_p0",
+                "name": "websearch_find",
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ],
+                "resultLength": 83
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 2,
+            "position": 0,
+            "idempotencyKey": "63bd4dea-0c86-464d-83ae-d529dbb53d67:llm:2",
+            "errorMessage": null,
+            "requestPayloadSha1": "8bbe98ffad8d14b975e231fa5ebfabe57448762f",
+            "resultPayloadSha1": "c3a669bfbb14510aa37e561d634a519652d3af5f",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 6,
+                "lastMessageRole": "tool",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 1560,
+                "completionTokens": 95,
+                "totalTokens": 1655,
+                "resultClass": "Fixture\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        }
+    ],
+    "steps": [
+        {
+            "sequence": 1,
+            "type": "run_started",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "User asks:\n[fixture:loop] generate loop-stopped fixture\n",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        },
+        {
+            "sequence": 2,
+            "type": "llm_invocation",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 0",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "d1b1cb0bd0da87c2dae3f99dae299d63a7273157",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 2,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1595
+            }
+        },
+        {
+            "sequence": 3,
+            "type": "token_snapshot",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1595 total used",
+            "promptTokens": 1500,
+            "completionTokens": 95,
+            "totalTokens": 1595,
+            "estimatedTokens": false,
+            "payloadSha1": "3372ccea7b023d9256ed831ddecb36f9a5c93670",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1500,
+                "completionTokens": 95,
+                "totalTokens": 1595,
+                "totalUsed": 1595
+            }
+        },
+        {
+            "sequence": 4,
+            "type": "assistant_reasoning",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Checking the same target again for reproducible loop detection.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "190f14da726e60e043cbaf021d46e5dbef4f5854",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 5,
+            "type": "tool_succeeded",
+            "turnNumber": 0,
+            "toolName": "websearch_find",
+            "toolSignature": "websearch_find:{\"contextLines\":\"5\",\"selector\":\"fixture loop signature\",\"url\":\"https:\\/\\/example.com\\/fixture-loop\"}",
+            "summary": "Executed websearch_find",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "1f82a14d6f8df98d3e96f37b955dea5475880dec",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 83,
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            }
+        },
+        {
+            "sequence": 6,
+            "type": "llm_invocation",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 1",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "a1d785353cc42720504b38e30c37e4b7f970f298",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 4,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1625
+            }
+        },
+        {
+            "sequence": 7,
+            "type": "token_snapshot",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1625 total used",
+            "promptTokens": 1530,
+            "completionTokens": 95,
+            "totalTokens": 1625,
+            "estimatedTokens": false,
+            "payloadSha1": "8e857f4f208d3ef8a44c30946534cefdb48caea9",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1530,
+                "completionTokens": 95,
+                "totalTokens": 1625,
+                "totalUsed": 1625
+            }
+        },
+        {
+            "sequence": 8,
+            "type": "assistant_reasoning",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Checking the same target again for reproducible loop detection.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "190f14da726e60e043cbaf021d46e5dbef4f5854",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 9,
+            "type": "tool_succeeded",
+            "turnNumber": 1,
+            "toolName": "websearch_find",
+            "toolSignature": "websearch_find:{\"contextLines\":\"5\",\"selector\":\"fixture loop signature\",\"url\":\"https:\\/\\/example.com\\/fixture-loop\"}",
+            "summary": "Executed websearch_find",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "986a637215020dd395dfb6071da0976688646e39",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 83,
+                "argumentKeys": [
+                    "contextLines",
+                    "selector",
+                    "url"
+                ]
+            }
+        },
+        {
+            "sequence": 10,
+            "type": "llm_invocation",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 2",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "87aa0d4fe825beb68f52c5da079a5582997578af",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 6,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1655
+            }
+        },
+        {
+            "sequence": 11,
+            "type": "token_snapshot",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1655 total used",
+            "promptTokens": 1560,
+            "completionTokens": 95,
+            "totalTokens": 1655,
+            "estimatedTokens": false,
+            "payloadSha1": "9cebdc176d5bd4aa137e29ae94d9c4ab67f3bb92",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1560,
+                "completionTokens": 95,
+                "totalTokens": 1655,
+                "totalUsed": 1655
+            }
+        },
+        {
+            "sequence": 12,
+            "type": "assistant_reasoning",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Checking the same target again for reproducible loop detection.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "190f14da726e60e043cbaf021d46e5dbef4f5854",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 13,
+            "type": "loop_detected",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "websearch_find:{\"contextLines\":\"5\",\"selector\":\"fixture loop signature\",\"url\":\"https:\\/\\/example.com\\/fixture-loop\"}",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        }
+    ],
+    "expected": {
+        "finalStatus": "loop_stopped",
+        "finalPhase": "failed",
+        "terminalStepType": "loop_detected",
+        "mustContainStepTypes": [
+            "run_started",
+            "loop_detected"
+        ],
+        "mustNotContainStepTypes": [
+            "assistant_final",
+            "run_failed",
+            "run_aborted"
+        ]
+    }
+}

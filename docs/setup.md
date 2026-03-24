@@ -65,6 +65,7 @@ Run all Symfony and code quality commands via `make` targets.
 - Symfony console: `make console cmd='about'`
 - Install deps: `make composer-install`
 - Tests: `make test`
+- Tests with coverage: `make test-coverage` (reports in `var/coverage/`)
 - CS Fixer: `make cs-fix`
 - PHPStan: `make phpstan`
 - Full quality pass: `make quality`

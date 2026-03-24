@@ -1,0 +1,296 @@
+{
+    "schemaVersion": 1,
+    "scenario": "answer_only_enabled_then_final",
+    "exportedAt": "2026-03-24T16:32:38+00:00",
+    "run": {
+        "runUuid": "358a878c-afed-4fde-946f-1993fa2fc5e4",
+        "queryPreview": "[fixture:answer-only] generate answer-only fixture",
+        "queryHash": "2e8c6bcfdd043e3900f2478015392c4b05afd6634aea625f2eedde06987b01fc",
+        "status": "completed",
+        "phase": "completed",
+        "tokenBudgetUsed": 71310,
+        "tokenBudgetHardCap": 75000,
+        "loopDetected": false,
+        "answerOnlyTriggered": true,
+        "failureReason": null,
+        "finalAnswerLength": 134,
+        "finalAnswerSha1": "cff2ea9552d50763647476adb386988e495e7a96",
+        "createdAt": "2026-03-24T16:31:48+00:00",
+        "completedAt": "2026-03-24T16:31:52+00:00"
+    },
+    "operations": [
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "358a878c-afed-4fde-946f-1993fa2fc5e4:llm:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "14e547c47d47d267fa5b93c371be1ee8d5788d37",
+            "resultPayloadSha1": "1626a2fd60fd7d03dbe645e8e35eec22a29165c8",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 2,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 1,
+                "assistantTextLength": 0,
+                "promptTokens": 70900,
+                "completionTokens": 220,
+                "totalTokens": 71120,
+                "resultClass": "Fixture\\Result\\ToolCallResult",
+                "hasReasoningText": true
+            }
+        },
+        {
+            "type": "tool_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "358a878c-afed-4fde-946f-1993fa2fc5e4:tool:0:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "ee8142d52a4195ea380e0eb39d3832387a7f6917",
+            "resultPayloadSha1": "87dd369a610add0f15448129044332db5068adb3",
+            "requestSummary": {
+                "kind": "tool_request",
+                "callId": "call_t0_p0",
+                "name": "websearch_search",
+                "normalizedSignature": "websearch_search:{\"query\":\"fixture answer-only setup\",\"topn\":\"3\"}",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            },
+            "resultSummary": {
+                "kind": "tool_result",
+                "callId": "call_t0_p0",
+                "name": "websearch_search",
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ],
+                "resultLength": 84
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "358a878c-afed-4fde-946f-1993fa2fc5e4:llm:1",
+            "errorMessage": null,
+            "requestPayloadSha1": "6d130984cbe622154bc214fffb09f5259d7881d5",
+            "resultPayloadSha1": "43fb7fe6d4804dcc48c80c7e4cb7f0f61c774eb2",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": false,
+                "messageCount": 5,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": true,
+                "toolCallCount": 0,
+                "assistantTextLength": 134,
+                "promptTokens": 71130,
+                "completionTokens": 180,
+                "totalTokens": 71310,
+                "resultClass": "Fixture\\Result\\TextResult",
+                "hasReasoningText": false
+            }
+        }
+    ],
+    "steps": [
+        {
+            "sequence": 1,
+            "type": "run_started",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Web research task:  \n Conduct comprehensive web research to identify and provide a direct, accurate, and complete answer to the query. The response must be strictly answer-only, with no additional explanations, commentary, or formatting. Ensure the information is up-to-date, reliable, and sourced from authoritative online references.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        },
+        {
+            "sequence": 2,
+            "type": "llm_invocation",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 0",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "7c3acd4e405c317568d2bd1b09fc7615af5b66eb",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 2,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 1,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 71120
+            }
+        },
+        {
+            "sequence": 3,
+            "type": "token_snapshot",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 71120 total used",
+            "promptTokens": 70900,
+            "completionTokens": 220,
+            "totalTokens": 71120,
+            "estimatedTokens": false,
+            "payloadSha1": "c192c56bca45097e3119cedd99a7afd30d4e0422",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 70900,
+                "completionTokens": 220,
+                "totalTokens": 71120,
+                "totalUsed": 71120
+            }
+        },
+        {
+            "sequence": 4,
+            "type": "assistant_reasoning",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Initial broad search before answer-only gate is reached.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "9d5b778da3e24172b257222e79406b53d5a59561",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "reasoning"
+                ],
+                "keyCount": 1
+            }
+        },
+        {
+            "sequence": 5,
+            "type": "tool_succeeded",
+            "turnNumber": 0,
+            "toolName": "websearch_search",
+            "toolSignature": "websearch_search:{\"query\":\"fixture answer-only setup\",\"topn\":\"3\"}",
+            "summary": "Executed websearch_search",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "db1a2bee3664e43bd0f6567268eb7770a6d8d85a",
+            "payloadSummary": {
+                "kind": "tool_succeeded",
+                "resultLength": 84,
+                "argumentKeys": [
+                    "query",
+                    "topn"
+                ]
+            }
+        },
+        {
+            "sequence": 6,
+            "type": "answer_only_enabled",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Switching to answer-only mode",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        },
+        {
+            "sequence": 7,
+            "type": "llm_invocation",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 1",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "5c8481179f8587e6a4d793f3cf384a7405c30d41",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 5,
+                "requestToolCount": 0,
+                "responseIsFinal": true,
+                "responseToolCallCount": 0,
+                "responseAssistantTextLength": 134,
+                "responseTotalTokens": 71310
+            }
+        },
+        {
+            "sequence": 8,
+            "type": "token_snapshot",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 71310 total used",
+            "promptTokens": 71130,
+            "completionTokens": 180,
+            "totalTokens": 71310,
+            "estimatedTokens": false,
+            "payloadSha1": "974199d03b94b61b2c13f77bc290484b8a34eb75",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 71130,
+                "completionTokens": 180,
+                "totalTokens": 71310,
+                "totalUsed": 71310
+            }
+        },
+        {
+            "sequence": 9,
+            "type": "assistant_final",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "The 16th President of the United States was **Abraham Lincoln**.\n\n## References\n1. https://example.com/fixture-answer-only (lines L10)",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        }
+    ],
+    "expected": {
+        "finalStatus": "completed",
+        "finalPhase": "completed",
+        "terminalStepType": "assistant_final",
+        "mustContainStepTypes": [
+            "run_started",
+            "assistant_final"
+        ],
+        "mustNotContainStepTypes": [
+            "run_failed",
+            "loop_detected",
+            "run_aborted"
+        ]
+    }
+}

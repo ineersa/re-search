@@ -1,0 +1,58 @@
+{
+    "schemaVersion": 1,
+    "scenario": "throttled_submit",
+    "exportedAt": "2026-03-24T16:39:15+00:00",
+    "run": {
+        "runUuid": "d1e9f042-571a-4eb1-aab2-c1433d3964fc",
+        "queryPreview": "Who was the 16th president of the united states?",
+        "queryHash": "4296c479a5c5bd8bb91f22907c08ceeea61f0e992c64532ce863075e92c7a8b8",
+        "status": "throttled",
+        "phase": "queued",
+        "tokenBudgetUsed": 0,
+        "tokenBudgetHardCap": 75000,
+        "loopDetected": false,
+        "answerOnlyTriggered": false,
+        "failureReason": "Rate limited - retry tomorrow!",
+        "finalAnswerLength": 0,
+        "finalAnswerSha1": null,
+        "createdAt": "2026-03-23T13:45:06+00:00",
+        "completedAt": null
+    },
+    "operations": [],
+    "steps": [
+        {
+            "sequence": 1,
+            "type": "trace_pruned",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Trace was pruned. Full trace is available only for the most recent 10 runs.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "102f57dd58546ac22f8d81003a50a3529e70483c",
+            "payloadSummary": {
+                "kind": "generic",
+                "keys": [
+                    "keepPerClient",
+                    "prunedAt"
+                ],
+                "keyCount": 2
+            }
+        }
+    ],
+    "expected": {
+        "finalStatus": "throttled",
+        "finalPhase": "queued",
+        "terminalStepType": "trace_pruned",
+        "mustContainStepTypes": [],
+        "mustNotContainStepTypes": [
+            "run_started",
+            "assistant_final",
+            "run_failed",
+            "loop_detected",
+            "run_aborted"
+        ]
+    }
+}

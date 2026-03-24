@@ -1,0 +1,588 @@
+{
+    "schemaVersion": 1,
+    "scenario": "failed_empty_response_retries",
+    "exportedAt": "2026-03-24T16:30:49+00:00",
+    "run": {
+        "runUuid": "9225c45f-4607-46b3-966c-1df3442d76ae",
+        "queryPreview": "[fixture:empty] generate assistant-empty fixture",
+        "queryHash": "9d1ac1977d12dc1529dbddf8c80b641176ef2ba4e27676a021faf47cf08fd3b9",
+        "status": "failed",
+        "phase": "failed",
+        "tokenBudgetUsed": 1408,
+        "tokenBudgetHardCap": 75000,
+        "loopDetected": false,
+        "answerOnlyTriggered": false,
+        "failureReason": "Model returned an empty response repeatedly",
+        "finalAnswerLength": 0,
+        "finalAnswerSha1": null,
+        "createdAt": "2026-03-24T16:29:42+00:00",
+        "completedAt": "2026-03-24T16:30:02+00:00"
+    },
+    "operations": [
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 0,
+            "position": 0,
+            "idempotencyKey": "9225c45f-4607-46b3-966c-1df3442d76ae:llm:0",
+            "errorMessage": null,
+            "requestPayloadSha1": "54afabcefb259feca34c502d7a110bf331b44ab9",
+            "resultPayloadSha1": "e077a11aa2077d3db9f88339fd5d9e093024c215",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 2,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 0,
+                "assistantTextLength": 0,
+                "promptTokens": 1200,
+                "completionTokens": 8,
+                "totalTokens": 1208,
+                "resultClass": "Fixture\\Result\\EmptyResponse",
+                "hasReasoningText": false
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 1,
+            "position": 0,
+            "idempotencyKey": "9225c45f-4607-46b3-966c-1df3442d76ae:llm:1",
+            "errorMessage": null,
+            "requestPayloadSha1": "e2544d5ca95ee217f1c53900c316e68c55688e00",
+            "resultPayloadSha1": "7de563c92625355506510a7633be68c1bd23ff96",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 3,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 0,
+                "assistantTextLength": 0,
+                "promptTokens": 1240,
+                "completionTokens": 8,
+                "totalTokens": 1248,
+                "resultClass": "Fixture\\Result\\EmptyResponse",
+                "hasReasoningText": false
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 2,
+            "position": 0,
+            "idempotencyKey": "9225c45f-4607-46b3-966c-1df3442d76ae:llm:2",
+            "errorMessage": null,
+            "requestPayloadSha1": "b9af8489708b66aed339f954dbf7e5de7e0e1d00",
+            "resultPayloadSha1": "09f103e177657ec5c01e7fcff98d924251861022",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 4,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 0,
+                "assistantTextLength": 0,
+                "promptTokens": 1280,
+                "completionTokens": 8,
+                "totalTokens": 1288,
+                "resultClass": "Fixture\\Result\\EmptyResponse",
+                "hasReasoningText": false
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 3,
+            "position": 0,
+            "idempotencyKey": "9225c45f-4607-46b3-966c-1df3442d76ae:llm:3",
+            "errorMessage": null,
+            "requestPayloadSha1": "9fc52a8a4558ef5320071d5d0cda749ea3e7240c",
+            "resultPayloadSha1": "5d134c0a3c72d43e10d156b378a90f48e9380517",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 5,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 0,
+                "assistantTextLength": 0,
+                "promptTokens": 1320,
+                "completionTokens": 8,
+                "totalTokens": 1328,
+                "resultClass": "Fixture\\Result\\EmptyResponse",
+                "hasReasoningText": false
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 4,
+            "position": 0,
+            "idempotencyKey": "9225c45f-4607-46b3-966c-1df3442d76ae:llm:4",
+            "errorMessage": null,
+            "requestPayloadSha1": "4fef1d5b2417f8aff47579d9391769af09492874",
+            "resultPayloadSha1": "4ef6e113fd3cefdeaa41a22ed8d759cf1afc7bfd",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 6,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 0,
+                "assistantTextLength": 0,
+                "promptTokens": 1360,
+                "completionTokens": 8,
+                "totalTokens": 1368,
+                "resultClass": "Fixture\\Result\\EmptyResponse",
+                "hasReasoningText": false
+            }
+        },
+        {
+            "type": "llm_call",
+            "status": "succeeded",
+            "turnNumber": 5,
+            "position": 0,
+            "idempotencyKey": "9225c45f-4607-46b3-966c-1df3442d76ae:llm:5",
+            "errorMessage": null,
+            "requestPayloadSha1": "74fd0910b54d756ded2c8320e4b55316baef785a",
+            "resultPayloadSha1": "ab3854b737fa60391ea454752bd0f92d525cc1eb",
+            "requestSummary": {
+                "kind": "llm_request",
+                "model": "flash",
+                "allowTools": true,
+                "messageCount": 7,
+                "lastMessageRole": "user",
+                "optionsKeys": []
+            },
+            "resultSummary": {
+                "kind": "llm_result",
+                "isFinal": false,
+                "toolCallCount": 0,
+                "assistantTextLength": 0,
+                "promptTokens": 1400,
+                "completionTokens": 8,
+                "totalTokens": 1408,
+                "resultClass": "Fixture\\Result\\EmptyResponse",
+                "hasReasoningText": false
+            }
+        }
+    ],
+    "steps": [
+        {
+            "sequence": 1,
+            "type": "run_started",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "# Web Research Task\n\nConduct comprehensive web research to identify and provide a detailed explanation of what an \"assistant-empty fixture\" is, including its purpose, functionality, use cases, and any relevant examples or documentation from authoritative sources. If no such concept exists or is widely recognized, clearly state that it is not a known or established term in current technology or software development practices.",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        },
+        {
+            "sequence": 2,
+            "type": "llm_invocation",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 0",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "11180f6b091dbe5fe59f316e9bf7e705d0c68ad8",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 2,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 0,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1208
+            }
+        },
+        {
+            "sequence": 3,
+            "type": "token_snapshot",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1208 total used",
+            "promptTokens": 1200,
+            "completionTokens": 8,
+            "totalTokens": 1208,
+            "estimatedTokens": false,
+            "payloadSha1": "858b6f579d12385feed76fa6e5dc5f752f52769e",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1200,
+                "completionTokens": 8,
+                "totalTokens": 1208,
+                "totalUsed": 1208
+            }
+        },
+        {
+            "sequence": 4,
+            "type": "assistant_empty",
+            "turnNumber": 0,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Empty response (retry 1/5), requesting retry",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "9ff332d9bd2eee28a65eaa9aab5e18558c554bad",
+            "payloadSummary": {
+                "kind": "assistant_empty",
+                "retry": 1,
+                "maxRetries": 5
+            }
+        },
+        {
+            "sequence": 5,
+            "type": "llm_invocation",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 1",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "d052acb4bc8b6a02029b07239e12181cfbf1ddcc",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 3,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 0,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1248
+            }
+        },
+        {
+            "sequence": 6,
+            "type": "token_snapshot",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1248 total used",
+            "promptTokens": 1240,
+            "completionTokens": 8,
+            "totalTokens": 1248,
+            "estimatedTokens": false,
+            "payloadSha1": "8e9b38f9dd7a81d27d755a73037618cc5f729668",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1240,
+                "completionTokens": 8,
+                "totalTokens": 1248,
+                "totalUsed": 1248
+            }
+        },
+        {
+            "sequence": 7,
+            "type": "assistant_empty",
+            "turnNumber": 1,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Empty response (retry 2/5), requesting retry",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "c1f4fde03837b429192ef3c91e08313d3deb865f",
+            "payloadSummary": {
+                "kind": "assistant_empty",
+                "retry": 2,
+                "maxRetries": 5
+            }
+        },
+        {
+            "sequence": 8,
+            "type": "llm_invocation",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 2",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "eae2a7732c8b3bbc7b33a975e517debe42ff28d6",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 4,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 0,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1288
+            }
+        },
+        {
+            "sequence": 9,
+            "type": "token_snapshot",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1288 total used",
+            "promptTokens": 1280,
+            "completionTokens": 8,
+            "totalTokens": 1288,
+            "estimatedTokens": false,
+            "payloadSha1": "a4842ab1c1b9a3b951fc556f535192a529724bfa",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1280,
+                "completionTokens": 8,
+                "totalTokens": 1288,
+                "totalUsed": 1288
+            }
+        },
+        {
+            "sequence": 10,
+            "type": "assistant_empty",
+            "turnNumber": 2,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Empty response (retry 3/5), requesting retry",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "54909e974e8a222cc26046fad4e12289fea01212",
+            "payloadSummary": {
+                "kind": "assistant_empty",
+                "retry": 3,
+                "maxRetries": 5
+            }
+        },
+        {
+            "sequence": 11,
+            "type": "llm_invocation",
+            "turnNumber": 3,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 3",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "69e28eef1f394a58c14315508b816110ddfb3d20",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 5,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 0,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1328
+            }
+        },
+        {
+            "sequence": 12,
+            "type": "token_snapshot",
+            "turnNumber": 3,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1328 total used",
+            "promptTokens": 1320,
+            "completionTokens": 8,
+            "totalTokens": 1328,
+            "estimatedTokens": false,
+            "payloadSha1": "b1c118af365cacad860d5e08f42dfe17508f6b30",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1320,
+                "completionTokens": 8,
+                "totalTokens": 1328,
+                "totalUsed": 1328
+            }
+        },
+        {
+            "sequence": 13,
+            "type": "assistant_empty",
+            "turnNumber": 3,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Empty response (retry 4/5), requesting retry",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "81c7cdc4b533809c3a146e106cc6641841fe7a9f",
+            "payloadSummary": {
+                "kind": "assistant_empty",
+                "retry": 4,
+                "maxRetries": 5
+            }
+        },
+        {
+            "sequence": 14,
+            "type": "llm_invocation",
+            "turnNumber": 4,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 4",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "2b1b9f3c3158e357fd7ef96cea4e392f7f0d066b",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 6,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 0,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1368
+            }
+        },
+        {
+            "sequence": 15,
+            "type": "token_snapshot",
+            "turnNumber": 4,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1368 total used",
+            "promptTokens": 1360,
+            "completionTokens": 8,
+            "totalTokens": 1368,
+            "estimatedTokens": false,
+            "payloadSha1": "60d40466da9c1ae05bb825a2f150eff8e0b92072",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1360,
+                "completionTokens": 8,
+                "totalTokens": 1368,
+                "totalUsed": 1368
+            }
+        },
+        {
+            "sequence": 16,
+            "type": "assistant_empty",
+            "turnNumber": 4,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Empty response (retry 5/5), requesting retry",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "30160ab40a9c32a2b3c8a5a1145d2fe61d8d17cb",
+            "payloadSummary": {
+                "kind": "assistant_empty",
+                "retry": 5,
+                "maxRetries": 5
+            }
+        },
+        {
+            "sequence": 17,
+            "type": "llm_invocation",
+            "turnNumber": 5,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "LLM invocation turn 5",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": "63cd4181ac29966bec24b7da5d254dd8cd04890a",
+            "payloadSummary": {
+                "kind": "llm_invocation",
+                "requestModel": "flash",
+                "requestMessageCount": 7,
+                "requestToolCount": 3,
+                "responseIsFinal": false,
+                "responseToolCallCount": 0,
+                "responseAssistantTextLength": 0,
+                "responseTotalTokens": 1408
+            }
+        },
+        {
+            "sequence": 18,
+            "type": "token_snapshot",
+            "turnNumber": 5,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Tokens: 1408 total used",
+            "promptTokens": 1400,
+            "completionTokens": 8,
+            "totalTokens": 1408,
+            "estimatedTokens": false,
+            "payloadSha1": "2ac46c82934cdf67a765b9cf240029b5b4a4a758",
+            "payloadSummary": {
+                "kind": "token_snapshot",
+                "promptTokens": 1400,
+                "completionTokens": 8,
+                "totalTokens": 1408,
+                "totalUsed": 1408
+            }
+        },
+        {
+            "sequence": 19,
+            "type": "run_failed",
+            "turnNumber": 5,
+            "toolName": null,
+            "toolSignature": null,
+            "summary": "Repeated empty response",
+            "promptTokens": null,
+            "completionTokens": null,
+            "totalTokens": null,
+            "estimatedTokens": false,
+            "payloadSha1": null,
+            "payloadSummary": null
+        }
+    ],
+    "expected": {
+        "finalStatus": "failed",
+        "finalPhase": "failed",
+        "terminalStepType": "run_failed",
+        "mustContainStepTypes": [
+            "run_started",
+            "run_failed"
+        ],
+        "mustNotContainStepTypes": [
+            "assistant_final",
+            "run_aborted"
+        ]
+    }
+}
