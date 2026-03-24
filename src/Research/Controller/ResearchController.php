@@ -19,6 +19,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 final class ResearchController extends AbstractController
 {
@@ -202,6 +203,11 @@ final class ResearchController extends AbstractController
 
     private function buildClientKey(Request $request): string
     {
+        $user = $this->getUser();
+        if ($user instanceof UserInterface) {
+            return 'user:'.hash('sha256', $user->getUserIdentifier());
+        }
+
         $ip = $request->getClientIp() ?? 'unknown';
         $sessionId = $request->hasSession() ? $request->getSession()->getId() : 'no-session';
 

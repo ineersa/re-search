@@ -1,0 +1,59 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Log in · re-search{% endblock %}
+
+{% block body %}
+    <main class="min-h-screen bg-[#0a0a0a] text-gray-100 px-4 py-10">
+        <section class="mx-auto w-full max-w-md border border-[#333] bg-[#111]/90 p-6 sm:p-8">
+            <header class="mb-6">
+                <a href="{{ path('app_home') }}" class="text-sm text-gray-500 hover:text-gray-300">← Back to re-search</a>
+                <h1 class="mt-3 text-2xl tracking-tight">Log in</h1>
+                <p class="mt-2 text-sm text-gray-500">Sign in to bypass rate limiting.</p>
+            </header>
+
+            {% if error %}
+                <div class="mb-4 border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                </div>
+            {% endif %}
+
+            {% if app.user %}
+                <div class="mb-4 border border-[#333] bg-[#1a1a1a] px-3 py-2 text-sm text-gray-300">
+                    You are already logged in as {{ app.user.userIdentifier }}.
+                </div>
+            {% endif %}
+
+            <form method="post" action="{{ path('app_login') }}" class="grid gap-3">
+                <label for="username" class="text-xs uppercase tracking-wider text-gray-500">Email</label>
+                <input
+                    id="username"
+                    name="_username"
+                    type="email"
+                    value="{{ last_username }}"
+                    autocomplete="email"
+                    required
+                    class="w-full border border-[#444] bg-[#1a1a1a] p-3 text-gray-100 outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
+                >
+
+                <label for="password" class="mt-2 text-xs uppercase tracking-wider text-gray-500">Password</label>
+                <input
+                    id="password"
+                    name="_password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                    class="w-full border border-[#444] bg-[#1a1a1a] p-3 text-gray-100 outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
+                >
+
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <button
+                    type="submit"
+                    class="mt-2 cursor-pointer border-none bg-white p-3 font-semibold text-black transition-colors hover:bg-gray-200"
+                >
+                    Log in
+                </button>
+            </form>
+        </section>
+    </main>
+{% endblock %}

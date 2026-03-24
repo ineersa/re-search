@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Research\Throttle;
 
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Enforces research submit rate limits per client IP.
@@ -15,6 +17,7 @@ final class ResearchThrottle
 {
     public function __construct(
         private readonly RateLimiterFactoryInterface $researchSubmitLimiter,
+        private readonly Security $security,
     ) {
     }
 
@@ -23,6 +26,11 @@ final class ResearchThrottle
      */
     public function peek(Request $request): void
     {
+        $user = $this->security->getUser();
+        if ($user instanceof UserInterface) {
+            return;
+        }
+
         $identifier = $this->clientIp($request);
         $limiter = $this->researchSubmitLimiter->create($identifier);
 
@@ -38,6 +46,10 @@ final class ResearchThrottle
      */
     public function consumeByClientKey(string $clientKey): void
     {
+        if (str_starts_with($clientKey, 'user:')) {
+            return;
+        }
+
         $ip = explode('|', $clientKey)[0];
         $limiter = $this->researchSubmitLimiter->create($ip);
         $limiter->consume(1);

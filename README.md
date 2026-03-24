@@ -5,6 +5,20 @@ Project documentation lives in `docs/`.
 - Setup guide: `docs/setup.md`
 - Mercure streaming: see [Mercure](#mercure) below
 
+## Authentication (local users)
+
+Create a user:
+
+```bash
+make console cmd='app:user:create you@example.com your-password'
+```
+
+Create an admin user:
+
+```bash
+make console cmd='app:user:create admin@example.com your-password --admin'
+```
+
 ## Testing the Orchestrator
 
 You can test the research orchestrator loop synchronously using the console command. This bypasses the background worker and runs the loop directly in your terminal, making it easier to debug.
