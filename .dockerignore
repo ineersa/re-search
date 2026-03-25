@@ -2,6 +2,8 @@
 .gitignore
 .env.local
 .env.*.local
+# Allow prod secrets file on the build host (gitignored) so `composer dump-env prod` in the Dockerfile can merge it.
+!.env.prod.local
 vendor
 var
 data/*

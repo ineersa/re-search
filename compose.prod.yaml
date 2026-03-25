@@ -1,25 +1,175 @@
+# Production-like / VPS stack: FrankenPHP + SQLite volume + Messenger workers.
+# Usage: docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+#
+# Symfony: `.env` + `.env.prod` (+ optional `.env.prod.local` on the build host) are compiled into
+# `.env.local.php` in the image via `composer dump-env prod` in the Dockerfile.
+#
+# Compose loads `.env.prod.local` via `env_file` into each service (no shell `export`). Use it for
+# Caddy `{env.MERCURE_*}` / `SERVER_NAME` and any runtime overrides; values override Symfony’s dump
+# for the same variable names. Copy `.env.prod.local.dist` → `.env.prod.local`.
+#
+# HTTP publish: default is 127.0.0.1:8080→container:80 so host nginx (or anything else) can keep
+# public 80/443. Caddy inside the container does not compete with nginx on the host. For a dedicated
+# VPS where Caddy should bind public 80/443 + ACME, set in the project `.env` used by Compose:
+#   RE_SEARCH_HTTP_BIND=0.0.0.0
+#   RE_SEARCH_HTTP_PORT=80
+# and add 443 mappings via a local compose override (see docs/server-deployment.md).
+
+x-prod-env-file: &prod-env-file
+  env_file:
+    - path: .env.prod.local
+      required: false
+
+# Multiline Caddy config; keep in Compose (dotenv is awkward for this block).
+x-caddy-inline-env: &caddy-inline-env
+  FRANKENPHP_CONFIG: import /etc/caddy/worker.Caddyfile
+  MERCURE_EXTRA_DIRECTIVES: |-
+    transport bolt {
+      path /data/mercure.db
+    }
+
 services:
   php:
+    image: ${RE_SEARCH_IMAGE:-re-search-app}
+    <<: *prod-env-file
+    environment:
+      <<: *caddy-inline-env
+    volumes:
+      - research_data:/app/data
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "${RE_SEARCH_HTTP_BIND:-127.0.0.1}:${RE_SEARCH_HTTP_PORT:-8080}:80"
+
+  mercure:
+    profiles:
+      - standalone-mercure
+
+  messenger-worker-orchestrator:
+    image: ${RE_SEARCH_IMAGE:-re-search-app}
+    <<: *prod-env-file
     build:
       context: .
       dockerfile: Dockerfile
       target: frankenphp_prod
-    environment:
-      APP_ENV: prod
-      APP_SECRET: ${APP_SECRET:-ChangeMe}
-      RESEARCH_SUBMIT_RATE_LIMIT: ${RESEARCH_SUBMIT_RATE_LIMIT:-2}
-      SERVER_NAME: ${SERVER_NAME:-localhost}
-      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/research}
-      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
-      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
-      MERCURE_PUBLISHER_JWT_ALG: ${MERCURE_PUBLISHER_JWT_ALG:-HS256}
-      MERCURE_SUBSCRIBER_JWT_ALG: ${MERCURE_SUBSCRIBER_JWT_ALG:-HS256}
-      MERCURE_EXTRA_DIRECTIVES: |-
-        transport bolt {
-          path /data/mercure.db
-        }
-      FRANKENPHP_CONFIG: ${FRANKENPHP_CONFIG:-import /etc/caddy/worker.Caddyfile}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - research_data:/app/data
+    depends_on:
+      - php
+    entrypoint: ["php", "bin/console"]
+    command:
+      - messenger:consume
+      - orchestrator
+      - -vv
+      - --time-limit=3600
+      - --memory-limit=256M
+
+  messenger-worker-llm-1:
+    image: ${RE_SEARCH_IMAGE:-re-search-app}
+    <<: *prod-env-file
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frankenphp_prod
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - research_data:/app/data
+    depends_on:
+      - php
+    entrypoint: ["php", "bin/console"]
+    command:
+      - messenger:consume
+      - llm
+      - -vv
+      - --time-limit=3600
+      - --memory-limit=512M
+
+  messenger-worker-llm-2:
+    image: ${RE_SEARCH_IMAGE:-re-search-app}
+    <<: *prod-env-file
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frankenphp_prod
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - research_data:/app/data
+    depends_on:
+      - php
+    entrypoint: ["php", "bin/console"]
+    command:
+      - messenger:consume
+      - llm
+      - -vv
+      - --time-limit=3600
+      - --memory-limit=512M
+
+  messenger-worker-tool-1:
+    image: ${RE_SEARCH_IMAGE:-re-search-app}
+    <<: *prod-env-file
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frankenphp_prod
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - research_data:/app/data
+    depends_on:
+      - php
+    entrypoint: ["php", "bin/console"]
+    command:
+      - messenger:consume
+      - tool
+      - -vv
+      - --time-limit=3600
+      - --memory-limit=256M
+
+  messenger-worker-tool-2:
+    image: ${RE_SEARCH_IMAGE:-re-search-app}
+    <<: *prod-env-file
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frankenphp_prod
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - research_data:/app/data
+    depends_on:
+      - php
+    entrypoint: ["php", "bin/console"]
+    command:
+      - messenger:consume
+      - tool
+      - -vv
+      - --time-limit=3600
+      - --memory-limit=256M
+
+  messenger-worker-scheduler:
+    image: ${RE_SEARCH_IMAGE:-re-search-app}
+    <<: *prod-env-file
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frankenphp_prod
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - research_data:/app/data
+    depends_on:
+      - php
+    entrypoint: ["php", "bin/console"]
+    command:
+      - messenger:consume
+      - scheduler_research_maintenance
+      - -vv
+      - --time-limit=3600
+      - --memory-limit=128M
+
+volumes:
+  research_data:

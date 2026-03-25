@@ -70,4 +70,9 @@ RUN set -eux; \
     composer run-script --no-dev post-install-cmd; \
     chmod +x bin/console
 
+# Production UI: Tailwind + AssetMapper (dev uses make tailwind-watch / assets-compile instead)
+RUN set -eux; \
+    php bin/console tailwind:build --env=prod --no-debug; \
+    php bin/console asset-map:compile --env=prod --no-debug
+
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

@@ -57,7 +57,7 @@ sequenceDiagram
             OTP->>T: consumeByClientKey(clientKey) [on completed only]
         end
 
-        OTP->>M: publish activity/answer/budget/complete
+        OTP->>M: publish activity/answer/budget/phase/complete
         M-->>B: Mercure events
     end
 ```
@@ -70,17 +70,35 @@ sequenceDiagram
 
 All handlers are intentionally short and finite. Long work is split across multiple messages.
 
+## AI platform integration
+
+Model calls go through Symfony AI’s `PlatformInterface`, resolved by **`App\Research\Platform\ResearchPlatformFactory`** from the **`AI_PLATFORM`** environment variable (`llama` \| `generic` \| `zai`). The active model id comes from **`RESEARCH_MODEL`**.
+
+| Platform | Service | Typical env vars | Notes |
+| :--- | :--- | :--- | :--- |
+| **llama** | `App\Platform\LlamaCpp\PlatformFactory` | `LLAMACPP_BASE_URL`, `LLAMACPP_API_KEY` | Local [llama.cpp](https://github.com/ggerganov/llama.cpp) server; uses the generic completions stack with a custom **`Contract`** / **`ToolCallNormalizer`** for tool-argument JSON shape. |
+| **generic** | `App\Platform\Generic\PlatformFactory` | `GENERIC_BASE_URL` | OpenAI-compatible HTTP API (`/v1/chat/completions`). |
+| **zai** | `App\Platform\Zai\PlatformFactory` | `ZAI_BASE_URL` (default `https://api.z.ai/api/paas/v4/`), `ZAI_API_KEY` | Z.AI cloud; uses the same generic completions stack with Z.AI’s **`/chat/completions`** path, **`EventSourceHttpClient`** for streaming, and **`App\Platform\Zai\ModelCatalog`** for supported GLM models and capability flags. |
+
+All three platforms use the shared **`App\Platform\Generic\Completions\ModelClient`** and **`App\Platform\Generic\Completions\ResultConverter`**. That converter normalizes streaming deltas (including tool arguments and optional “thinking” / reasoning fields) so orchestration and tracing stay consistent across providers.
+
+**Z.AI-specific behavior**: With GLM models and Z.AI’s interleaved **`tool_stream`** responses, reasoning, visible content, and tool-call fragments can arrive in one stream. How that is assembled and how reasoning is preserved across turns is documented in [docs/interleaved_reasoning_and_tool_calls.md](docs/interleaved_reasoning_and_tool_calls.md). Model-level options (for example **`preserve_reasoning_history`**) live in **`src/Platform/Zai/ModelCatalog.php`**; a capability summary is in **`src/Platform/Zai/CAPABILITIES.md`**.
+
+Configuration references: **`config/services.yaml`** (tagged `ai.platform` services and `ResearchPlatformFactory` locator), **`config/packages/ai.yaml`** (platform list / bundle notes).
+
 ## Request Lifecycle
 
 1. **Submission**: frontend sends query to `ResearchController::submit()`.
-2. **Rate limit preflight**: `ResearchThrottle::peek()` checks client IP quota via Symfony RateLimiter (`consume(0)`, no token consumption).
+2. **Rate limit preflight**: for **anonymous** requests, `ResearchThrottle::peek()` checks client IP quota via Symfony RateLimiter (`consume(0)`, no token consumption). **Authenticated** users skip this gate (no per-day submit cap via this limiter).
 3. **Run creation**: `ResearchRun` is stored with `status=queued`, `phase=queued`, and a Mercure topic.
 4. **Initial tick dispatch**: controller dispatches `OrchestratorTick(runId)` directly to the `orchestrator` transport.
 5. **Orchestrator transition**: `OrchestratorTickHandler` acquires a per-run lock and delegates to `OrchestratorTransitionService`.
 6. **LLM/tools fan-out**: transition logic creates `ResearchOperation` rows and dispatches either LLM or tool operation messages.
 7. **Worker completion feedback**: LLM/tool handlers persist operation results and dispatch a new `OrchestratorTick`.
 8. **Run completion**: when terminal, final answer and status are persisted and a `complete` event is published.
-9. **Token consumption on success**: one limiter token is consumed only when a run reaches `completed` (not on failed/aborted/throttled runs).
+9. **Token consumption on success**: for anonymous clients, one limiter token is consumed when a run reaches `completed` (not on failed/aborted/throttled runs). Keys prefixed with `user:` (authenticated) do not consume IP limiter tokens.
+
+**Client key**: runs are scoped to a stable key from `ResearchController::buildClientKey()`: authenticated users use `user:` + a hash of the user identifier; anonymous users use `client IP` + `session id`. This key is stored on `ResearchRun` and used for list/show/stop authorization.
 
 ## Orchestrator State Machine
 
@@ -149,21 +167,22 @@ Operational note: maintenance pruning compacts old runs by replacing full step h
 
 ## Event Contract and Streaming
 
-The Mercure contract remains stable:
+Mercure payloads use a small set of top-level `type` values:
 
-- `activity`
-- `answer`
-- `budget`
-- `complete`
+- `activity` — `stepType`, `summary`, `meta` (tool outcomes, reasoning summaries, warnings, incremental model text during an LLM operation via `assistant_stream`, retries, etc.).
+- `answer` — final markdown stream (`markdown`, `isFinal`).
+- `budget` — token usage meta.
+- `phase` — high-level orchestration progress for the UI (`phase`, `status`, `message`, `meta`).
+- `complete` — terminal run meta.
 
-`answer` events are now streamed in chunks during final output publication:
+`answer` events are streamed in chunks during final output publication:
 
 - intermediate chunks: `isFinal=false`
 - terminal marker: `isFinal=true` (empty markdown payload)
 
 Chunking is performed by `OrchestratorRunStateManager` (currently 320 UTF-8 chars per chunk).
 
-This preserves the existing event type contract while restoring incremental answer rendering in the UI.
+Clients should tolerate additional Mercure `type` values (for example `phase`); answer streaming remains incremental via `answer` chunks plus a final empty `isFinal=true` marker.
 
 ## Frontend Evidence Mapping
 
@@ -182,11 +201,12 @@ The answer/reference UI consumes streamed markdown and maps references back to t
 
 `App\Research\Throttle\ResearchThrottle`:
 
-- identifier: client IP only (`Request::getClientIp()`)
+- scope: **anonymous requests only**; authenticated Symfony users bypass `peek()` and do not consume IP tokens on completion (`clientKey` starting with `user:`).
+- identifier: client IP (`Request::getClientIp()`) for anonymous traffic
 - policy: Symfony `sliding_window`, interval `1 day`
 - per-day limit: `%env(int:RESEARCH_SUBMIT_RATE_LIMIT)%` (production default is `2`, set in `.env.prod`)
 - submit behavior: `peek()` uses `consume(0)` to check quota before run creation (no token spent at submit time)
-- token spend point: `consumeByClientKey()` is called after successful finalization (`status=completed`)
+- token spend point: `consumeByClientKey()` is called after successful finalization (`status=completed`) for non-`user:` keys
 - on limit exceed: request is recorded as `throttled`, API returns `429` with `Retry-After`
 
 ### Runtime safeguards (tick transitions)
@@ -204,14 +224,11 @@ The answer/reference UI consumes streamed markdown and maps references back to t
 
 Token usage is persisted from LLM metadata and published through `budget` events. `hardCap` in budget events comes from `ResearchRun.tokenBudgetHardCap` (default: 75,000).
 
-## Cancellation (Current State)
+## Cancellation
 
-Backend cancellation is supported at orchestration level:
-
-- if `ResearchRun.cancel_requested_at` is set, next tick marks run `aborted`
-- `run_aborted` step is persisted and `complete` event is emitted with `status=aborted`
-
-HTTP cancel endpoint wiring and Stop-button backend integration are not yet completed in this slice.
+- **API**: `POST /research/runs/{id}/stop` (`ResearchController::stop`) sets `cancel_requested_at` when absent, flushes, and dispatches `OrchestratorTick` so the run moves toward a terminal state promptly. Access is enforced with the same client key as submit/show.
+- **Orchestrator**: if `cancel_requested_at` is set, the next tick treats the run as user-aborted (`aborted`), persists a `run_aborted` step, and emits `complete` with `status=aborted`.
+- **Workers**: `ExecuteLlmOperationHandler` and `ExecuteToolOperationHandler` check cancellation while work is in flight and fail operations cooperatively with a clear error when the run was stopped.
 
 ## Component Responsibilities
 
@@ -227,7 +244,8 @@ HTTP cancel endpoint wiring and Stop-button backend integration are not yet comp
 - **`ExecuteLlmOperationHandler`**: performs model invocation and persists operation result.
 - **`ExecuteToolOperationHandler`**: executes toolbox call and persists operation result.
 - **`RunOrchestratorLock`**: per-run non-blocking lock abstraction.
-- **`MercureEventPublisher`**: publishes `activity/answer/budget/complete` events.
+- **`ResearchPlatformFactory`**: selects `llama`, `generic`, or `zai` platform service per `AI_PLATFORM`.
+- **`MercureEventPublisher`**: publishes `activity`, `answer`, `budget`, `phase`, and `complete` events.
 - **`WebSearchTool`**: MCP-backed `websearch_search`, `websearch_open`, `websearch_find`.
 
 ## Development and Debugging
@@ -257,3 +275,9 @@ HTTP cancel endpoint wiring and Stop-button backend integration are not yet comp
 
 1. Update `ResearchSystemPromptBuilder` and/or `ResearchTaskPromptBuilder`.
 2. Keep citation/output contracts aligned with frontend evidence parsing.
+
+### Switch or extend the LLM provider
+
+1. Set `AI_PLATFORM` and matching base URL / API key env vars; set `RESEARCH_MODEL` to an id the target catalog recognizes.
+2. For Z.AI, adjust `App\Platform\Zai\ModelCatalog` / `CAPABILITIES.md` when adding or renaming models.
+3. If the vendor’s streaming or tool JSON differs from OpenAI-style deltas, extend `App\Platform\Generic\Completions\ResultConverter` (and related normalizers) rather than branching orchestration code.

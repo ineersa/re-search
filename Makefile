@@ -7,11 +7,11 @@ PHP_SERVICE := php
 HOST_UID := $(shell id -u)
 HOST_GID := $(shell id -g)
 
-.PHONY: help init setup build build-prod up up-prod down down-prod restart restart-prod \
-	ps ps-prod logs logs-prod logs-php logs-mailer pull prune \
+.PHONY: help init setup dev-bootstrap build build-prod up up-prod down down-prod restart restart-prod \
+	ps ps-prod logs logs-prod logs-prod-workers logs-php logs-mailer pull prune \
 	sh root-sh composer composer-install composer-update \
 	messenger-clear \
-	console cc cache-warmup rate-limit-reset doctrine-migrate doctrine-diff doctrine-status \
+	console console-prod cc cache-warmup rate-limit-reset doctrine-migrate doctrine-migrate-prod doctrine-diff doctrine-status \
 	messenger-consume scheduler-consume test test-coverage cs-fix phpstan quality check config config-prod stop stop-prod \
 	tailwind-setup tailwind-init tailwind-watch tailwind-build assets-compile
 
@@ -22,7 +22,12 @@ init: ## Ensure local data directory and SQLite file exist
 	@mkdir -p data
 	@touch data/research
 
-setup: init build up composer-install ## One-shot local setup
+setup: init build up composer-install ## One-shot local setup (then: make dev-bootstrap, make messenger-consume)
+
+dev-bootstrap: ## After first up: run migrations + Tailwind + AssetMapper (dev container)
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console doctrine:migrations:migrate --no-interaction
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console tailwind:build
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console asset-map:compile
 
 build: ## Build local development images
 	@$(COMPOSE_DEV) build
@@ -66,6 +71,9 @@ logs: ## Stream all local logs
 logs-prod: ## Stream all production logs
 	@$(COMPOSE_PROD) logs -f
 
+logs-prod-workers: ## Stream Messenger worker logs only (production compose)
+	@$(COMPOSE_PROD) logs -f messenger-worker-orchestrator messenger-worker-llm-1 messenger-worker-llm-2 messenger-worker-tool-1 messenger-worker-tool-2 messenger-worker-scheduler
+
 logs-php: ## Stream PHP service logs (local)
 	@$(COMPOSE_DEV) logs -f $(PHP_SERVICE)
 
@@ -96,6 +104,9 @@ composer-update: ## Update PHP dependencies in running local container
 console: ## Run Symfony console command: make console cmd='about'
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console $(cmd)
 
+console-prod: ## Run Symfony console in production compose: make console-prod cmd='about'
+	@$(COMPOSE_PROD) exec $(PHP_SERVICE) php bin/console $(cmd)
+
 cc: ## Clear Symfony cache in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:clear
 
@@ -108,16 +119,19 @@ cache-warmup: ## Warm Symfony cache in local container
 doctrine-migrate: ## Run Doctrine migrations in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console doctrine:migrations:migrate --no-interaction
 
+doctrine-migrate-prod: ## Run Doctrine migrations in production compose PHP container
+	@$(COMPOSE_PROD) exec $(PHP_SERVICE) php bin/console doctrine:migrations:migrate --no-interaction
+
 doctrine-diff: ## Generate Doctrine migration diff in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console doctrine:migrations:diff
 
 doctrine-status: ## Show Doctrine migration status in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console doctrine:migrations:status
 
-messenger-consume: ## Run Messenger consumer for all non-failed transports
+messenger-consume: ## Run Messenger consumer for all non-failed transports (orchestrator, llm, tool, scheduler, …)
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume --all --exclude-receivers=failed -vv
 
-scheduler-consume: ## Run Messenger consumer for research maintenance scheduler
+scheduler-consume: ## Run only the research maintenance scheduler transport (optional; normally covered by messenger-consume)
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console messenger:consume scheduler_research_maintenance -vv
 
 messenger-clear: ## Clear async and failed Messenger queues

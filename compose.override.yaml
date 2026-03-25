@@ -1,5 +1,6 @@
 services:
   php:
+    restart: "no"
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,6 +12,15 @@ services:
       MERCURE_URL: http://localhost/.well-known/mercure
       MERCURE_PUBLIC_URL: http://localhost:${HTTP_PORT:-8080}/.well-known/mercure
       MERCURE_JWT_SECRET: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_PUBLISHER_JWT_ALG: ${MERCURE_PUBLISHER_JWT_ALG:-HS256}
+      MERCURE_SUBSCRIBER_JWT_ALG: ${MERCURE_SUBSCRIBER_JWT_ALG:-HS256}
+      MERCURE_EXTRA_DIRECTIVES: |-
+        transport bolt {
+          path /data/mercure.db
+        }
+      FRANKENPHP_CONFIG: import /etc/caddy/worker.Caddyfile
     volumes:
       - ./:/app:delegated
       - ./docker/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
@@ -28,7 +38,11 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
 
+  mercure:
+    restart: "no"
+
   mailer:
+    restart: "no"
     image: axllent/mailpit
     ports:
       - "1025:1025"

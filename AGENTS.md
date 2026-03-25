@@ -34,12 +34,12 @@ This project uses the Symfony UX frontend stack. Six agent skills are installed 
 - SQLite database file path is `data/research` (mapped in app as `DATABASE_URL=sqlite:///%kernel.project_dir%/data/research`).
 - Keep `data/.gitignore` as `*` plus `!.gitignore` so data is local-only.
 - Local development uses `compose.yaml` + `compose.override.yaml`.
-- Production-style local runs use `compose.yaml` + `compose.prod.yaml`.
+- Production-style local runs use `compose.yaml` + `compose.prod.yaml` (includes Messenger worker containers). VPS / TLS / domain: [docs/server-deployment.md](docs/server-deployment.md).
 
 ## Make commands
 
 - Use `make help` for the full target list.
-- Primary flow: `make setup`, then `make logs`.
+- Primary flow: `make setup`, then `make dev-bootstrap`, run `make messenger-consume` while developing (covers scheduler transport via `--all`), then `make logs` as needed.
 - Local lifecycle: `make up`, `make down`, `make restart`, `make ps`.
 - Production-like lifecycle: `make up-prod`, `make down-prod`, `make restart-prod`, `make ps-prod`.
 - Symfony/Composer in container: `make composer-install`, `make console cmd='about'`, `make doctrine-migrate`, `make test`.
