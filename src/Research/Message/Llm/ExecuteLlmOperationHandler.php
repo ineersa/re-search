@@ -36,6 +36,9 @@ final class ExecuteLlmOperationHandler
 {
     private const MAX_LLM_ATTEMPTS = 2;
     private const TRACE_STREAM_CHUNK_SIZE = 160;
+    private const INTERNAL_OPTION_KEYS = [
+        'preserve_reasoning_history',
+    ];
 
     public function __construct(
         private readonly ResearchOperationRepository $operationRepository,
@@ -111,10 +114,10 @@ final class ExecuteLlmOperationHandler
             $request = $this->decodeRequestPayload($operation->getRequestPayloadJson());
             $model = $this->resolveModel($request);
             $messages = $this->payloadMapper->toMessageBag($request);
-            $options = $this->buildOptions($request);
+            $options = $this->buildOptions($request, $model);
 
             $result = $this->invokeWithRetry($operation, $model, $messages, $options, $runId);
-            [$normalizedResult, $metadataSource, $reasoningText] = $this->normalizePlatformResult(
+            [$normalizedResult, $metadataSource, $reasoningText, $toolCalls] = $this->normalizePlatformResult(
                 $result,
                 $runId,
                 $operation->getTurnNumber(),
@@ -122,7 +125,7 @@ final class ExecuteLlmOperationHandler
 
             $operation->setStatus(ResearchOperationStatus::SUCCEEDED);
             $operation->setErrorMessage(null);
-            $operation->setResultPayloadJson($this->encodeResultPayload($normalizedResult, $metadataSource, $reasoningText));
+            $operation->setResultPayloadJson($this->encodeResultPayload($normalizedResult, $metadataSource, $reasoningText, $toolCalls));
             $operation->setCompletedAt(new \DateTimeImmutable());
         } catch (\Throwable $exception) {
             $operation->setStatus(ResearchOperationStatus::FAILED);
@@ -156,36 +159,54 @@ final class ExecuteLlmOperationHandler
     /**
      * @return array<string, mixed>
      */
-    private function buildOptions(LlmOperationRequest $request): array
+    private function buildOptions(LlmOperationRequest $request, string $model): array
     {
-        $options = $request->options;
+        $modelDefaults = [];
+        try {
+            $modelDefaults = $this->platform->getModelCatalog()->getModel($model)->getOptions();
+        } catch (\Throwable) {
+            $modelDefaults = [];
+        }
+
+        $options = array_replace_recursive($modelDefaults, $request->options);
 
         if ($request->allowTools) {
             $options['tools'] = $this->toolbox->getTools();
+            if (!isset($options['tool_choice'])) {
+                $options['tool_choice'] = 'auto';
+            }
         } else {
             unset($options['tools']);
+            unset($options['tool_choice']);
+            unset($options['tool_stream']);
         }
 
         $options['stream'] = true;
         $options['stream_options'] = ['include_usage' => true];
 
+        foreach (self::INTERNAL_OPTION_KEYS as $internalKey) {
+            unset($options[$internalKey]);
+        }
+
         return $options;
     }
 
-    private function encodeResultPayload(ResultInterface $result, ?ResultInterface $metadataSource = null, ?string $reasoningText = null): string
+    /**
+     * @param array<\Symfony\AI\Platform\Result\ToolCall> $toolCalls
+     */
+    private function encodeResultPayload(ResultInterface $result, ?ResultInterface $metadataSource = null, ?string $reasoningText = null, array $toolCalls = []): string
     {
         $assistantText = '';
-        $toolCalls = [];
         $isFinal = false;
 
         if ($result instanceof TextResult) {
             $assistantText = $result->getContent();
             $isFinal = '' !== trim($assistantText);
-        } elseif ($result instanceof ToolCallResult) {
-            $isFinal = false;
-            foreach ($result->getContent() as $toolCall) {
-                $toolCalls[] = new LlmOperationResultToolCall($toolCall->getName(), $toolCall->getArguments());
-            }
+        }
+
+        $extractedToolCalls = [];
+        foreach ($toolCalls as $toolCall) {
+            $extractedToolCalls[] = new LlmOperationResultToolCall($toolCall->getName(), $toolCall->getArguments());
         }
 
         $usageSource = $metadataSource ?? $result;
@@ -193,7 +214,7 @@ final class ExecuteLlmOperationHandler
 
         $payload = new LlmOperationResultPayload(
             assistantText: $assistantText,
-            toolCalls: $toolCalls,
+            toolCalls: $extractedToolCalls,
             isFinal: $isFinal,
             promptTokens: $usage['promptTokens'],
             completionTokens: $usage['completionTokens'],
@@ -205,7 +226,7 @@ final class ExecuteLlmOperationHandler
 
         return $this->payloadMapper->encodeJson($payload);
     }
-
+    
     /**
      * @param array<string, mixed> $options
      */
@@ -231,16 +252,17 @@ final class ExecuteLlmOperationHandler
     }
 
     /**
-     * @return array{0: ResultInterface, 1: ResultInterface, 2: ?string}
+     * @return array{0: ResultInterface, 1: ResultInterface, 2: ?string, 3: array<\Symfony\AI\Platform\Result\ToolCall>}
      */
     private function normalizePlatformResult(ResultInterface $result, string $runId, int $turnNumber): array
     {
         if (!$result instanceof StreamResult) {
-            return [$result, $result, null];
+            return [$result, $result, null, []];
         }
 
         $assistantText = '';
         $reasoningBuffer = '';
+        /** @var array<\Symfony\AI\Platform\Result\ToolCall> $toolCalls */
         $toolCalls = [];
         $toolCallIndexesById = [];
         $textStreamBuffer = '';
@@ -286,13 +308,10 @@ final class ExecuteLlmOperationHandler
         $this->flushAssistantStreamBuffer($runId, $turnNumber, $textStreamBuffer, $streamChunkIndex, true);
 
         $reasoningText = '' !== trim($reasoningBuffer) ? trim($reasoningBuffer) : null;
-        if ([] !== $toolCalls) {
-            return [new ToolCallResult(...$toolCalls), $result, $reasoningText];
-        }
 
-        return [new TextResult($assistantText), $result, $reasoningText];
+        return [new TextResult($assistantText), $result, $reasoningText, $toolCalls];
     }
-
+    
     private function flushAssistantStreamBuffer(
         string $runId,
         int $turnNumber,

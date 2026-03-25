@@ -12,6 +12,7 @@ use App\Research\Message\Llm\Dto\LlmOperationResultToolCall;
 use App\Research\Message\Tool\Dto\ToolOperationErrorPayload;
 use App\Research\Message\Tool\Dto\ToolOperationRequest;
 use App\Research\Message\Tool\Dto\ToolOperationResultPayload;
+use Symfony\AI\Platform\Message\AssistantMessage;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Message\MessageInterface;
@@ -198,7 +199,11 @@ final class OrchestratorOperationPayloadMapper
         return match ($role) {
             'system' => Message::forSystem($entry->content),
             'user' => Message::ofUser($entry->content),
-            'assistant' => Message::ofAssistant($entry->content, $this->decodeAssistantToolCalls($entry->toolCalls)),
+            'assistant' => new AssistantMessage(
+                $entry->content,
+                $this->decodeAssistantToolCalls($entry->toolCalls),
+                null !== $entry->reasoningContent && '' !== trim($entry->reasoningContent) ? $entry->reasoningContent : null,
+            ),
             'tool' => Message::ofToolCall(
                 new ToolCall(
                     null !== $entry->toolCallId && '' !== trim($entry->toolCallId) ? $entry->toolCallId : 'call_unknown',

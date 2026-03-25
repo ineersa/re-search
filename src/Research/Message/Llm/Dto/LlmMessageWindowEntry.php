@@ -17,6 +17,7 @@ final readonly class LlmMessageWindowEntry
         public ?string $toolCallId = null,
         public ?string $name = null,
         public array $arguments = [],
+        public ?string $reasoningContent = null,
     ) {
     }
 }

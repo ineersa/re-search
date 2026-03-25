@@ -21,6 +21,7 @@ use App\Research\Event\EventPublisherInterface;
 use App\Research\Orchestration\Dto\NextAction;
 use App\Research\Orchestration\Dto\OrchestratorState;
 use App\Research\Throttle\ResearchThrottle;
+use Symfony\AI\Platform\PlatformInterface;
 
 final readonly class OrchestratorTurnProcessor
 {
@@ -43,6 +44,7 @@ final readonly class OrchestratorTurnProcessor
         private OrchestratorRunStateManager $runStateManager,
         private EventPublisherInterface $eventPublisher,
         private ResearchThrottle $researchThrottle,
+        private PlatformInterface $platform,
     ) {
     }
 
@@ -90,6 +92,8 @@ final readonly class OrchestratorTurnProcessor
         if (\is_string($result->reasoningText) && '' !== trim($result->reasoningText)) {
             $reasoningText = trim($result->reasoningText);
         }
+        $preserveReasoningHistory = $this->shouldPreserveReasoningHistory($request);
+        $assistantReasoningForHistory = $preserveReasoningHistory ? $reasoningText : null;
 
         $this->llmInvocationRecorder->record(
             $run,
@@ -123,6 +127,10 @@ final readonly class OrchestratorTurnProcessor
         }
 
         if (!$isFinal && [] === $toolCalls && '' === trim($assistantText)) {
+            if (null !== $assistantReasoningForHistory) {
+                $state->appendAssistantMessage('', [], $assistantReasoningForHistory);
+            }
+
             ++$state->emptyResponseRetries;
 
             if ($state->emptyResponseRetries > self::MAX_EMPTY_RESPONSE_RETRIES) {
@@ -161,7 +169,7 @@ final readonly class OrchestratorTurnProcessor
 
         if ($isFinal) {
             $state->emptyResponseRetries = 0;
-            $state->appendAssistantMessage($assistantText);
+            $state->appendAssistantMessage($assistantText, [], $assistantReasoningForHistory);
 
             $run->setFinalAnswerMarkdown($assistantText);
             $run->setStatus(ResearchRunStatus::COMPLETED);
@@ -194,7 +202,7 @@ final readonly class OrchestratorTurnProcessor
                 ];
             }
 
-            $state->appendAssistantMessage($assistantText, $assistantToolCalls);
+            $state->appendAssistantMessage($assistantText, $assistantToolCalls, $assistantReasoningForHistory);
 
             if ($state->answerOnly) {
                 ++$state->turnNumber;
@@ -242,7 +250,7 @@ final readonly class OrchestratorTurnProcessor
             return NextAction::dispatchTools($toolOperationKeys);
         }
 
-        $state->appendAssistantMessage($assistantText);
+        $state->appendAssistantMessage($assistantText, [], $assistantReasoningForHistory);
         ++$state->turnNumber;
 
         return $this->queueCurrentLlmTurn($run, $state, $sequence);
@@ -536,6 +544,43 @@ final readonly class OrchestratorTurnProcessor
             $message,
             $meta,
         );
+    }
+
+    private function shouldPreserveReasoningHistory(LlmOperationRequest $request): bool
+    {
+        if (array_key_exists('preserve_reasoning_history', $request->options)) {
+            return $this->toBool($request->options['preserve_reasoning_history']);
+        }
+
+        $modelName = null !== $request->model ? trim($request->model) : '';
+        if ('' === $modelName) {
+            return false;
+        }
+
+        try {
+            $modelOptions = $this->platform->getModelCatalog()->getModel($modelName)->getOptions();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $this->toBool($modelOptions['preserve_reasoning_history'] ?? false);
+    }
+
+    private function toBool(mixed $value): bool
+    {
+        if (\is_bool($value)) {
+            return $value;
+        }
+
+        if (\is_int($value)) {
+            return 1 === $value;
+        }
+
+        if (\is_string($value)) {
+            return in_array(strtolower(trim($value)), ['1', 'true', 'yes', 'on'], true);
+        }
+
+        return false;
     }
 
 }

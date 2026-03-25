@@ -99,3 +99,7 @@ services:
         arguments:
             $httpClient: '@http_client'
             $baseUrl: '%env(MCP_WEBSEARCH_URL)%'
+
+    App\Platform\Contract\Normalizer\Message\AssistantMessageNormalizer:
+        tags:
+            - { name: serializer.normalizer, priority: 1000 }

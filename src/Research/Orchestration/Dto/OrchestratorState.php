@@ -80,9 +80,9 @@ final class OrchestratorState implements \JsonSerializable
     /**
      * @param list<array{id: string, name: string, arguments: array<string, mixed>}> $toolCalls
      */
-    public function appendAssistantMessage(string $content, array $toolCalls = []): void
+    public function appendAssistantMessage(string $content, array $toolCalls = [], ?string $reasoningContent = null): void
     {
-        $this->messageWindow[] = [
+        $entry = [
             'role' => 'assistant',
             'content' => $content,
             'toolCalls' => array_map(
@@ -94,6 +94,12 @@ final class OrchestratorState implements \JsonSerializable
                 $toolCalls
             ),
         ];
+
+        if (null !== $reasoningContent && '' !== trim($reasoningContent)) {
+            $entry['reasoningContent'] = $reasoningContent;
+        }
+
+        $this->messageWindow[] = $entry;
     }
 
     /**

@@ -68,24 +68,18 @@ final class ResultConverter extends BaseResultConverter
                 }
             }
 
-            if (
-                [] !== $toolCalls
-                && isset($data['choices'][0]['finish_reason'])
-                && 'tool_calls' === $data['choices'][0]['finish_reason']
-            ) {
-                yield new ToolCallResult(...array_map([$this, 'convertToolCallFromArray'], $toolCalls));
+            if (isset($data['choices'][0]['delta']['content'])) {
+                yield $data['choices'][0]['delta']['content'];
             }
-
-            if (!isset($data['choices'][0]['delta']['content'])) {
-                continue;
-            }
-
-            yield $data['choices'][0]['delta']['content'];
         }
 
         $inlineToolCalls = $this->extractToolCallsFromThinkingBuffer($thinkingToolCallBuffer, flush: true);
         if ([] !== $inlineToolCalls) {
             yield new ToolCallResult(...$inlineToolCalls);
+        }
+
+        if ([] !== $toolCalls) {
+            yield new ToolCallResult(...array_map([$this, 'convertToolCallFromArray'], $toolCalls));
         }
     }
 

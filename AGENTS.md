@@ -54,3 +54,7 @@ Agents MUST use these MATE tools — do not use `make` or direct `vendor/bin` fo
 - Logs: `monolog-tail`, `monolog-search`, `monolog-by-level` tools
 - Profiler: `symfony-profiler-latest`, `symfony-profiler-search` tools
 - Composer: `composer-install`, `composer-require`, `composer-update` tools
+
+## Important documentation
+
+- [docs/interleaved_reasoning_and_tool_calls.md](docs/interleaved_reasoning_and_tool_calls.md) — Details on Z.AI's interleaved `tool_stream` behavior and our custom ResultConverter implementation that handles reasoning, content, and tool calls together in streaming responses.
