@@ -20,6 +20,10 @@ x-prod-env-file: &prod-env-file
     - path: .env.prod.local
       required: false
 
+x-host-gateway: &host-gateway
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
 # Multiline Caddy config; keep in Compose (dotenv is awkward for this block).
 x-caddy-inline-env: &caddy-inline-env
   FRANKENPHP_CONFIG: import /etc/caddy/worker.Caddyfile
@@ -31,13 +35,15 @@ x-caddy-inline-env: &caddy-inline-env
 services:
   php:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: *prod-env-file
+    <<: [*prod-env-file, *host-gateway]
     environment:
       <<: *caddy-inline-env
     volumes:
       - research_data:/app/data
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      - research_net
     ports:
       - "${RE_SEARCH_HTTP_BIND:-127.0.0.1}:${RE_SEARCH_HTTP_PORT:-8080}:80"
 
@@ -47,7 +53,7 @@ services:
 
   messenger-worker-orchestrator:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: *prod-env-file
+    <<: [*prod-env-file, *host-gateway]
     build:
       context: .
       dockerfile: Dockerfile
@@ -56,6 +62,8 @@ services:
     working_dir: /app
     volumes:
       - research_data:/app/data
+    networks:
+      - research_net
     depends_on:
       - php
     entrypoint: ["php", "bin/console"]
@@ -68,7 +76,7 @@ services:
 
   messenger-worker-llm-1:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: *prod-env-file
+    <<: [*prod-env-file, *host-gateway]
     build:
       context: .
       dockerfile: Dockerfile
@@ -77,6 +85,8 @@ services:
     working_dir: /app
     volumes:
       - research_data:/app/data
+    networks:
+      - research_net
     depends_on:
       - php
     entrypoint: ["php", "bin/console"]
@@ -89,7 +99,7 @@ services:
 
   messenger-worker-llm-2:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: *prod-env-file
+    <<: [*prod-env-file, *host-gateway]
     build:
       context: .
       dockerfile: Dockerfile
@@ -98,6 +108,8 @@ services:
     working_dir: /app
     volumes:
       - research_data:/app/data
+    networks:
+      - research_net
     depends_on:
       - php
     entrypoint: ["php", "bin/console"]
@@ -110,7 +122,7 @@ services:
 
   messenger-worker-tool-1:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: *prod-env-file
+    <<: [*prod-env-file, *host-gateway]
     build:
       context: .
       dockerfile: Dockerfile
@@ -119,6 +131,8 @@ services:
     working_dir: /app
     volumes:
       - research_data:/app/data
+    networks:
+      - research_net
     depends_on:
       - php
     entrypoint: ["php", "bin/console"]
@@ -131,7 +145,7 @@ services:
 
   messenger-worker-tool-2:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: *prod-env-file
+    <<: [*prod-env-file, *host-gateway]
     build:
       context: .
       dockerfile: Dockerfile
@@ -140,6 +154,8 @@ services:
     working_dir: /app
     volumes:
       - research_data:/app/data
+    networks:
+      - research_net
     depends_on:
       - php
     entrypoint: ["php", "bin/console"]
@@ -152,7 +168,7 @@ services:
 
   messenger-worker-scheduler:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: *prod-env-file
+    <<: [*prod-env-file, *host-gateway]
     build:
       context: .
       dockerfile: Dockerfile
@@ -161,6 +177,8 @@ services:
     working_dir: /app
     volumes:
       - research_data:/app/data
+    networks:
+      - research_net
     depends_on:
       - php
     entrypoint: ["php", "bin/console"]
@@ -173,3 +191,11 @@ services:
 
 volumes:
   research_data:
+
+networks:
+  research_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${RE_SEARCH_DOCKER_SUBNET:-172.30.0.0/24}
+          gateway: ${RE_SEARCH_DOCKER_GATEWAY:-172.30.0.1}
