@@ -24,6 +24,13 @@ x-host-gateway: &host-gateway
   extra_hosts:
     - "host.docker.internal:host-gateway"
 
+x-json-logging: &json-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
 # Multiline Caddy config; keep in Compose (dotenv is awkward for this block).
 x-caddy-inline-env: &caddy-inline-env
   FRANKENPHP_CONFIG: import /etc/caddy/worker.Caddyfile
@@ -35,7 +42,7 @@ x-caddy-inline-env: &caddy-inline-env
 services:
   php:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: [*prod-env-file, *host-gateway]
+    <<: [*prod-env-file, *host-gateway, *json-logging]
     environment:
       <<: *caddy-inline-env
     volumes:
@@ -48,12 +55,13 @@ services:
       - "${RE_SEARCH_HTTP_BIND:-127.0.0.1}:${RE_SEARCH_HTTP_PORT:-8080}:80"
 
   mercure:
+    <<: *json-logging
     profiles:
       - standalone-mercure
 
   messenger-worker-orchestrator:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: [*prod-env-file, *host-gateway]
+    <<: [*prod-env-file, *host-gateway, *json-logging]
     build:
       context: .
       dockerfile: Dockerfile
@@ -76,7 +84,7 @@ services:
 
   messenger-worker-llm-1:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: [*prod-env-file, *host-gateway]
+    <<: [*prod-env-file, *host-gateway, *json-logging]
     build:
       context: .
       dockerfile: Dockerfile
@@ -99,7 +107,7 @@ services:
 
   messenger-worker-llm-2:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: [*prod-env-file, *host-gateway]
+    <<: [*prod-env-file, *host-gateway, *json-logging]
     build:
       context: .
       dockerfile: Dockerfile
@@ -122,7 +130,7 @@ services:
 
   messenger-worker-tool-1:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: [*prod-env-file, *host-gateway]
+    <<: [*prod-env-file, *host-gateway, *json-logging]
     build:
       context: .
       dockerfile: Dockerfile
@@ -145,7 +153,7 @@ services:
 
   messenger-worker-tool-2:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: [*prod-env-file, *host-gateway]
+    <<: [*prod-env-file, *host-gateway, *json-logging]
     build:
       context: .
       dockerfile: Dockerfile
@@ -168,7 +176,7 @@ services:
 
   messenger-worker-scheduler:
     image: ${RE_SEARCH_IMAGE:-re-search-app}
-    <<: [*prod-env-file, *host-gateway]
+    <<: [*prod-env-file, *host-gateway, *json-logging]
     build:
       context: .
       dockerfile: Dockerfile
