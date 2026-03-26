@@ -27,11 +27,16 @@ sequenceDiagram
     participant M as Mercure
 
     B->>C: POST /research/runs
-    C->>T: peek() / consume(0)
-    T-->>C: accepted
-    C->>DB: create ResearchRun (queued)
-    C->>OQ: OrchestratorTick(runId)
-    C-->>B: 202 + runId + topic
+    C->>T: consumeOnSubmit() [anonymous only]
+    alt rate limited
+        T-->>C: limit exceeded
+        C-->>B: 429 + {status=throttled,retryAfter} (no runId)
+    else accepted
+        T-->>C: accepted
+        C->>DB: create ResearchRun (queued)
+        C->>OQ: OrchestratorTick(runId)
+        C-->>B: 202 + runId + topic
+    end
 
     loop Until terminal status
         OQ->>OTH: OrchestratorTick(runId)
@@ -54,7 +59,9 @@ sequenceDiagram
             TH->>OQ: OrchestratorTick(runId)
         else terminal (final answer)
             OTP->>DB: persist final answer + status
-            OTP->>T: consumeByClientKey(clientKey) [on completed only]
+            alt terminal is failed/aborted/timed_out/loop_stopped
+                OTP->>T: refundByClientKey(clientKey) [anonymous only]
+            end
         end
 
         OTP->>M: publish activity/answer/budget/phase/complete
@@ -82,6 +89,8 @@ Model calls go through Symfony AI’s `PlatformInterface`, resolved by **`App\Re
 
 All three platforms use the shared **`App\Platform\Generic\Completions\ModelClient`** and **`App\Platform\Generic\Completions\ResultConverter`**. That converter normalizes streaming deltas (including tool arguments and optional “thinking” / reasoning fields) so orchestration and tracing stay consistent across providers.
 
+`ExecuteLlmOperationHandler` also normalizes non-stream provider outputs: when a model invocation returns a direct `ToolCallResult` (instead of stream chunks), tool calls are preserved and persisted. This keeps fixture replay behavior aligned with production orchestration.
+
 **Z.AI-specific behavior**: With GLM models and Z.AI’s interleaved **`tool_stream`** responses, reasoning, visible content, and tool-call fragments can arrive in one stream. How that is assembled and how reasoning is preserved across turns is documented in [docs/interleaved_reasoning_and_tool_calls.md](docs/interleaved_reasoning_and_tool_calls.md). Model-level options (for example **`preserve_reasoning_history`**) live in **`src/Platform/Zai/ModelCatalog.php`**; a capability summary is in **`src/Platform/Zai/CAPABILITIES.md`**.
 
 Configuration references: **`config/services.yaml`** (tagged `ai.platform` services and `ResearchPlatformFactory` locator), **`config/packages/ai.yaml`** (platform list / bundle notes).
@@ -89,16 +98,28 @@ Configuration references: **`config/services.yaml`** (tagged `ai.platform` servi
 ## Request Lifecycle
 
 1. **Submission**: frontend sends query to `ResearchController::submit()`.
-2. **Rate limit preflight**: for **anonymous** requests, `ResearchThrottle::peek()` checks client IP quota via Symfony RateLimiter (`consume(0)`, no token consumption). **Authenticated** users skip this gate (no per-day submit cap via this limiter).
-3. **Run creation**: `ResearchRun` is stored with `status=queued`, `phase=queued`, and a Mercure topic.
+2. **Rate limit consume**: for **anonymous** requests, `ResearchThrottle::consumeOnSubmit()` consumes one token from the client IP limiter. If rejected, the API returns `429` with `status=throttled` and `retryAfter=86400`, and **no `ResearchRun` is persisted**.
+3. **Run creation (accepted only)**: `ResearchRun` is stored with `status=queued`, `phase=queued`, and a Mercure topic.
 4. **Initial tick dispatch**: controller dispatches `OrchestratorTick(runId)` directly to the `orchestrator` transport.
 5. **Orchestrator transition**: `OrchestratorTickHandler` acquires a per-run lock and delegates to `OrchestratorTransitionService`.
 6. **LLM/tools fan-out**: transition logic creates `ResearchOperation` rows and dispatches either LLM or tool operation messages.
 7. **Worker completion feedback**: LLM/tool handlers persist operation results and dispatch a new `OrchestratorTick`.
 8. **Run completion**: when terminal, final answer and status are persisted and a `complete` event is published.
-9. **Token consumption on success**: for anonymous clients, one limiter token is consumed when a run reaches `completed` (not on failed/aborted/throttled runs). Keys prefixed with `user:` (authenticated) do not consume IP limiter tokens.
+9. **Token refund on terminal failure/cancel**: for anonymous clients, one limiter token is refunded when a run ends as `failed`, `aborted`, `timed_out`, or `loop_stopped`. Keys prefixed with `user:` (authenticated) are always skipped by this limiter.
+10. **Run renewal (retry)**: owner can call `POST /research/runs/{id}/renew`; on success the API returns `202 {status:"renewing", strategy}` and dispatches work according to renewal strategy.
 
-**Client key**: runs are scoped to a stable key from `ResearchController::buildClientKey()`: authenticated users use `user:` + a hash of the user identifier; anonymous users use `client IP` + `session id`. This key is stored on `ResearchRun` and used for list/show/stop authorization.
+**Client key**: runs are scoped to a stable key from `ResearchController::buildClientKey()`: authenticated users use `user:` + a hash of the user identifier; anonymous users use `anon:` + `sha256(client IP + User-Agent)`. This key is stored on `ResearchRun` and used for list/show/stop authorization.
+
+## History Management
+
+History is rendered via Turbo Frame (`GET /research/history-frame`) and scoped by the same `clientKey` ownership model.
+
+- **Single item delete**: `POST /research/runs/{id}/delete`
+- **Delete all visible history**: `POST /research/runs/delete-all`
+
+Both delete actions require a signed `_token` generated in the history frame, and the UI asks for browser confirmation before submission.
+
+Deletion is run-centric: deleting a `research_run` cascades to related `research_operation` and `research_step` records via database `ON DELETE CASCADE` foreign keys.
 
 ## Orchestrator State Machine
 
@@ -201,13 +222,13 @@ The answer/reference UI consumes streamed markdown and maps references back to t
 
 `App\Research\Throttle\ResearchThrottle`:
 
-- scope: **anonymous requests only**; authenticated Symfony users bypass `peek()` and do not consume IP tokens on completion (`clientKey` starting with `user:`).
+- scope: **anonymous requests only**; authenticated Symfony users bypass limiter consume/refund (`clientKey` starting with `user:`).
 - identifier: client IP (`Request::getClientIp()`) for anonymous traffic
 - policy: Symfony `sliding_window`, interval `1 day`
 - per-day limit: `%env(int:RESEARCH_SUBMIT_RATE_LIMIT)%` (production default is `2`, set in `.env.prod`)
-- submit behavior: `peek()` uses `consume(0)` to check quota before run creation (no token spent at submit time)
-- token spend point: `consumeByClientKey()` is called after successful finalization (`status=completed`) for non-`user:` keys
-- on limit exceed: request is recorded as `throttled`, API returns `429` with `Retry-After`
+- submit behavior: `consumeOnSubmit()` uses `consume(1)` before run creation
+- refund behavior: `refundByClientKey()` restores one token for non-success terminal runs (`failed`, `aborted`, `timed_out`, `loop_stopped`)
+- on limit exceed: API returns `429` with `Retry-After` and throttled payload; no run row is created, so no throttled item appears in history
 
 ### Runtime safeguards (tick transitions)
 
@@ -224,15 +245,35 @@ The answer/reference UI consumes streamed markdown and maps references back to t
 
 Token usage is persisted from LLM metadata and published through `budget` events. `hardCap` in budget events comes from `ResearchRun.tokenBudgetHardCap` (default: 75,000).
 
+Timeout behavior uses a per-attempt baseline (`OrchestratorState.attemptStartedAtUnix`) instead of always using run creation time. The baseline is initialized for new runs and reset on renewal, so each retry gets a fresh wall-clock window.
+
 ## Cancellation
 
 - **API**: `POST /research/runs/{id}/stop` (`ResearchController::stop`) sets `cancel_requested_at` when absent, flushes, and dispatches `OrchestratorTick` so the run moves toward a terminal state promptly. Access is enforced with the same client key as submit/show.
 - **Orchestrator**: if `cancel_requested_at` is set, the next tick treats the run as user-aborted (`aborted`), persists a `run_aborted` step, and emits `complete` with `status=aborted`.
 - **Workers**: `ExecuteLlmOperationHandler` and `ExecuteToolOperationHandler` check cancellation while work is in flight and fail operations cooperatively with a clear error when the run was stopped.
 
+## Run Renewal (Retry)
+
+- **API**: `POST /research/runs/{id}/renew` (`ResearchController::renew`) is owner-scoped by `clientKey`, returning:
+  - `202` when renewal is accepted,
+  - `409` when non-renewable (includes reason),
+  - `404` when run is unknown or not owned.
+- **Renewable statuses**:
+  - `timed_out` -> retry latest operation,
+  - `loop_stopped` -> special anti-loop renewal path,
+  - `failed` -> only when classified as transient (timeout/network/transport signals),
+  - `aborted` -> retry latest operation if present, otherwise restart from queue.
+- **Standard retry path** (`retry_last_operation`): `RunRenewalService` resets the latest operation to `queued`, clears terminal run fields, appends `run_renewed`, publishes renewal phase/activity, then dispatches `ExecuteLlmOperation` or `ExecuteToolOperation`.
+- **Queue restart path** (`restart_from_queue`): for aborted runs with no operation yet, renewal sets run back to `queued`, appends `run_renewed`, publishes renewal events, and dispatches `OrchestratorTick`.
+- **Loop-stopped anti-loop path**: renewal does not replay the same operation payload. It deletes operation rows for the current looped turn, removes the last assistant tool-call turn from `orchestrator_state_json` message history, appends an anti-loop user instruction, clears loop flags, appends `run_renewed`, then dispatches `OrchestratorTick` from `waiting_llm`.
+- **Trace semantics**: renewal keeps the same `run_uuid` timeline and adds a `run_renewed` step/event so retries are visible in history and inspect views.
+
 ## Component Responsibilities
 
-- **`ResearchController`**: validates submit requests, persists runs, dispatches initial orchestrator ticks.
+- **`ResearchController`**: validates submit requests, persists runs, dispatches initial orchestrator ticks, serves owner-scoped history, and handles history delete actions.
+- **`RunRenewalPolicy`**: classifies terminal runs as renewable/non-renewable and selects renewal strategy.
+- **`RunRenewalService`**: executes renewal strategy (standard retry, restart-from-queue, loop anti-loop recovery), persists `run_renewed`, and dispatches next work.
 - **`OrchestratorTickHandler`**: lock + load + one transition + flush + next-action dispatch.
 - **`OrchestratorTransitionService`**: timeout checks, queued bootstrap, and phase delegation.
 - **`OrchestratorTurnProcessor`**: core `waiting_llm` / `waiting_tools` transition logic and safeguards.

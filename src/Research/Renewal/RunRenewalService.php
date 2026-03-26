@@ -24,6 +24,8 @@ use Symfony\Component\Messenger\MessageBusInterface;
 
 final class RunRenewalService
 {
+    private const LOOP_RENEWAL_USER_MESSAGE = 'Loop protection was triggered because the same tool call pattern repeated. Continue from the existing evidence, do not repeat an identical tool call signature that has already been used twice, and if no new tool strategy is available provide your best final answer.';
+
     public function __construct(
         private readonly RunRenewalPolicy $renewalPolicy,
         private readonly RunOrchestratorLock $runLock,
@@ -57,6 +59,12 @@ final class RunRenewalService
             if (RunRenewalPolicy::STRATEGY_RETRY_LAST_OPERATION === $strategy) {
                 if (!$latestOperation instanceof ResearchOperation) {
                     throw RunRenewalException::missingLatestOperation($runId);
+                }
+
+                if (ResearchRunStatus::LOOP_STOPPED === $run->getStatus()) {
+                    $this->renewLoopStoppedRun($run, $latestOperation, $strategy);
+
+                    return $strategy;
                 }
 
                 $this->resetAttemptBaseline($run, $latestOperation);
@@ -114,6 +122,39 @@ final class RunRenewalService
         $run->setLoopDetected(false);
     }
 
+    private function renewLoopStoppedRun(ResearchRun $run, ResearchOperation $latestOperation, string $strategy): void
+    {
+        $state = $this->readStateForOperationRetry($run, $latestOperation);
+        $state->attemptStartedAtUnix = time();
+
+        $this->dropOperationsForTurn($run, $state->turnNumber);
+        $this->removeLastAssistantToolCallTurn($state);
+        $state->appendUserMessage(self::LOOP_RENEWAL_USER_MESSAGE);
+
+        $run->setOrchestratorStateJson($state->toJson());
+        $run->setOrchestrationVersion($run->getOrchestrationVersion() + 1);
+
+        $run->setStatus(ResearchRunStatus::RUNNING);
+        $run->setPhase(ResearchRunPhase::WAITING_LLM);
+        $run->setFailureReason(null);
+        $run->setCompletedAt(null);
+        $run->setCancelRequestedAt(null);
+        $run->setLoopDetected(false);
+
+        $stepSequence = $this->appendRenewalStep($run, $strategy, $latestOperation);
+        $this->publishRenewalEvents(
+            $run,
+            $stepSequence,
+            $strategy,
+            $latestOperation,
+            'Run renewed with anti-loop instruction',
+            'Run renewed after loop stop, continuing with anti-loop instruction'
+        );
+
+        $this->entityManager->flush();
+        $this->bus->dispatch(new OrchestratorTick($run->getRunUuid()));
+    }
+
     private function resetRunForQueue(ResearchRun $run): void
     {
         $run->setStatus(ResearchRunStatus::RUNNING);
@@ -126,20 +167,7 @@ final class RunRenewalService
 
     private function resetAttemptBaseline(ResearchRun $run, ResearchOperation $latestOperation): void
     {
-        $stateJson = $run->getOrchestratorStateJson();
-        if (null === $stateJson || '' === trim($stateJson)) {
-            throw RunRenewalException::nonRenewable('Run state is missing and cannot be renewed safely.');
-        }
-
-        try {
-            $state = OrchestratorState::fromJson($stateJson);
-        } catch (\Throwable) {
-            throw RunRenewalException::nonRenewable('Run state is invalid and cannot be renewed safely.');
-        }
-
-        if ($state->turnNumber !== $latestOperation->getTurnNumber()) {
-            throw RunRenewalException::nonRenewable('Run state is out of sync with the latest operation.');
-        }
+        $state = $this->readStateForOperationRetry($run, $latestOperation);
 
         $state->attemptStartedAtUnix = time();
 
@@ -185,12 +213,14 @@ final class RunRenewalService
         int $stepSequence,
         string $strategy,
         ?ResearchOperation $latestOperation,
+        ?string $phaseMessageOverride = null,
+        ?string $activitySummaryOverride = null,
     ): void {
-        $summary = $this->renewalSummary($strategy, $latestOperation);
+        $summary = $activitySummaryOverride ?? $this->renewalSummary($strategy, $latestOperation);
         $turnNumber = $latestOperation?->getTurnNumber() ?? 0;
-        $phaseMessage = RunRenewalPolicy::STRATEGY_RESTART_FROM_QUEUE === $strategy
+        $phaseMessage = $phaseMessageOverride ?? (RunRenewalPolicy::STRATEGY_RESTART_FROM_QUEUE === $strategy
             ? 'Run renewed, restarting from queued state'
-            : 'Run renewed, retrying last operation';
+            : 'Run renewed, retrying last operation');
 
         $this->eventPublisher->publishActivity($run->getRunUuid(), 'run_renewed', $summary, [
             'operationType' => $latestOperation?->getType()->value,
@@ -227,6 +257,103 @@ final class RunRenewalService
         } catch (\Throwable) {
             return new OrchestratorState();
         }
+    }
+
+    private function readStateForOperationRetry(ResearchRun $run, ResearchOperation $latestOperation): OrchestratorState
+    {
+        $stateJson = $run->getOrchestratorStateJson();
+        if (null === $stateJson || '' === trim($stateJson)) {
+            throw RunRenewalException::nonRenewable('Run state is missing and cannot be renewed safely.');
+        }
+
+        try {
+            $state = OrchestratorState::fromJson($stateJson);
+        } catch (\Throwable) {
+            throw RunRenewalException::nonRenewable('Run state is invalid and cannot be renewed safely.');
+        }
+
+        if ($state->turnNumber !== $latestOperation->getTurnNumber()) {
+            throw RunRenewalException::nonRenewable('Run state is out of sync with the latest operation.');
+        }
+
+        return $state;
+    }
+
+    private function dropOperationsForTurn(ResearchRun $run, int $turnNumber): void
+    {
+        $operations = $this->operationRepository->findByRunAndTurnOrderedByPosition($run, $turnNumber);
+        foreach ($operations as $operation) {
+            $this->entityManager->remove($operation);
+        }
+    }
+
+    private function removeLastAssistantToolCallTurn(OrchestratorState $state): void
+    {
+        $messages = $state->messageWindow;
+        if ([] === $messages) {
+            return;
+        }
+
+        $assistantIndex = null;
+        $toolCallIds = [];
+
+        for ($index = \count($messages) - 1; $index >= 0; --$index) {
+            $entry = $messages[$index] ?? null;
+            if (!\is_array($entry)) {
+                continue;
+            }
+
+            if ('assistant' !== ($entry['role'] ?? null)) {
+                continue;
+            }
+
+            $toolCalls = $entry['toolCalls'] ?? null;
+            if (!\is_array($toolCalls) || [] === $toolCalls) {
+                continue;
+            }
+
+            $assistantIndex = $index;
+
+            foreach ($toolCalls as $toolCall) {
+                if (!\is_array($toolCall)) {
+                    continue;
+                }
+
+                $id = $toolCall['id'] ?? null;
+                if (\is_string($id) && '' !== trim($id)) {
+                    $toolCallIds[] = $id;
+                }
+            }
+
+            break;
+        }
+
+        if (null === $assistantIndex) {
+            return;
+        }
+
+        $toolCallIds = array_values(array_unique($toolCallIds));
+        $filtered = [];
+
+        foreach ($messages as $index => $entry) {
+            if ($index === $assistantIndex) {
+                continue;
+            }
+
+            if (
+                $index > $assistantIndex
+                && \is_array($entry)
+                && 'tool' === ($entry['role'] ?? null)
+                && \is_string($entry['toolCallId'] ?? null)
+                && \in_array($entry['toolCallId'], $toolCallIds, true)
+            ) {
+                continue;
+            }
+
+            $filtered[] = $entry;
+        }
+
+        $state->messageWindow = $filtered;
     }
 
     private function dispatchRenewedOperation(ResearchOperation $operation): void

@@ -16,7 +16,6 @@ use App\Repository\ResearchStepRepository;
 use App\Research\Event\EventPublisherInterface;
 use App\Research\Message\Llm\ExecuteLlmOperation;
 use App\Research\Message\Orchestrator\OrchestratorTick;
-use App\Research\Message\Tool\ExecuteToolOperation;
 use App\Research\Orchestration\Dto\OrchestratorState;
 use App\Research\Orchestration\RunOrchestratorLock;
 use App\Research\Renewal\RunRenewalException;
@@ -116,18 +115,41 @@ final class RunRenewalServiceTest extends TestCase
         self::assertGreaterThan(0, $state->attemptStartedAtUnix);
     }
 
-    public function testResetsLatestToolOperationAndDispatchesToolMessage(): void
+    public function testLoopStoppedRenewalInjectsAntiLoopInstructionAndDropsTurnOperations(): void
     {
         $run = $this->createRun(ResearchRunStatus::LOOP_STOPPED, ResearchRunPhase::FAILED, 'Duplicate tool call detected.');
         $run->setLoopDetected(true);
-        $operation = $this->createOperation($run, ResearchOperationType::TOOL_CALL, 'Temporary network failure');
-        $this->assignOperationId($operation, 202);
+        $run->setOrchestratorStateJson((new OrchestratorState(
+            turnNumber: 2,
+            attemptStartedAtUnix: 10,
+            messageWindow: [
+                ['role' => 'system', 'content' => 'sys'],
+                ['role' => 'user', 'content' => 'task'],
+                [
+                    'role' => 'assistant',
+                    'content' => 'Let me call the tool',
+                    'toolCalls' => [
+                        [
+                            'id' => 'call_t2_p0',
+                            'name' => 'websearch_find',
+                            'arguments' => ['q' => 'example'],
+                        ],
+                    ],
+                ],
+            ],
+        ))->toJson());
+
+        $operation = $this->createOperation($run, ResearchOperationType::LLM_CALL, 'Duplicate tool call detected.');
 
         $operationRepository = $this->createMock(ResearchOperationRepository::class);
         $operationRepository->expects(self::once())
             ->method('findLatestByRun')
             ->with($run)
             ->willReturn($operation);
+        $operationRepository->expects(self::once())
+            ->method('findByRunAndTurnOrderedByPosition')
+            ->with($run, 2)
+            ->willReturn([$operation]);
 
         $stepRepository = $this->createMock(ResearchStepRepository::class);
         $stepRepository->expects(self::once())
@@ -141,21 +163,22 @@ final class RunRenewalServiceTest extends TestCase
             ->method('publishPhase')
             ->with(
                 $run->getRunUuid(),
-                ResearchRunPhase::WAITING_TOOLS->value,
+                ResearchRunPhase::WAITING_LLM->value,
                 ResearchRunStatus::RUNNING->value,
-                'Run renewed, retrying last operation',
+                'Run renewed with anti-loop instruction',
                 self::callback(static fn (array $meta): bool => ($meta['turnNumber'] ?? null) === 2)
             );
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('refresh')->with($run);
+        $entityManager->expects(self::once())->method('remove')->with($operation);
         $entityManager->expects(self::once())->method('persist')->with(self::isInstanceOf(ResearchStep::class));
         $entityManager->expects(self::once())->method('flush');
 
         $bus = $this->createMock(MessageBusInterface::class);
         $bus->expects(self::once())
             ->method('dispatch')
-            ->with(self::callback(static fn (object $message): bool => $message instanceof ExecuteToolOperation && 202 === $message->operationId))
+            ->with(self::callback(static fn (object $message): bool => $message instanceof OrchestratorTick && $message->runId === $run->getRunUuid()))
             ->willReturn(new Envelope(new \stdClass()));
 
         $service = new RunRenewalService(
@@ -171,11 +194,16 @@ final class RunRenewalServiceTest extends TestCase
         $strategy = $service->renew($run);
 
         self::assertSame(RunRenewalPolicy::STRATEGY_RETRY_LAST_OPERATION, $strategy);
-        self::assertSame(ResearchOperationStatus::QUEUED, $operation->getStatus());
         self::assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
-        self::assertSame(ResearchRunPhase::WAITING_TOOLS, $run->getPhase());
+        self::assertSame(ResearchRunPhase::WAITING_LLM, $run->getPhase());
         self::assertFalse($run->isLoopDetected());
         self::assertCount(1, $run->getSteps());
+
+        $state = OrchestratorState::fromJson($run->getOrchestratorStateJson());
+        self::assertGreaterThan(0, $state->attemptStartedAtUnix);
+        self::assertCount(3, $state->messageWindow);
+        self::assertSame('user', $state->messageWindow[2]['role'] ?? null);
+        self::assertStringContainsString('do not repeat an identical tool call signature', mb_strtolower((string) ($state->messageWindow[2]['content'] ?? '')));
     }
 
     public function testRestartsAbortedRunFromQueueWhenNoOperationExists(): void

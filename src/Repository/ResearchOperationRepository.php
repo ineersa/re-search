@@ -74,4 +74,20 @@ class ResearchOperationRepository extends ServiceEntityRepository
 
         return $operation instanceof ResearchOperation ? $operation : null;
     }
+
+    /**
+     * @return list<ResearchOperation>
+     */
+    public function findByRunAndTurnOrderedByPosition(ResearchRun $run, int $turnNumber): array
+    {
+        $operations = $this->findBy(
+            [
+                'run' => $run,
+                'turnNumber' => $turnNumber,
+            ],
+            ['position' => 'ASC', 'id' => 'ASC']
+        );
+
+        return array_values($operations);
+    }
 }
