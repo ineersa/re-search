@@ -32,6 +32,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
@@ -43,6 +45,8 @@ server {
         proxy_buffering off;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
@@ -52,6 +56,15 @@ server {
 ```
 
 Run **`certbot --nginx -d re-search.ineersa.com`** (or your workflow) so this vhost gets TLS like your other six sites.
+
+Set reverse-proxy trust vars in `.env.prod.local` so Symfony uses `X-Forwarded-For` for `Request::getClientIp()`:
+
+```bash
+SYMFONY_TRUSTED_PROXIES=REMOTE_ADDR
+SYMFONY_TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port
+```
+
+Without these, Symfony sees Docker bridge IPs (for example `172.30.0.1`) instead of real client IPs.
 
 ### 3. Dedicated VPS: Caddy on public 80/443 (no host nginx)
 

@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Research\Controller;
 
 use App\Entity\User;
+use App\Entity\Enum\ResearchOperationStatus;
+use App\Entity\Enum\ResearchOperationType;
+use App\Entity\Enum\ResearchRunPhase;
 use App\Entity\Enum\ResearchRunStatus;
+use App\Entity\ResearchOperation;
+use App\Entity\ResearchRun;
 use App\Repository\ResearchRunRepository;
 use App\Research\Message\Orchestrator\OrchestratorTick;
 use App\Research\Message\Orchestrator\OrchestratorTickHandler;
@@ -216,6 +221,167 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(404);
     }
 
+    public function testRenewReturns202ForEligibleFailedRun(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'renew failed run');
+        $this->prepareRunForRenewal(
+            $runId,
+            ResearchRunStatus::FAILED,
+            ResearchRunPhase::FAILED,
+            'LLM operation failed: Idle timeout reached while awaiting response.',
+            true,
+            ResearchOperationType::LLM_CALL,
+        );
+
+        $client->request('POST', '/research/runs/'.$runId.'/renew');
+
+        self::assertResponseStatusCodeSame(202);
+        $payload = json_decode($client->getResponse()->getContent(), true);
+        $this->assertIsArray($payload);
+        $this->assertSame('renewing', $payload['status'] ?? null);
+        $this->assertSame($runId, $payload['runId'] ?? null);
+        $this->assertSame('retry_last_operation', $payload['strategy'] ?? null);
+
+        $run = static::getContainer()->get(ResearchRunRepository::class)->findEntity($runId);
+        $this->assertNotNull($run);
+        $this->assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
+        $this->assertSame(ResearchRunPhase::WAITING_LLM, $run->getPhase());
+    }
+
+    public function testRenewReturns202ForLoopStoppedRun(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'renew loop-stopped run');
+        $this->prepareRunForRenewal(
+            $runId,
+            ResearchRunStatus::LOOP_STOPPED,
+            ResearchRunPhase::FAILED,
+            'Duplicate tool call detected (third identical call).',
+            true,
+            ResearchOperationType::TOOL_CALL,
+        );
+
+        $client->request('POST', '/research/runs/'.$runId.'/renew');
+
+        self::assertResponseStatusCodeSame(202);
+        $payload = json_decode($client->getResponse()->getContent(), true);
+        $this->assertIsArray($payload);
+        $this->assertSame('renewing', $payload['status'] ?? null);
+        $this->assertSame('retry_last_operation', $payload['strategy'] ?? null);
+
+        $run = static::getContainer()->get(ResearchRunRepository::class)->findEntity($runId);
+        $this->assertNotNull($run);
+        $this->assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
+        $this->assertSame(ResearchRunPhase::WAITING_TOOLS, $run->getPhase());
+    }
+
+    public function testRenewReturns202ForTimedOutRun(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'renew timed-out run');
+        $this->prepareRunForRenewal(
+            $runId,
+            ResearchRunStatus::TIMED_OUT,
+            ResearchRunPhase::FAILED,
+            'Research timed out after 900 seconds',
+            true,
+            ResearchOperationType::LLM_CALL,
+        );
+
+        $client->request('POST', '/research/runs/'.$runId.'/renew');
+
+        self::assertResponseStatusCodeSame(202);
+        $payload = json_decode($client->getResponse()->getContent(), true);
+        $this->assertIsArray($payload);
+        $this->assertSame('renewing', $payload['status'] ?? null);
+        $this->assertSame('retry_last_operation', $payload['strategy'] ?? null);
+    }
+
+    public function testRenewReturns409ForCompletedRun(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'completed run should not renew');
+        $this->prepareRunForRenewal(
+            $runId,
+            ResearchRunStatus::COMPLETED,
+            ResearchRunPhase::COMPLETED,
+            null,
+            false,
+        );
+
+        $client->request('POST', '/research/runs/'.$runId.'/renew');
+
+        self::assertResponseStatusCodeSame(409);
+    }
+
+    public function testRenewReturns409ForThrottledRun(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'throttled run should not renew');
+        $this->prepareRunForRenewal(
+            $runId,
+            ResearchRunStatus::THROTTLED,
+            ResearchRunPhase::FAILED,
+            'Rate limited - retry tomorrow!',
+            false,
+        );
+
+        $client->request('POST', '/research/runs/'.$runId.'/renew');
+
+        self::assertResponseStatusCodeSame(409);
+    }
+
+    public function testRenewReturns202ForAbortedRun(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'aborted run should renew');
+        $this->prepareRunForRenewal(
+            $runId,
+            ResearchRunStatus::ABORTED,
+            ResearchRunPhase::ABORTED,
+            'Cancelled by user',
+            false,
+        );
+
+        $client->request('POST', '/research/runs/'.$runId.'/renew');
+
+        self::assertResponseStatusCodeSame(202);
+        $payload = json_decode($client->getResponse()->getContent(), true);
+        $this->assertIsArray($payload);
+        $this->assertSame('renewing', $payload['status'] ?? null);
+        $this->assertSame('restart_from_queue', $payload['strategy'] ?? null);
+
+        $run = static::getContainer()->get(ResearchRunRepository::class)->findEntity($runId);
+        $this->assertNotNull($run);
+        $this->assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
+        $this->assertSame(ResearchRunPhase::QUEUED, $run->getPhase());
+    }
+
+    public function testRenewReturns404ForDifferentClientOwner(): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/research/runs', ['query' => 'owner renew run'], [], ['REMOTE_ADDR' => '198.51.100.20']);
+        self::assertResponseStatusCodeSame(202);
+        $ownerPayload = json_decode($client->getResponse()->getContent(), true);
+        $this->assertIsArray($ownerPayload);
+        $runId = (string) ($ownerPayload['runId'] ?? '');
+        $this->assertNotSame('', $runId);
+
+        $this->prepareRunForRenewal(
+            $runId,
+            ResearchRunStatus::FAILED,
+            ResearchRunPhase::FAILED,
+            'LLM operation failed: Idle timeout reached while awaiting response.',
+            true,
+            ResearchOperationType::LLM_CALL,
+        );
+
+        $client->request('POST', '/research/runs/'.$runId.'/renew', [], [], ['REMOTE_ADDR' => '198.51.100.21']);
+
+        self::assertResponseStatusCodeSame(404);
+    }
+
     public function testInspectReturns404WhenNotDev(): void
     {
         $client = static::createClient();
@@ -256,6 +422,57 @@ final class ResearchControllerTest extends WebTestCase
         $this->assertSame(1, preg_match($pattern, $content, $matches));
 
         return html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    private function prepareRunForRenewal(
+        string $runId,
+        ResearchRunStatus $status,
+        ResearchRunPhase $phase,
+        ?string $failureReason,
+        bool $createLatestOperation,
+        ResearchOperationType $operationType = ResearchOperationType::LLM_CALL,
+    ): void {
+        /** @var ResearchRunRepository $runRepository */
+        $runRepository = static::getContainer()->get(ResearchRunRepository::class);
+        $run = $runRepository->findEntity($runId);
+        $this->assertInstanceOf(ResearchRun::class, $run);
+
+        $run->setStatus($status);
+        $run->setPhase($phase);
+        $run->setFailureReason($failureReason);
+        $run->setCompletedAt($status->isTerminal() ? new \DateTimeImmutable() : null);
+        $run->setCancelRequestedAt(ResearchRunStatus::ABORTED === $status ? new \DateTimeImmutable() : null);
+        $run->setLoopDetected(ResearchRunStatus::LOOP_STOPPED === $status);
+        $run->setOrchestratorStateJson(json_encode([
+            'turnNumber' => 2,
+            'attemptStartedAtUnix' => time() - 300,
+            'messageWindow' => [],
+        ], \JSON_THROW_ON_ERROR));
+
+        /** @var EntityManagerInterface $entityManager */
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+
+        if ($createLatestOperation) {
+            $operationError = $failureReason ?? 'Idle timeout reached while awaiting response.';
+            $operation = (new ResearchOperation())
+                ->setRun($run)
+                ->setType($operationType)
+                ->setStatus(ResearchOperationStatus::FAILED)
+                ->setTurnNumber(2)
+                ->setPosition(0)
+                ->setIdempotencyKey(sprintf('%s:%s:%s', $run->getRunUuid(), $operationType->value, bin2hex(random_bytes(6))))
+                ->setRequestPayloadJson('{}')
+                ->setResultPayloadJson(json_encode([
+                    'errorClass' => \RuntimeException::class,
+                    'errorMessage' => $operationError,
+                ], \JSON_THROW_ON_ERROR))
+                ->setErrorMessage($operationError)
+                ->setStartedAt(new \DateTimeImmutable('-1 minute'))
+                ->setCompletedAt(new \DateTimeImmutable());
+            $entityManager->persist($operation);
+        }
+
+        $entityManager->flush();
     }
 
     private function createUser(string $email): User

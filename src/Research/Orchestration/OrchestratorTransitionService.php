@@ -33,7 +33,7 @@ final class OrchestratorTransitionService
 
     public function transition(ResearchRun $run, OrchestratorState $state): NextAction
     {
-        if ($this->hasTimedOut($run)) {
+        if ($this->hasTimedOut($run, $state)) {
             $sequence = $this->stepRepository->nextSequenceForRun($run);
 
             $run->setStatus(ResearchRunStatus::TIMED_OUT);
@@ -76,6 +76,9 @@ final class OrchestratorTransitionService
         $systemPrompt = $this->systemPromptBuilder->build($run->getQuery());
         $taskPrompt = $this->taskPromptBuilder->build($run->getQuery());
         $state = OrchestratorState::initialize($systemPrompt, $taskPrompt);
+        if ($state->attemptStartedAtUnix <= 0) {
+            $state->attemptStartedAtUnix = time();
+        }
 
         $run->setStatus(ResearchRunStatus::RUNNING);
         $run->setFailureReason(null);
@@ -100,13 +103,16 @@ final class OrchestratorTransitionService
         return $this->turnProcessor->queueCurrentLlmTurn($run, $state, $sequence);
     }
 
-    private function hasTimedOut(ResearchRun $run): bool
+    private function hasTimedOut(ResearchRun $run, OrchestratorState $state): bool
     {
         if ($run->getStatus()->isTerminal()) {
             return false;
         }
 
-        $elapsed = time() - $run->getCreatedAt()->getTimestamp();
+        $baseline = $state->attemptStartedAtUnix > 0
+            ? $state->attemptStartedAtUnix
+            : $run->getCreatedAt()->getTimestamp();
+        $elapsed = time() - $baseline;
 
         return $elapsed >= self::WALL_CLOCK_TIMEOUT_SECONDS;
     }

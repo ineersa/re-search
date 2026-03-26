@@ -9,6 +9,8 @@ use App\Entity\ResearchRun;
 use App\Repository\ResearchRunRepository;
 use App\Research\Mercure\ResearchTopicFactory;
 use App\Research\Message\Orchestrator\OrchestratorTick;
+use App\Research\Renewal\RunRenewalException;
+use App\Research\Renewal\RunRenewalService;
 use App\Research\Throttle\ResearchThrottle;
 use App\Research\View\ResearchHistoryFormatter;
 use Doctrine\ORM\EntityManagerInterface;
@@ -251,6 +253,37 @@ final class ResearchController extends AbstractController
         ], Response::HTTP_ACCEPTED);
     }
 
+    #[Route('/research/runs/{id}/renew', name: 'app_research_renew', methods: ['POST'])]
+    public function renew(
+        string $id,
+        Request $request,
+        ResearchRunRepository $runRepository,
+        RunRenewalService $renewalService,
+    ): Response {
+        $clientKey = $this->buildClientKey($request);
+        $run = $runRepository->findOneBy(['runUuid' => $id, 'clientKey' => $clientKey]);
+
+        if (!$run instanceof ResearchRun) {
+            throw $this->createNotFoundException('Research run not found.');
+        }
+
+        try {
+            $strategy = $renewalService->renew($run);
+        } catch (RunRenewalException $exception) {
+            return new JsonResponse([
+                'status' => $run->getStatusValue(),
+                'runId' => $run->getRunUuid(),
+                'reason' => $exception->getMessage(),
+            ], Response::HTTP_CONFLICT);
+        }
+
+        return new JsonResponse([
+            'status' => 'renewing',
+            'runId' => $run->getRunUuid(),
+            'strategy' => $strategy,
+        ], Response::HTTP_ACCEPTED);
+    }
+
     private function buildClientKey(Request $request): string
     {
         $user = $this->getUser();
@@ -259,9 +292,10 @@ final class ResearchController extends AbstractController
         }
 
         $ip = $request->getClientIp() ?? 'unknown';
-        $sessionId = $request->hasSession() ? $request->getSession()->getId() : 'no-session';
+        $userAgent = $request->headers->get('User-Agent', 'unknown');
+        $anonymousFingerprint = hash('sha256', $ip.'|'.$userAgent);
 
-        return $ip.'|'.$sessionId;
+        return 'anon:'.$anonymousFingerprint;
     }
 
     private function hasValidDeleteItemToken(Request $request, string $clientKey, string $runId): bool

@@ -30,6 +30,8 @@ security:
             logout:
                 path: app_logout
                 csrf_token_manager: security.csrf.token_manager
+                delete_cookies:
+                    PHPSESSID: null
 
             # Activate different ways to authenticate:
             # https://symfony.com/doc/current/security.html#the-firewall

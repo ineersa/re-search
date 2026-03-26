@@ -35,6 +35,7 @@ export default class extends Controller {
         'sidebar',
         'sidebarOverlay',
         'cancelBtn',
+        'retryBtn',
         'renderModeToggle',
     ];
 
@@ -43,6 +44,7 @@ export default class extends Controller {
         submitUrl: { type: String, default: '/research/runs' },
         runUrl: { type: String, default: '' },
         stopUrl: { type: String, default: '' },
+        renewUrl: { type: String, default: '' },
         historyFrameUrl: { type: String, default: '' },
         mercureAuthUrl: { type: String, default: '' },
     };
@@ -61,11 +63,14 @@ export default class extends Controller {
         this.terminalHandled = false;
         this.finalAnswerReceived = false;
         this.finalizeTimerId = null;
+        this.currentRunId = null;
+        this.currentMercureTopic = null;
         this.handlePageHide = () => this.closeEventSource();
         window.addEventListener('pagehide', this.handlePageHide);
         window.addEventListener('beforeunload', this.handlePageHide);
 
         this.showAnswerTab();
+        this.updateRetryButtonVisibility(false);
     }
 
     disconnect() {
@@ -112,6 +117,7 @@ export default class extends Controller {
         this.heroTarget.style.display = 'none';
         this.showTraceTab();
         this.updateCancelButtonVisibility(true);
+        this.updateRetryButtonVisibility(false);
 
         this.submitRun(query);
     }
@@ -395,8 +401,6 @@ export default class extends Controller {
 
         this.updateCancelButtonVisibility(false);
         this.stopRequested = false;
-        this.currentRunId = null;
-        this.currentMercureTopic = null;
         this.finalAnswerReceived = status === 'completed';
 
         this.element.classList.remove('is-searching');
@@ -427,6 +431,7 @@ export default class extends Controller {
 
         this.showAnswerTab();
         this.renderAnswerReferences();
+        this.updateRetryButtonVisibility(Boolean(this.currentRunId) && this.isRenewableStatus(status));
 
         this.reloadHistoryFrame();
     }
@@ -455,6 +460,7 @@ export default class extends Controller {
         this.currentMercureTopic = null;
         this.stopRequested = false;
         this.finalAnswerReceived = false;
+        this.updateRetryButtonVisibility(false);
 
         if (this.element?.classList?.contains('is-searching')) {
             this.element.classList.remove('is-searching');
@@ -500,6 +506,84 @@ export default class extends Controller {
         }
     }
 
+    async retryRun(event) {
+        event.preventDefault();
+
+        const runId = this.currentRunId;
+        if (!runId || !this.isRenewableStatus(this.runProgress.status)) {
+            return;
+        }
+
+        this.updateRetryButtonVisibility(true, true);
+
+        try {
+            await this.requestRunRenew(runId);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Retry failed';
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: message,
+            };
+            this.renderTrace();
+            this.updateRetryButtonVisibility(true);
+
+            return;
+        }
+
+        this.stopRequested = false;
+        this.terminalHandled = false;
+        this.finalAnswerReceived = false;
+        if (this.finalizeTimerId !== null) {
+            window.clearTimeout(this.finalizeTimerId);
+            this.finalizeTimerId = null;
+        }
+
+        this.element.classList.add('is-searching');
+        this.element.classList.remove('is-complete');
+        this.streamTarget.innerHTML = '';
+        this.accumulatedMarkdown = '';
+        this.answerStreamingStarted = false;
+        this.answerBodyTarget.innerHTML = '';
+        this.answerReferencesTarget.innerHTML = '';
+        this.updateRenderModeToggleVisibility(false);
+        this.resultsTarget.hidden = false;
+        this.heroTarget.style.display = 'none';
+
+        this.runProgress = {
+            ...this.runProgress,
+            status: 'running',
+            phase: 'running',
+            phaseMessage: 'Retrying last operation',
+        };
+        this.renderTrace();
+        this.showTraceTab();
+        this.updateCancelButtonVisibility(true);
+        this.updateRetryButtonVisibility(false);
+
+        const topic = await this.resolveMercureTopic(runId);
+        if (!topic) {
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: 'Retry accepted. Waiting for live updates...',
+            };
+            this.renderTrace();
+
+            return;
+        }
+
+        this.currentMercureTopic = topic;
+        try {
+            await this.authorizeMercure(runId);
+            this.subscribeToMercure(topic);
+        } catch {
+            this.runProgress = {
+                ...this.runProgress,
+                phaseMessage: 'Retry accepted. Reconnecting to live updates...',
+            };
+            this.renderTrace();
+        }
+    }
+
     closeEventSource() {
         if (this.eventSource) {
             this.eventSource.onmessage = null;
@@ -522,6 +606,26 @@ export default class extends Controller {
         });
     }
 
+    async requestRunRenew(runId) {
+        const template = this.renewUrlValue || `/research/runs/${runId}/renew`;
+        const renewUrl = template.replace('__ID__', runId);
+        const response = await fetch(renewUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(payload.reason || payload.error || 'Failed to retry run');
+        }
+
+        return payload;
+    }
+
     async fetchRunSnapshot(runId) {
         const template = this.runUrlValue || `/research/runs/${runId}`;
         const runUrl = template.replace('__ID__', runId);
@@ -536,6 +640,21 @@ export default class extends Controller {
         }
 
         return response.json();
+    }
+
+    async resolveMercureTopic(runId) {
+        if (typeof this.currentMercureTopic === 'string' && this.currentMercureTopic.trim().length > 0) {
+            return this.currentMercureTopic;
+        }
+
+        try {
+            const snapshot = await this.fetchRunSnapshot(runId);
+            const topic = snapshot?.run?.mercureTopic;
+
+            return typeof topic === 'string' && topic.trim().length > 0 ? topic : null;
+        } catch {
+            return null;
+        }
     }
 
     reconnect() {
@@ -564,6 +683,16 @@ export default class extends Controller {
         }
     }
 
+    updateRetryButtonVisibility(visible, inProgress = false) {
+        if (!this.hasRetryBtnTarget) {
+            return;
+        }
+
+        this.retryBtnTarget.hidden = !visible;
+        this.retryBtnTarget.disabled = inProgress;
+        this.retryBtnTarget.textContent = inProgress ? 'Retrying...' : 'Retry';
+    }
+
     setError(message) {
         this.cancelRun();
         this.runProgress = {
@@ -573,6 +702,7 @@ export default class extends Controller {
             phaseMessage: message,
         };
         this.renderTrace();
+        this.updateRetryButtonVisibility(Boolean(this.currentRunId) && this.isRenewableStatus(this.runProgress.status));
     }
 
     renderTrace() {
@@ -627,6 +757,11 @@ export default class extends Controller {
 
             const data = await response.json();
             const { run, steps } = data;
+            this.currentRunId = run.id;
+            this.currentMercureTopic = typeof run.mercureTopic === 'string' ? run.mercureTopic : null;
+            this.stopRequested = false;
+            this.terminalHandled = this.isTerminalStatus(run.status);
+            this.finalAnswerReceived = run.status === 'completed';
 
             this.inputTarget.value = run.query;
             this.accumulatedMarkdown = run.finalAnswerMarkdown || '';
@@ -635,7 +770,7 @@ export default class extends Controller {
             this.heroTarget.style.display = 'none';
 
             this.toolCalls = steps
-                .filter((step) => step.type === 'run_started' || step.type === 'assistant_reasoning' || step.type === 'tool_succeeded' || step.type === 'trace_pruned' || step.type === 'llm_retry' || step.type === 'answer_invalid_format')
+                .filter((step) => step.type === 'run_started' || step.type === 'run_renewed' || step.type === 'assistant_reasoning' || step.type === 'tool_succeeded' || step.type === 'trace_pruned' || step.type === 'llm_retry' || step.type === 'answer_invalid_format')
                 .map((step) => {
                     const meta = step.payloadJson ? (() => {
                         try {
@@ -678,6 +813,8 @@ export default class extends Controller {
             this.traceTarget.scrollTop = 0;
             this.resultsTarget.hidden = false;
             this.showAnswerTab();
+            this.updateCancelButtonVisibility(false);
+            this.updateRetryButtonVisibility(this.isRenewableStatus(run.status));
         } catch (err) {
             this.setError(err.message || 'Failed to load run');
         }
@@ -797,6 +934,17 @@ export default class extends Controller {
             return;
         }
 
+        if (stepType === 'run_renewed') {
+            this.runProgress = {
+                ...this.runProgress,
+                status: 'running',
+                phase: 'running',
+                phaseMessage: 'Retrying last operation',
+            };
+
+            return;
+        }
+
         if (stepType === 'tool_succeeded') {
             const toolName = typeof meta.tool === 'string' ? meta.tool.trim() : '';
             this.runProgress = {
@@ -896,6 +1044,13 @@ export default class extends Controller {
         }
 
         return 'Research complete';
+    }
+
+    isRenewableStatus(status) {
+        return status === 'failed'
+            || status === 'timed_out'
+            || status === 'loop_stopped'
+            || status === 'aborted';
     }
 
     isTerminalStatus(status) {

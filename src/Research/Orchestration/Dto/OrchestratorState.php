@@ -17,6 +17,7 @@ final class OrchestratorState implements \JsonSerializable
     public function __construct(
         public int $turnNumber = 0,
         public array $messageWindow = [],
+        public int $attemptStartedAtUnix = 0,
         public bool $answerOnly = false,
         public array $toolSignatureCounts = [],
         public int $consecutiveToolFailures = 0,
@@ -48,6 +49,7 @@ final class OrchestratorState implements \JsonSerializable
         return new self(
             turnNumber: max(0, (int) ($decoded['turnNumber'] ?? 0)),
             messageWindow: self::normalizeMessageWindow($decoded['messageWindow'] ?? []),
+            attemptStartedAtUnix: max(0, (int) ($decoded['attemptStartedAtUnix'] ?? 0)),
             answerOnly: (bool) ($decoded['answerOnly'] ?? false),
             toolSignatureCounts: self::normalizeSignatureCounts($decoded['toolSignatureCounts'] ?? []),
             consecutiveToolFailures: max(0, (int) ($decoded['consecutiveToolFailures'] ?? 0)),
@@ -124,6 +126,7 @@ final class OrchestratorState implements \JsonSerializable
         return [
             'turnNumber' => $this->turnNumber,
             'messageWindow' => $this->messageWindow,
+            'attemptStartedAtUnix' => $this->attemptStartedAtUnix,
             'answerOnly' => $this->answerOnly,
             'toolSignatureCounts' => $this->toolSignatureCounts,
             'consecutiveToolFailures' => $this->consecutiveToolFailures,

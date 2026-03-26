@@ -14,6 +14,7 @@
         data-research-ui-history-frame-url-value="{{ path('app_research_history_frame', { page: 0 }) }}"
         data-research-ui-run-url-value="{{ path('app_research_show', { id: '__ID__' }) }}"
         data-research-ui-stop-url-value="{{ path('app_research_stop', { id: '__ID__' }) }}"
+        data-research-ui-renew-url-value="{{ path('app_research_renew', { id: '__ID__' }) }}"
         data-research-ui-mercure-auth-url-value="{{ path('app_research_mercure_auth', { id: '__ID__' }) }}"
     >
         <div class="flex-1 flex flex-col lg:flex-row">
@@ -128,6 +129,15 @@
                                 hidden
                             >
                                 Stop
+                            </button>
+                            <button
+                                type="button"
+                                class="border border-[#444] bg-transparent px-3 py-1.5 text-xs text-gray-400 hover:text-white hover:border-gray-500 transition-colors cursor-pointer"
+                                data-research-ui-target="retryBtn"
+                                data-action="click->research-ui#retryRun"
+                                hidden
+                            >
+                                Retry
                             </button>
                         </div>
                     </div>

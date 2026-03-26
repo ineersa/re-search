@@ -6,8 +6,8 @@ namespace App\Repository;
 
 use App\Entity\Enum\ResearchOperationStatus;
 use App\Entity\Enum\ResearchOperationType;
-use App\Entity\ResearchRun;
 use App\Entity\ResearchOperation;
+use App\Entity\ResearchRun;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -58,5 +58,20 @@ class ResearchOperationRepository extends ServiceEntityRepository
             ->setParameter('statuses', [ResearchOperationStatus::QUEUED->value, ResearchOperationStatus::RUNNING->value]);
 
         return (int) $qb->getQuery()->getSingleScalarResult() > 0;
+    }
+
+    public function findLatestByRun(ResearchRun $run): ?ResearchOperation
+    {
+        $operation = $this->createQueryBuilder('operation')
+            ->andWhere('operation.run = :run')
+            ->setParameter('run', $run)
+            ->orderBy('operation.turnNumber', 'DESC')
+            ->addOrderBy('operation.position', 'DESC')
+            ->addOrderBy('operation.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $operation instanceof ResearchOperation ? $operation : null;
     }
 }
