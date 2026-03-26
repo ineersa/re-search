@@ -120,12 +120,11 @@ final class ResearchControllerTest extends WebTestCase
         $this->assertIsArray($data);
         $this->assertSame(ResearchRunStatus::THROTTLED->value, $data['status'] ?? null);
         $this->assertSame(86400, $data['retryAfter'] ?? null);
-        $this->assertArrayHasKey('runId', $data);
+        $this->assertArrayNotHasKey('runId', $data);
 
-        $run = static::getContainer()->get(ResearchRunRepository::class)->findEntity((string) $data['runId']);
-        $this->assertNotNull($run);
-        $this->assertSame(ResearchRunStatus::THROTTLED, $run->getStatus());
-        $this->assertSame('Rate limited - retry tomorrow!', $run->getFailureReason());
+        /** @var ResearchRunRepository $runRepository */
+        $runRepository = static::getContainer()->get(ResearchRunRepository::class);
+        $this->assertNull($runRepository->findOneBy(['query' => 'rate-limit me']));
     }
 
     public function testDeleteRunWithInvalidCsrfTokenDoesNotDeleteRun(): void

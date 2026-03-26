@@ -155,13 +155,12 @@ export default class extends Controller {
                 if (response.status === 429) {
                     this.element.classList.remove('is-searching');
                     this.element.classList.add('is-complete');
-                    this.runProgress = {
-                        ...this.runProgress,
-                        status: 'throttled',
-                        phase: 'failed',
-                        phaseMessage: 'Rate limited - retry tomorrow!',
-                    };
-                    this.renderTrace();
+                    this.updateCancelButtonVisibility(false);
+                    this.currentRunId = null;
+                    this.currentMercureTopic = null;
+                    this.stopRequested = false;
+                    this.resultsTarget.hidden = true;
+                    this.heroTarget.style.display = '';
                 } else {
                     this.setError(data.error || 'Failed to start research');
                 }

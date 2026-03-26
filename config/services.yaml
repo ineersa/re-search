@@ -106,6 +106,7 @@ services:
 
     cache.research_rate_limiter:
         class: Symfony\Component\Cache\Adapter\FilesystemAdapter
+        public: true
         arguments:
             $namespace: 'research_rate_limiter'
             $defaultLifetime: 0
