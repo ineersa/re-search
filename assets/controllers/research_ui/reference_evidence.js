@@ -150,13 +150,13 @@ function parseReferencesFromText(text) {
             continue;
         }
 
-        const urlMatch = markerMatch.groups.rest.trim().match(/^<?(?<url>https?:\/\/[^\s>]+)>?(?<tail>.*)$/iu);
-        if (!urlMatch?.groups?.url) {
+        const parsedBody = parseReferenceBody(markerMatch.groups.rest);
+        if (!parsedBody?.url) {
             continue;
         }
 
-        const url = urlMatch.groups.url.replace(/[.,;)]+$/u, '');
-        const lineInfo = extractLineInfo(urlMatch.groups.tail || '');
+        const url = parsedBody.url.replace(/[.,;)\]]+$/u, '');
+        const lineInfo = extractLineInfo(parsedBody.lineContext || '');
         const spans = parseLineSpans(lineInfo);
         const dedupeKey = `${id}|${url}|${lineInfo}`;
         if (seen.has(dedupeKey)) {
@@ -168,6 +168,36 @@ function parseReferencesFromText(text) {
     }
 
     return references.sort((a, b) => a.id - b.id);
+}
+
+/** @param {string} body */
+function parseReferenceBody(body) {
+    const trimmed = body.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const leadingUrl = trimmed.match(/^<?(?<url>https?:\/\/[^\s>]+)>?(?<tail>.*)$/iu);
+    if (leadingUrl?.groups?.url) {
+        return {
+            url: leadingUrl.groups.url,
+            lineContext: leadingUrl.groups.tail || '',
+        };
+    }
+
+    const urlAnywhere = trimmed.match(/<?(?<url>https?:\/\/[^\s>]+)>?/iu);
+    if (!urlAnywhere?.groups?.url) {
+        return null;
+    }
+
+    const matchIndex = Number.isInteger(urlAnywhere.index) ? urlAnywhere.index : trimmed.indexOf(urlAnywhere[0]);
+    const before = matchIndex > 0 ? trimmed.slice(0, matchIndex) : '';
+    const after = trimmed.slice(matchIndex + urlAnywhere[0].length);
+
+    return {
+        url: urlAnywhere.groups.url,
+        lineContext: `${before} ${after}`.trim(),
+    };
 }
 
 /** @param {string} markdown */
@@ -213,9 +243,10 @@ function parseLineSpans(lineInfo) {
         return [];
     }
 
+    const normalizedLineInfo = lineInfo.replace(/[\u2010-\u2015\u2212]/gu, '-');
     const spans = [];
     const pattern = /(?:^|[\s,;])L?(?<start>\d+)(?:\s*-\s*L?(?<end>\d+))?(?=$|[\s,;])/giu;
-    for (const match of lineInfo.matchAll(pattern)) {
+    for (const match of normalizedLineInfo.matchAll(pattern)) {
         const start = Number.parseInt(match.groups?.start, 10);
         const end = match.groups?.end ? Number.parseInt(match.groups.end, 10) : start;
         if (!Number.isInteger(start) || !Number.isInteger(end)) {

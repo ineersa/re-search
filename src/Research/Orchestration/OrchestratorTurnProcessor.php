@@ -129,22 +129,6 @@ final readonly class OrchestratorTurnProcessor
             ]);
         }
 
-        if ([] !== $toolCalls && '' !== trim($assistantText)) {
-            $assistantTextAsReasoning = 'Assistant text: '.$assistantText;
-            $summary = \strlen($assistantTextAsReasoning) > 480 ? substr($assistantTextAsReasoning, 0, 480).'...' : $assistantTextAsReasoning;
-            $payload = $this->encodeJson([
-                'reasoning' => $assistantTextAsReasoning,
-                'source' => 'assistant_text_with_tool_calls',
-            ]);
-            $assistantTextSequence = $this->stepRecorder->persistStep($run, $sequence, 'assistant_reasoning', $state->turnNumber, $summary, $payload);
-            $this->eventPublisher->publishActivity($run->getRunUuid(), 'assistant_reasoning', $summary, [
-                'reasoning' => $assistantTextAsReasoning,
-                'source' => 'assistant_text_with_tool_calls',
-                'sequence' => $assistantTextSequence,
-                'turnNumber' => $state->turnNumber,
-            ]);
-        }
-
         if (!$isFinal && [] === $toolCalls && '' === trim($assistantText)) {
             if (null !== $assistantReasoningForHistory) {
                 $state->appendAssistantMessage('', [], $assistantReasoningForHistory);
