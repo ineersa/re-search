@@ -1,7 +1,9 @@
-# Research submit throttling: per client IP (limit from RESEARCH_SUBMIT_RATE_LIMIT)
+# Research submit throttling: per client IP (limit from RESEARCH_SUBMIT_RATE_LIMIT).
+# State is stored in a shared cache pool under /app/data so web + workers see the same counters.
 framework:
     rate_limiter:
         research_submit:
             policy: 'sliding_window'
             limit: '%env(int:RESEARCH_SUBMIT_RATE_LIMIT)%'
             interval: '1 day'
+            cache_pool: cache.research_rate_limiter

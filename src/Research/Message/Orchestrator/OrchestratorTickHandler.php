@@ -19,6 +19,7 @@ use App\Research\Orchestration\Dto\NextAction;
 use App\Research\Orchestration\Dto\OrchestratorState;
 use App\Research\Orchestration\OrchestratorTransitionService;
 use App\Research\Orchestration\RunOrchestratorLock;
+use App\Research\Throttle\ResearchThrottle;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -40,6 +41,7 @@ final class OrchestratorTickHandler
         private readonly RunOrchestratorLock $runLock,
         private readonly OrchestratorTransitionService $transitionService,
         private readonly EventPublisherInterface $eventPublisher,
+        private readonly ResearchThrottle $researchThrottle,
     ) {
         $this->serializer = new Serializer(
             [new ObjectNormalizer()],
@@ -148,6 +150,8 @@ final class OrchestratorTickHandler
             null,
             ['status' => ResearchRunStatus::ABORTED->value]
         );
+
+        $this->researchThrottle->refundByClientKey($run->getClientKey());
     }
 
     private function markUnexpectedFailure(string $runId, string $reason): void
@@ -174,6 +178,8 @@ final class OrchestratorTickHandler
             $this->encodeJson(['error' => $reason]),
             ['status' => ResearchRunStatus::FAILED->value, 'reason' => $reason]
         );
+
+        $this->researchThrottle->refundByClientKey($run->getClientKey());
     }
 
     /**

@@ -120,12 +120,16 @@ final class ResearchController extends AbstractController
         $query = $request->request->getString('query');
         $clientKey = $this->buildClientKey($request);
 
+        if ('' === $query) {
+            return new JsonResponse(['error' => 'Missing or empty query'], Response::HTTP_BAD_REQUEST);
+        }
+
         try {
-            $throttle->peek($request);
+            $throttle->consumeOnSubmit($request);
         } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException) {
             $run = new ResearchRun();
-            $run->setQuery('' !== $query ? $query : '(throttled)');
-            $run->setQueryHash('' !== $query ? hash('sha256', $query) : '');
+            $run->setQuery($query);
+            $run->setQueryHash(hash('sha256', $query));
             $run->setClientKey($clientKey);
             $run->setStatus(ResearchRunStatus::THROTTLED);
             $run->setFailureReason('Rate limited - retry tomorrow!');
@@ -139,10 +143,6 @@ final class ResearchController extends AbstractController
             ], Response::HTTP_TOO_MANY_REQUESTS, [
                 'Retry-After' => '86400',
             ]);
-        }
-
-        if ('' === $query) {
-            return new JsonResponse(['error' => 'Missing or empty query'], Response::HTTP_BAD_REQUEST);
         }
 
         $run = new ResearchRun();

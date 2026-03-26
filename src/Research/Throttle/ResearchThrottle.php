@@ -11,7 +11,7 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * Enforces research submit rate limits per client IP.
+ * Enforces research submit rate limits per anonymous client IP.
  */
 final class ResearchThrottle
 {
@@ -22,9 +22,9 @@ final class ResearchThrottle
     }
 
     /**
-     * Check if one token is available for the current request without consuming it. Throws TooManyRequestsHttpException if limit exceeded.
+     * Consume one submit token for the current request (anonymous only).
      */
-    public function peek(Request $request): void
+    public function consumeOnSubmit(Request $request): void
     {
         $user = $this->security->getUser();
         if ($user instanceof UserInterface) {
@@ -34,25 +34,31 @@ final class ResearchThrottle
         $identifier = $this->clientIp($request);
         $limiter = $this->researchSubmitLimiter->create($identifier);
 
-        $limit = $limiter->consume(0);
-        if ($limit->getRemainingTokens() < 1) {
+        $limit = $limiter->consume(1);
+        if (!$limit->isAccepted()) {
             // Coarse hint for daily sliding window; UI copy matches ("retry tomorrow").
             throw new TooManyRequestsHttpException(86400, 'Research request rate limit exceeded. Please try again later.');
         }
     }
 
     /**
-     * Consume one token for the given client key.
+     * Refund one submit token for failed or cancelled anonymous runs.
      */
-    public function consumeByClientKey(string $clientKey): void
+    public function refundByClientKey(string $clientKey): void
     {
         if (str_starts_with($clientKey, 'user:')) {
             return;
         }
 
-        $ip = explode('|', $clientKey)[0];
+        $ip = explode('|', $clientKey, 2)[0] ?? 'unknown';
         $limiter = $this->researchSubmitLimiter->create($ip);
-        $limiter->consume(1);
+
+        $current = $limiter->consume(0);
+        if ($current->getRemainingTokens() >= $current->getLimit()) {
+            return;
+        }
+
+        $limiter->consume(-1);
     }
 
     private function clientIp(Request $request): string

@@ -12,12 +12,12 @@ use App\Entity\ResearchOperation;
 use App\Entity\ResearchRun;
 use App\Repository\ResearchOperationRepository;
 use App\Repository\ResearchStepRepository;
+use App\Research\Event\EventPublisherInterface;
 use App\Research\Message\Llm\Dto\LlmOperationRequest;
 use App\Research\Message\Llm\Dto\LlmOperationResultPayload;
 use App\Research\Message\Tool\Dto\ToolOperationErrorPayload;
 use App\Research\Message\Tool\Dto\ToolOperationRequest;
 use App\Research\Message\Tool\Dto\ToolOperationResultPayload;
-use App\Research\Event\EventPublisherInterface;
 use App\Research\Orchestration\Dto\NextAction;
 use App\Research\Orchestration\Dto\OrchestratorState;
 use App\Research\Throttle\ResearchThrottle;
@@ -180,8 +180,6 @@ final readonly class OrchestratorTurnProcessor
             $run->setFailureReason(null);
             $run->setCompletedAt(new \DateTimeImmutable());
             $this->publishPhase($run, 'Research complete');
-
-            $this->researchThrottle->consumeByClientKey($run->getClientKey());
 
             $this->stepRecorder->persistStep($run, $sequence, 'assistant_final', $state->turnNumber, $assistantText, null);
             $this->runStateManager->publishFinalAnswer($run->getRunUuid(), $assistantText);
@@ -471,6 +469,10 @@ final readonly class OrchestratorTurnProcessor
             $stepSummary,
             $completeMeta,
         );
+
+        if (\in_array($status, [ResearchRunStatus::FAILED, ResearchRunStatus::ABORTED, ResearchRunStatus::TIMED_OUT, ResearchRunStatus::LOOP_STOPPED], true)) {
+            $this->researchThrottle->refundByClientKey($run->getClientKey());
+        }
     }
 
     /**
@@ -551,7 +553,7 @@ final readonly class OrchestratorTurnProcessor
 
     private function shouldPreserveReasoningHistory(LlmOperationRequest $request): bool
     {
-        if (array_key_exists('preserve_reasoning_history', $request->options)) {
+        if (\array_key_exists('preserve_reasoning_history', $request->options)) {
             return $this->toBool($request->options['preserve_reasoning_history']);
         }
 
@@ -580,10 +582,9 @@ final readonly class OrchestratorTurnProcessor
         }
 
         if (\is_string($value)) {
-            return in_array(strtolower(trim($value)), ['1', 'true', 'yes', 'on'], true);
+            return \in_array(strtolower(trim($value)), ['1', 'true', 'yes', 'on'], true);
         }
 
         return false;
     }
-
 }

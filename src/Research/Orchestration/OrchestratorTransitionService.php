@@ -13,6 +13,7 @@ use App\Research\Orchestration\Dto\NextAction;
 use App\Research\Orchestration\Dto\OrchestratorState;
 use App\Research\ResearchSystemPromptBuilder;
 use App\Research\ResearchTaskPromptBuilder;
+use App\Research\Throttle\ResearchThrottle;
 
 final class OrchestratorTransitionService
 {
@@ -26,6 +27,7 @@ final class OrchestratorTransitionService
         private readonly EventPublisherInterface $eventPublisher,
         private readonly ResearchSystemPromptBuilder $systemPromptBuilder,
         private readonly ResearchTaskPromptBuilder $taskPromptBuilder,
+        private readonly ResearchThrottle $researchThrottle,
     ) {
     }
 
@@ -49,6 +51,7 @@ final class OrchestratorTransitionService
             $this->stepRecorder->persistStep($run, $sequence, 'run_failed', $state->turnNumber, 'Wall-clock timeout', null);
             $this->eventPublisher->publishComplete($run->getRunUuid(), ['status' => ResearchRunStatus::TIMED_OUT->value]);
             $this->runStateManager->persistState($run, $state);
+            $this->researchThrottle->refundByClientKey($run->getClientKey());
 
             return NextAction::none();
         }

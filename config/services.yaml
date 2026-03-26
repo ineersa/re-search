@@ -103,3 +103,10 @@ services:
     App\Platform\Contract\Normalizer\Message\AssistantMessageNormalizer:
         tags:
             - { name: serializer.normalizer, priority: 1000 }
+
+    cache.research_rate_limiter:
+        class: Symfony\Component\Cache\Adapter\FilesystemAdapter
+        arguments:
+            $namespace: 'research_rate_limiter'
+            $defaultLifetime: 0
+            $directory: '%kernel.project_dir%/data/cache/rate_limiter'
