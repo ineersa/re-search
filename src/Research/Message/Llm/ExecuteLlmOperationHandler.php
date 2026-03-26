@@ -209,6 +209,10 @@ final class ExecuteLlmOperationHandler
             $extractedToolCalls[] = new LlmOperationResultToolCall($toolCall->getName(), $toolCall->getArguments());
         }
 
+        if ([] !== $extractedToolCalls) {
+            $isFinal = false;
+        }
+
         $usageSource = $metadataSource ?? $result;
         $usage = $this->extractTokenUsage($usageSource);
 

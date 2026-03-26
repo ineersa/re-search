@@ -84,6 +84,9 @@ final readonly class OrchestratorTurnProcessor
         $assistantText = $result->assistantText;
         $isFinal = $result->isFinal;
         $toolCalls = $this->payloadMapper->normalizeLlmToolCalls($result);
+        if ([] !== $toolCalls) {
+            $isFinal = false;
+        }
         $promptTokens = $this->payloadMapper->toNullableInt($result->promptTokens);
         $completionTokens = $this->payloadMapper->toNullableInt($result->completionTokens);
         $totalTokens = $this->payloadMapper->toNullableInt($result->totalTokens);
@@ -122,6 +125,22 @@ final readonly class OrchestratorTurnProcessor
             $this->eventPublisher->publishActivity($run->getRunUuid(), 'assistant_reasoning', $summary, [
                 'reasoning' => $reasoningText,
                 'sequence' => $reasoningSequence,
+                'turnNumber' => $state->turnNumber,
+            ]);
+        }
+
+        if ([] !== $toolCalls && '' !== trim($assistantText)) {
+            $assistantTextAsReasoning = 'Assistant text: '.$assistantText;
+            $summary = \strlen($assistantTextAsReasoning) > 480 ? substr($assistantTextAsReasoning, 0, 480).'...' : $assistantTextAsReasoning;
+            $payload = $this->encodeJson([
+                'reasoning' => $assistantTextAsReasoning,
+                'source' => 'assistant_text_with_tool_calls',
+            ]);
+            $assistantTextSequence = $this->stepRecorder->persistStep($run, $sequence, 'assistant_reasoning', $state->turnNumber, $summary, $payload);
+            $this->eventPublisher->publishActivity($run->getRunUuid(), 'assistant_reasoning', $summary, [
+                'reasoning' => $assistantTextAsReasoning,
+                'source' => 'assistant_text_with_tool_calls',
+                'sequence' => $assistantTextSequence,
                 'turnNumber' => $state->turnNumber,
             ]);
         }
