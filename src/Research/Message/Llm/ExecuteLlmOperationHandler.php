@@ -260,6 +260,10 @@ final class ExecuteLlmOperationHandler
      */
     private function normalizePlatformResult(ResultInterface $result, string $runId, int $turnNumber): array
     {
+        if ($result instanceof ToolCallResult) {
+            return [new TextResult(''), $result, null, $result->getContent()];
+        }
+
         if (!$result instanceof StreamResult) {
             return [$result, $result, null, []];
         }
