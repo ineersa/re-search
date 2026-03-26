@@ -23,6 +23,15 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 final class ResearchController extends AbstractController
 {
+    private const CSRF_DELETE_HISTORY_ITEM = 'delete_history_item';
+    private const CSRF_DELETE_HISTORY_ALL = 'delete_history_all';
+
+    public function __construct(
+        #[Autowire('%kernel.secret%')]
+        private readonly string $kernelSecret,
+    ) {
+    }
+
     #[Route('/research/runs', name: 'app_research_list', methods: ['GET'])]
     public function list(
         Request $request,
@@ -73,7 +82,10 @@ final class ResearchController extends AbstractController
         }
         $slice = \array_slice($runs, $page * $perPage, $perPage);
         $rows = array_map(
-            static fn (array $run): array => ResearchHistoryFormatter::formatRow($run),
+            fn (array $run): array => [
+                ...ResearchHistoryFormatter::formatRow($run),
+                'deleteToken' => $this->buildDeleteItemToken($clientKey, $run['id']),
+            ],
             $slice
         );
 
@@ -81,6 +93,7 @@ final class ResearchController extends AbstractController
             'rows' => $rows,
             'page' => $page,
             'total_pages' => $totalPages,
+            'delete_all_token' => $this->buildDeleteAllToken($clientKey),
             'show_inspect' => 'dev' === $kernelEnvironment,
         ]);
     }
@@ -107,6 +120,43 @@ final class ResearchController extends AbstractController
         }
 
         return new JsonResponse($data);
+    }
+
+    #[Route('/research/runs/{id}/delete', name: 'app_research_delete', methods: ['POST'])]
+    public function delete(
+        string $id,
+        Request $request,
+        ResearchRunRepository $runRepository,
+    ): Response {
+        $clientKey = $this->buildClientKey($request);
+        if (!$this->hasValidDeleteItemToken($request, $clientKey, $id)) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        if (!$runRepository->deleteByRunUuidAndClientKey($id, $clientKey)) {
+            throw $this->createNotFoundException('Research run not found.');
+        }
+
+        return $this->redirectToRoute('app_research_history_frame', [
+            'page' => max(0, (int) $request->query->get('page', 0)),
+        ]);
+    }
+
+    #[Route('/research/runs/delete-all', name: 'app_research_delete_all', methods: ['POST'])]
+    public function deleteAll(
+        Request $request,
+        ResearchRunRepository $runRepository,
+    ): Response {
+        $clientKey = $this->buildClientKey($request);
+        if (!$this->hasValidDeleteAllToken($request, $clientKey)) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $runRepository->deleteAllByClientKey($clientKey);
+
+        return $this->redirectToRoute('app_research_history_frame', [
+            'page' => 0,
+        ]);
     }
 
     #[Route('/research/runs', name: 'app_research_submit', methods: ['POST'])]
@@ -212,5 +262,41 @@ final class ResearchController extends AbstractController
         $sessionId = $request->hasSession() ? $request->getSession()->getId() : 'no-session';
 
         return $ip.'|'.$sessionId;
+    }
+
+    private function hasValidDeleteItemToken(Request $request, string $clientKey, string $runId): bool
+    {
+        return $this->isSubmittedTokenValid(
+            $request,
+            $this->buildDeleteItemToken($clientKey, $runId)
+        );
+    }
+
+    private function hasValidDeleteAllToken(Request $request, string $clientKey): bool
+    {
+        return $this->isSubmittedTokenValid(
+            $request,
+            $this->buildDeleteAllToken($clientKey)
+        );
+    }
+
+    private function isSubmittedTokenValid(Request $request, string $expectedToken): bool
+    {
+        $submittedToken = $request->request->getString('_token');
+        if ('' === $submittedToken) {
+            return false;
+        }
+
+        return hash_equals($expectedToken, $submittedToken);
+    }
+
+    private function buildDeleteItemToken(string $clientKey, string $runId): string
+    {
+        return hash_hmac('sha256', self::CSRF_DELETE_HISTORY_ITEM.'|'.$clientKey.'|'.$runId, $this->kernelSecret);
+    }
+
+    private function buildDeleteAllToken(string $clientKey): string
+    {
+        return hash_hmac('sha256', self::CSRF_DELETE_HISTORY_ALL.'|'.$clientKey, $this->kernelSecret);
     }
 }

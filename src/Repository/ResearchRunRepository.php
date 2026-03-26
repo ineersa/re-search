@@ -27,6 +27,32 @@ class ResearchRunRepository extends ServiceEntityRepository
         return $run instanceof ResearchRun ? $run : null;
     }
 
+    public function deleteByRunUuidAndClientKey(string $runUuid, string $clientKey): bool
+    {
+        $deleted = $this->createQueryBuilder('run')
+            ->delete()
+            ->andWhere('run.runUuid = :runUuid')
+            ->andWhere('run.clientKey = :clientKey')
+            ->setParameter('runUuid', $runUuid)
+            ->setParameter('clientKey', $clientKey)
+            ->getQuery()
+            ->execute();
+
+        return (int) $deleted > 0;
+    }
+
+    public function deleteAllByClientKey(string $clientKey): int
+    {
+        $deleted = $this->createQueryBuilder('run')
+            ->delete()
+            ->andWhere('run.clientKey = :clientKey')
+            ->setParameter('clientKey', $clientKey)
+            ->getQuery()
+            ->execute();
+
+        return (int) $deleted;
+    }
+
     public function isCancellationRequestedOrTerminal(string $runUuid): bool
     {
         $row = $this->getEntityManager()->getConnection()->fetchAssociative(

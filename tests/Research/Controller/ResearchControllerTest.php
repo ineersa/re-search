@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Research\Controller;
 
+use App\Entity\User;
 use App\Entity\Enum\ResearchRunStatus;
 use App\Repository\ResearchRunRepository;
 use App\Research\Message\Orchestrator\OrchestratorTick;
 use App\Research\Message\Orchestrator\OrchestratorTickHandler;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 
@@ -120,6 +123,60 @@ final class ResearchControllerTest extends WebTestCase
         $this->assertSame('Rate limited - retry tomorrow!', $run->getFailureReason());
     }
 
+    public function testDeleteRunWithInvalidCsrfTokenDoesNotDeleteRun(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'delete me safely');
+
+        $client->request('POST', '/research/runs/'.$runId.'/delete', ['_token' => 'invalid-token']);
+        self::assertTrue($client->getResponse()->isRedirection());
+
+        $client->request('GET', '/research/runs/'.$runId);
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testDeleteRunDeletesOwnedRunWhenCsrfTokenIsValid(): void
+    {
+        $client = static::createClient();
+        $runId = $this->submitRunAndGetId($client, 'delete me now');
+        $csrfToken = $this->csrfTokenFromHistoryFrame($client, '/research/runs/'.$runId.'/delete?page=0');
+
+        $client->request('POST', '/research/runs/'.$runId.'/delete?page=0', ['_token' => $csrfToken]);
+        self::assertResponseStatusCodeSame(302);
+
+        $client->request('GET', '/research/runs/'.$runId);
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testDeleteAllRemovesOnlyCurrentClientHistory(): void
+    {
+        $client = static::createClient();
+        $owner = $this->createUser('owner@example.test');
+        $other = $this->createUser('other@example.test');
+
+        $client->loginUser($owner);
+        $ownerRunOne = $this->submitRunAndGetId($client, 'owner run one');
+        $ownerRunTwo = $this->submitRunAndGetId($client, 'owner run two');
+
+        $client->loginUser($other);
+        $otherRun = $this->submitRunAndGetId($client, 'other run');
+
+        $client->loginUser($owner);
+        $csrfToken = $this->csrfTokenFromHistoryFrame($client, '/research/runs/delete-all?page=0');
+        $client->request('POST', '/research/runs/delete-all?page=0', ['_token' => $csrfToken]);
+        self::assertResponseStatusCodeSame(302);
+
+        $client->request('GET', '/research/runs/'.$ownerRunOne);
+        self::assertResponseStatusCodeSame(404);
+
+        $client->request('GET', '/research/runs/'.$ownerRunTwo);
+        self::assertResponseStatusCodeSame(404);
+
+        $client->loginUser($other);
+        $client->request('GET', '/research/runs/'.$otherRun);
+        self::assertResponseIsSuccessful();
+    }
+
     public function testStopReturns202ForActiveRun(): void
     {
         $client = static::createClient();
@@ -165,5 +222,53 @@ final class ResearchControllerTest extends WebTestCase
         $client->request('GET', '/research/runs/some-uuid/inspect');
 
         self::assertResponseStatusCodeSame(404);
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    private function submitRunAndGetId(KernelBrowser $client, string $query, array $server = []): string
+    {
+        $client->request('POST', '/research/runs', ['query' => $query], [], $server);
+        self::assertResponseStatusCodeSame(202);
+
+        $payload = json_decode($client->getResponse()->getContent(), true);
+        $this->assertIsArray($payload);
+        $this->assertArrayHasKey('runId', $payload);
+
+        return (string) $payload['runId'];
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    private function csrfTokenFromHistoryFrame(KernelBrowser $client, string $formAction, array $server = []): string
+    {
+        $client->request('GET', '/research/history-frame?page=0', [], [], $server);
+        self::assertResponseIsSuccessful();
+
+        $content = (string) $client->getResponse()->getContent();
+        $pattern = sprintf(
+            '#<form[^>]*action="%s"[^>]*>.*?<input type="hidden" name="_token" value="([^"]+)"#s',
+            preg_quote($formAction, '#')
+        );
+
+        $this->assertSame(1, preg_match($pattern, $content, $matches));
+
+        return html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    private function createUser(string $email): User
+    {
+        $user = (new User())
+            ->setEmail($email)
+            ->setPassword('password');
+
+        /** @var EntityManagerInterface $entityManager */
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->persist($user);
+        $entityManager->flush();
+
+        return $user;
     }
 }
