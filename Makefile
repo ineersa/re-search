@@ -11,7 +11,7 @@ HOST_GID := $(shell id -g)
 	ps ps-prod logs logs-prod logs-prod-workers logs-php logs-mailer pull prune \
 	sh root-sh composer composer-install composer-update \
 	messenger-clear \
-	console console-prod cc cache-warmup rate-limit-reset doctrine-migrate doctrine-migrate-prod doctrine-diff doctrine-status \
+	console console-prod cc cache-warmup rate-limit-reset rate-limit-reset-prod doctrine-migrate doctrine-migrate-prod doctrine-diff doctrine-status \
 	messenger-consume scheduler-consume test test-coverage cs-fix phpstan quality check config config-prod stop stop-prod \
 	tailwind-setup tailwind-init tailwind-watch tailwind-build assets-compile
 
@@ -110,8 +110,11 @@ console-prod: ## Run Symfony console in production compose: make console-prod cm
 cc: ## Clear Symfony cache in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:clear
 
-rate-limit-reset: ## Reset research rate limiter (clears cache.rate_limiter pool)
-	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:pool:clear cache.rate_limiter
+rate-limit-reset: ## Reset research rate limiter (clears cache.research_rate_limiter pool)
+	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:pool:clear cache.research_rate_limiter
+
+rate-limit-reset-prod: ## Reset research rate limiter in production compose PHP container
+	@$(COMPOSE_PROD) exec $(PHP_SERVICE) php bin/console cache:pool:clear cache.research_rate_limiter
 
 cache-warmup: ## Warm Symfony cache in local container
 	@$(COMPOSE_DEV) exec -u $$(id -u):$$(id -g) $(PHP_SERVICE) php bin/console cache:warmup
