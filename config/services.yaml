@@ -63,6 +63,14 @@ services:
         tags:
             - { name: ai.platform, platform: zai }
 
+    # OpenAI Platform with custom streaming reasoning converter
+    app.openai.platform:
+        class: Symfony\AI\Platform\Platform
+        factory: ['App\Platform\OpenAi\PlatformFactory', 'create']
+        arguments:
+            $apiKey: '%env(OPENAI_API_KEY)%'
+            $httpClient: '@http_client'
+
     # Platform from ai.yaml; factory selects via AI_PLATFORM env (llama|zai|generic|openai)
     App\Research\Platform\ResearchPlatformFactory:
         arguments:
@@ -70,7 +78,7 @@ services:
                 llama: '@app.llama_cpp.platform'
                 generic: '@app.generic.platform'
                 zai: '@app.zai.platform'
-                openai: '@ai.platform.openai'
+                openai: '@app.openai.platform'
             $platformName: '%env(AI_PLATFORM)%'
 
     Symfony\AI\Platform\PlatformInterface: '@App\Research\Platform\ResearchPlatformFactory'
