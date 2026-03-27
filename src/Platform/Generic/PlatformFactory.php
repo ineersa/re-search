@@ -28,13 +28,20 @@ final class PlatformFactory
         bool $supportsEmbeddings = true,
         string $completionsPath = '/v1/chat/completions',
         string $embeddingsPath = '/v1/embeddings',
+        bool $enableStreamUsageOption = false,
     ): Platform {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         $modelClients = [];
         $resultConverters = [];
         if ($supportsCompletions) {
-            $modelClients[] = new CustomCompletionsModelClient($httpClient, $baseUrl, $apiKey, $completionsPath);
+            $modelClients[] = new CustomCompletionsModelClient(
+                $httpClient,
+                $baseUrl,
+                $apiKey,
+                $completionsPath,
+                includeUsageOnStream: $enableStreamUsageOption,
+            );
             $resultConverters[] = new CustomCompletionsResultConverter();
         }
         if ($supportsEmbeddings) {

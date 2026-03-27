@@ -10,6 +10,7 @@ ai:
         # - llama: Local llama.cpp server (default)
         # - zai: Z.AI cloud platform (https://docs.z.ai/)
         # - generic: Generic OpenAI-compatible platform
+        # - openai: Symfony OpenAI platform bridge
 
     agent:
         # web_research: thin agent for tool wiring; orchestration handled by message-driven pipeline

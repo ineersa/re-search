@@ -52,6 +52,8 @@ final class ExecuteLlmOperationHandler
         private readonly MessageBusInterface $bus,
         #[Autowire('%research.model%')]
         private readonly string $defaultModel,
+        #[Autowire('%env(AI_PLATFORM)%')]
+        private readonly string $platformName,
     ) {
     }
 
@@ -182,13 +184,31 @@ final class ExecuteLlmOperationHandler
         }
 
         $options['stream'] = true;
-        $options['stream_options'] = ['include_usage' => true];
+        if ($this->supportsStreamUsageOption()) {
+            $streamOptions = $options['stream_options'] ?? [];
+            if (!\is_array($streamOptions)) {
+                $streamOptions = [];
+            }
+
+            if (!array_key_exists('include_usage', $streamOptions)) {
+                $streamOptions['include_usage'] = true;
+            }
+
+            $options['stream_options'] = $streamOptions;
+        } else {
+            unset($options['stream_options']);
+        }
 
         foreach (self::INTERNAL_OPTION_KEYS as $internalKey) {
             unset($options[$internalKey]);
         }
 
         return $options;
+    }
+
+    private function supportsStreamUsageOption(): bool
+    {
+        return \in_array(mb_strtolower(trim($this->platformName)), ['llama', 'zai'], true);
     }
 
     /**

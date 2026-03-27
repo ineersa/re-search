@@ -19,6 +19,7 @@
         "symfony/ai-bundle": "^0.6",
         "symfony/ai-chat": "^0.6",
         "symfony/ai-generic-platform": "^0.6",
+        "symfony/ai-open-ai-platform": "^0.6",
         "symfony/ai-store": "^0.6",
         "symfony/asset": "8.0.*",
         "symfony/asset-mapper": "8.0.*",

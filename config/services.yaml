@@ -63,13 +63,14 @@ services:
         tags:
             - { name: ai.platform, platform: zai }
 
-    # Platform from ai.yaml; factory selects via AI_PLATFORM env (llama|generic|zai)
+    # Platform from ai.yaml; factory selects via AI_PLATFORM env (llama|zai|generic|openai)
     App\Research\Platform\ResearchPlatformFactory:
         arguments:
             $platforms: !service_locator
                 llama: '@app.llama_cpp.platform'
                 generic: '@app.generic.platform'
                 zai: '@app.zai.platform'
+                openai: '@ai.platform.openai'
             $platformName: '%env(AI_PLATFORM)%'
 
     Symfony\AI\Platform\PlatformInterface: '@App\Research\Platform\ResearchPlatformFactory'

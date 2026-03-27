@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3c353afc4c8164171549bb843baabcaf",
+    "content-hash": "f15e385788710ad3e45888bfeed1a856",
     "packages": [
         {
             "name": "composer/semver",
@@ -3268,6 +3268,183 @@
             ],
             "support": {
                 "source": "https://github.com/symfony/ai-generic-platform/tree/v0.6.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-03-04T23:27:55+00:00"
+        },
+        {
+            "name": "symfony/ai-open-ai-platform",
+            "version": "v0.6.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-open-ai-platform.git",
+                "reference": "af6d2e2f1b712d5c109e96e087f0a6f5ee8c0305"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-open-ai-platform/zipball/af6d2e2f1b712d5c109e96e087f0a6f5ee8c0305",
+                "reference": "af6d2e2f1b712d5c109e96e087f0a6f5ee8c0305",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-open-responses-platform": "^0.6",
+                "symfony/ai-platform": "^0.6",
+                "symfony/http-client": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53"
+            },
+            "type": "symfony-ai-platform",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Platform\\Bridge\\OpenAi\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "OpenAI platform bridge for Symfony AI",
+            "keywords": [
+                "Bridge",
+                "ChatGpt",
+                "ai",
+                "dall-e",
+                "embeddings",
+                "gpt",
+                "openai",
+                "platform",
+                "text-to-speech",
+                "whisper"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-open-ai-platform/tree/v0.6.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-03-04T23:27:55+00:00"
+        },
+        {
+            "name": "symfony/ai-open-responses-platform",
+            "version": "v0.6.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-open-responses-platform.git",
+                "reference": "3c2020b01e573ee3ac7ce2667a8f47b8eeeda89a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-open-responses-platform/zipball/3c2020b01e573ee3ac7ce2667a8f47b8eeeda89a",
+                "reference": "3c2020b01e573ee3ac7ce2667a8f47b8eeeda89a",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-platform": "^0.6",
+                "symfony/http-client": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53"
+            },
+            "type": "symfony-ai-platform",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Platform\\Bridge\\OpenResponses\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Open Responses platform bridge for Symfony AI",
+            "keywords": [
+                "Bridge",
+                "ai",
+                "open-responses",
+                "platform"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-open-responses-platform/tree/v0.6.0"
             },
             "funding": [
                 {

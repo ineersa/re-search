@@ -47,6 +47,7 @@ class PlatformFactory
             modelCatalog: $modelCatalog,
             contract: $contract,
             eventDispatcher: $eventDispatcher,
+            enableStreamUsageOption: true,
         );
     }
 }

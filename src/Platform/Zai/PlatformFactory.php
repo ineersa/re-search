@@ -32,6 +32,7 @@ class PlatformFactory
             contract: $contract,
             eventDispatcher: $eventDispatcher,
             completionsPath: '/chat/completions',
+            enableStreamUsageOption: true,
         );
     }
 }
