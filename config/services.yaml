@@ -63,10 +63,10 @@ services:
         tags:
             - { name: ai.platform, platform: zai }
 
-    # OpenAI Platform with custom streaming reasoning converter
+    # OpenAI Platform
     app.openai.platform:
         class: Symfony\AI\Platform\Platform
-        factory: ['App\Platform\OpenAi\PlatformFactory', 'create']
+        factory: ['Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory', 'create']
         arguments:
             $apiKey: '%env(OPENAI_API_KEY)%'
             $httpClient: '@http_client'

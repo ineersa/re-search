@@ -75,13 +75,13 @@ The <info>%command.name%</info> command executes MCP tools with JSON input param
   %command.full_name% search-logs '{"query": "error", "level": "error"}'
 
   <comment># Execute tool with empty parameters</comment>
-  %command.full_name% php-version '{}'
+  %command.full_name% server-info '{}'
 
   <comment># JSON output format</comment>
-  %command.full_name% php-version '{}' --format=json
+  %command.full_name% server-info '{}' --format=json
 
   <comment># TOON output format (compact, token-efficient)</comment>
-  %command.full_name% php-version '{}' --format=toon
+  %command.full_name% server-info '{}' --format=toon
 
   <comment># For a list of available tools, use:</comment>
   bin/mate.php mcp:tools:list

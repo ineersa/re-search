@@ -51,10 +51,18 @@ Agents MUST use these MATE tools — do not use `make` or direct `vendor/bin` fo
 
 - PHPStan: `phpstan-analyse` tool
 - PHPUnit: `phpunit-run-suite` tool
-- Logs: `monolog-tail`, `monolog-search`, `monolog-by-level` tools
-- Profiler: `symfony-profiler-latest`, `symfony-profiler-search` tools
+- Runtime info: `server-info` tool
+- Logs: `monolog-tail`, `monolog-search` tool (`level`/`regex` params)
+- Profiler: `symfony-profiler-list` tool (`limit: 1` for latest)
 - Composer: `composer-install`, `composer-require`, `composer-update` tools
 
 ## Important documentation
 
 - [docs/interleaved_reasoning_and_tool_calls.md](docs/interleaved_reasoning_and_tool_calls.md) — Details on Z.AI's interleaved `tool_stream` behavior and our custom ResultConverter implementation that handles reasoning, content, and tool calls together in streaming responses.
+
+<!-- BEGIN AI_MATE_INSTRUCTIONS -->
+AI Mate Summary:
+- Role: MCP-powered, project-aware coding guidance and tools.
+- Required action: Read and follow `mate/AGENT_INSTRUCTIONS.md` before taking any action in this project, and prefer MCP tools over raw CLI commands whenever possible.
+- Installed extensions: matesofmate/composer-extension, matesofmate/phpstan-extension, matesofmate/phpunit-extension, symfony/ai-mate, symfony/ai-monolog-mate-extension, symfony/ai-symfony-mate-extension.
+<!-- END AI_MATE_INSTRUCTIONS -->

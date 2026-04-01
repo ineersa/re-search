@@ -996,7 +996,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             use_underscore?: bool|Param, // Default: true
  *             unordered_list_markers?: list<scalar|Param|null>,
  *         },
- *         ...<mixed>
+ *         ...<string, mixed>
  *     },
  * }
  * @psalm-type SecurityConfig = array{
@@ -1525,7 +1525,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             api_key?: string|Param,
  *             endpoint?: string|Param, // Default: "https://api.elevenlabs.io/v1/"
  *             http_client?: string|Param, // Service ID of the HTTP client to use // Default: "http_client"
- *             api_catalog?: bool|Param, // If set, the ElevenLabs API will be used to build the catalog and retrieve models information, using this option leads to additional HTTP calls
  *         },
  *         failover?: array<string, array{ // Default: []
  *             platforms?: list<scalar|Param|null>,
@@ -1559,10 +1558,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             http_client?: string|Param, // Service ID of the HTTP client to use // Default: "http_client"
  *         },
  *         ollama?: array{
- *             endpoint?: string|Param, // Endpoint for Ollama (e.g. "http://127.0.0.1:11434" for local, or a cloud endpoint). If null, the http_client is used as-is and must already be configured with a base URI. // Default: null
- *             api_key?: string|Param, // API key for Ollama Cloud authentication (optional for local usage) // Default: null
+ *             endpoint?: string|Param, // Endpoint for Ollama (e.g. "http://127.0.0.1:11434" for local, or a cloud endpoint). If null, the http_client is used as-is and must already be configured with a base URI.
+ *             api_key?: string|Param, // API key for Ollama Cloud authentication (optional for local usage)
  *             http_client?: string|Param, // Service ID of the HTTP client to use. When "endpoint" is null, this client must be pre-configured (e.g. with a base_uri). // Default: "http_client"
- *             api_catalog?: bool|Param, // If set, the Ollama API will be used to build the catalog and retrieve models information, using this option leads to additional HTTP calls
  *         },
  *         openai?: array{
  *             api_key?: string|Param,
@@ -1635,9 +1633,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         azuresearch?: array<string, array{ // Default: []
  *             endpoint?: string|Param,
  *             api_key?: string|Param,
- *             index_name?: string|Param,
  *             api_version?: string|Param,
- *             vector_field?: string|Param,
+ *             index_name?: string|Param, // The name of the store will be used if the "index_name" option is not set
+ *             http_client?: string|Param, // Default: "http_client"
+ *             vector_field?: string|Param, // Default: "vector"
  *         }>,
  *         cache?: array<string, array{ // Default: []
  *             service?: string|Param, // Default: "cache.app"
@@ -1785,6 +1784,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             index_name?: string|Param,
  *             filter?: array<mixed>,
  *             top_k?: int|Param, // Default number of results to return // Default: 3
+ *         }>,
+ *         sqlite?: array<string, array{ // Default: []
+ *             dsn?: string|Param,
+ *             connection?: string|Param,
+ *             table_name?: string|Param,
+ *             strategy?: string|Param,
  *         }>,
  *         supabase?: array<string, array{ // Default: []
  *             http_client?: string|Param, // Service ID of the HTTP client to use // Default: "http_client"

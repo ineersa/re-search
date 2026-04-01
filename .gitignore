@@ -27,3 +27,4 @@
 .playwright-cli/
 .playwright/
 *.code-workspace
+.vera/

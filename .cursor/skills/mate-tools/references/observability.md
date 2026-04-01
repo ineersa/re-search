@@ -17,21 +17,12 @@ Use these tools for runtime troubleshooting without leaving MCP/Mate context.
 - Full-text log search.
 - Inputs:
   - `term` (`string`, required): search text.
+  - `regex` (`bool`, default `false`): treat `term` as a regex pattern.
   - `level` (`string|null`): level filter.
   - `channel` (`string|null`): channel filter.
   - `environment` (`string|null`): env filter.
   - `from` (`string|null`): start date/time boundary.
   - `to` (`string|null`): end date/time boundary.
-  - `limit` (`integer`, default `100`): max entries.
-
-### `monolog-search-regex`
-
-- Regex-based log search.
-- Inputs:
-  - `pattern` (`string`, required): regex pattern.
-  - `level` (`string|null`): level filter.
-  - `channel` (`string|null`): channel filter.
-  - `environment` (`string|null`): env filter.
   - `limit` (`integer`, default `100`): max entries.
 
 ### `monolog-context-search`
@@ -55,14 +46,6 @@ Use these tools for runtime troubleshooting without leaving MCP/Mate context.
 - Lists discovered log channels.
 - Input: `{}`.
 
-### `monolog-by-level`
-
-- Lists entries for one level.
-- Inputs:
-  - `level` (`string`, required): log level (`DEBUG`, `INFO`, `ERROR`, etc.).
-  - `environment` (`string|null`): env filter.
-  - `limit` (`integer`, default `100`): max entries.
-
 ## Symfony Profiler Tools
 
 ### `symfony-services`
@@ -80,23 +63,8 @@ Use these tools for runtime troubleshooting without leaving MCP/Mate context.
   - `ip` (`string|null`): client IP filter.
   - `statusCode` (`integer|null`): HTTP status filter.
   - `context` (`string|null`): free-form context filter.
-
-### `symfony-profiler-latest`
-
-- Gets latest profiler profile summary.
-- Input: `{}`.
-
-### `symfony-profiler-search`
-
-- Search profiles by route/time/request metadata.
-- Inputs:
-  - `route` (`string|null`): route name filter.
-  - `method` (`string|null`): HTTP method filter.
-  - `statusCode` (`integer|null`): status filter.
   - `from` (`string|null`): date/time lower bound.
   - `to` (`string|null`): date/time upper bound.
-  - `context` (`string|null`): custom context filter.
-  - `limit` (`integer`, default `20`): max results.
 
 ### `symfony-profiler-get`
 
@@ -121,7 +89,7 @@ scripts/mate-tool-call.sh monolog-search '{"term":"SQLSTATE","environment":"dev"
 ### Regex for structured patterns
 
 ```bash
-scripts/mate-tool-call.sh monolog-search-regex '{"pattern":"TimeoutException|ConnectException","limit":100}'
+scripts/mate-tool-call.sh monolog-search '{"term":"TimeoutException|ConnectException","regex":true,"limit":100}'
 ```
 
 ### Context-driven lookup
@@ -135,14 +103,14 @@ scripts/mate-tool-call.sh monolog-context-search '{"key":"request_id","value":"a
 ### Latest profile
 
 ```bash
-scripts/mate-tool-call.sh symfony-profiler-latest '{}'
+scripts/mate-tool-call.sh symfony-profiler-list '{"limit":1}'
 ```
 
 ### List or search profiles
 
 ```bash
 scripts/mate-tool-call.sh symfony-profiler-list '{"limit":10,"method":"GET"}'
-scripts/mate-tool-call.sh symfony-profiler-search '{"route":"app_home","statusCode":500}'
+scripts/mate-tool-call.sh symfony-profiler-list '{"statusCode":500,"from":"-1 day","limit":20}'
 ```
 
 ### Fetch full profile by token
@@ -156,4 +124,4 @@ scripts/mate-tool-call.sh symfony-profiler-get '{"token":"<token>"}'
 - `environment`: use when logs are split by env (`dev`, `prod`, etc.).
 - `limit`: keep small for interactive use, increase for incident sweeps.
 - `from`/`to`: narrow noisy windows during an outage or deploy window.
-- `resource_uri` from profiler list/latest/search indicates where to fetch full details.
+- `resource_uri` from profiler list output indicates where to fetch full details.

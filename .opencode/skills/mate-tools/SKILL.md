@@ -42,7 +42,7 @@ This project runs Mate from the Docker `php` service. Tool execution should ther
 
 ### Usage
 
-- `<tool-name>`: Mate MCP tool name, e.g. `php-version`, `phpstan-analyse`.
+- `<tool-name>`: Mate MCP tool name, e.g. `server-info`, `phpstan-analyse`.
 - `<json-input>`: JSON object string, e.g. `'{}'`, `'{"mode":"summary"}'`.
 
 Run from repo root (where `compose.yaml` lives). JSON must be valid. Use single quotes around the JSON string in shell. If Docker stack is down, start it first (`make up`).
@@ -75,10 +75,7 @@ Tool names below are the Mate MCP names used with `mcp:tools:call`.
 
 | Tool | Input | Description |
 |------|-------|-------------|
-| `php-version` | `{}` | Active PHP version used by Mate runtime |
-| `operating-system` | `{}` | OS name where Mate is running |
-| `operating-system-family` | `{}` | OS family |
-| `php-extensions` | `{}` | Loaded PHP extensions |
+| `server-info` | `{}` | PHP version, OS, and loaded extensions |
 
 ### Tool categories (see references for parameters)
 
@@ -91,8 +88,7 @@ Tool names below are the Mate MCP names used with `mcp:tools:call`.
 
 ```bash
 # Check runtime identity
-.opencode/skills/mate-tools/scripts/mate-tool-call.sh php-version '{}'
-.opencode/skills/mate-tools/scripts/mate-tool-call.sh operating-system '{}'
+.opencode/skills/mate-tools/scripts/mate-tool-call.sh server-info '{}'
 
 # Code health
 .opencode/skills/mate-tools/scripts/mate-tool-call.sh phpstan-analyse '{"mode":"summary"}'
@@ -104,7 +100,7 @@ Tool names below are the Mate MCP names used with `mcp:tools:call`.
 .opencode/skills/mate-tools/scripts/mate-tool-call.sh monolog-tail '{"lines":50}'
 
 # Symfony profiler
-.opencode/skills/mate-tools/scripts/mate-tool-call.sh symfony-profiler-latest '{}'
+.opencode/skills/mate-tools/scripts/mate-tool-call.sh symfony-profiler-list '{"limit":1}'
 ```
 
 ## Composer Tools

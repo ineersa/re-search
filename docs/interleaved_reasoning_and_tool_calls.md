@@ -39,30 +39,38 @@ With Z.AI's `tool_stream` option enabled, a single streaming response may look l
 {"choices": [{"delta": {"content": " now."}, "finish_reason": "tool_calls"}]}
 ```
 
-### Why Upstream Symfony AI Doesn't Handle This
+### Why Upstream Symfony AI Still Needs a Patch
 
-The upstream `Symfony\AI\Platform\Bridge\Generic\Completions\ResultConverter` (v0.6) assumes mutual exclusivity:
+The upstream `Symfony\AI\Platform\Bridge\Generic\Completions\CompletionsConversionTrait` (0.7 branch) still assumes that a chunk carrying reasoning should short-circuit content handling in the same event:
 
 ```php
-// From vendor/symfony/ai-generic-platform/Completions/ResultConverter.php:91-109
+// From vendor/symfony/ai-platform/src/Bridge/Generic/Completions/CompletionsConversionTrait.php
 foreach ($result->getDataStream() as $data) {
     if ($this->streamIsToolCall($data)) {
+        yield from $this->yieldToolCallDeltas($toolCalls, $data);
         $toolCalls = $this->convertStreamToToolCalls($toolCalls, $data);
     }
 
     if ([] !== $toolCalls && $this->isToolCallsStreamFinished($data)) {
-        yield new ToolCallResult(...array_map($this->convertToolCall(...), $toolCalls));
+        yield new ToolCallComplete(...array_map($this->convertToolCall(...), $toolCalls));
+    }
+
+    $reasoningContent = $data['choices'][0]['delta']['reasoning_content']
+        ?? $data['choices'][0]['delta']['reasoning'] ?? null;
+    if (null !== $reasoningContent && '' !== $reasoningContent) {
+        yield new ThinkingDelta($reasoningContent);
+        continue; // <- SKIPS content in same delta payload
     }
 
     if (!isset($data['choices'][0]['delta']['content'])) {
-        continue;  // <- SKIPS content if tool_calls present
+        continue;
     }
 
-    yield $data['choices'][0]['delta']['content'];
+    yield new TextDelta($data['choices'][0]['delta']['content']);
 }
 ```
 
-**Issue:** Once `delta.tool_calls` appears, the code assumes no `delta.content` should follow, and **skips all subsequent content chunks**.
+**Issue:** if one event contains reasoning and content together, the `continue` after `ThinkingDelta` drops the content part.
 
 ## Our Solution
 
@@ -101,9 +109,9 @@ final class ResultConverter extends BaseResultConverter
                 $thinkingToolCallBuffer .= $thinking;
                 $inlineToolCalls = $this->extractToolCallsFromThinkingBuffer($thinkingToolCallBuffer);
                 if ([] !== $inlineToolCalls) {
-                    yield new ToolCallResult(...$inlineToolCalls);
+                    yield new ToolCallComplete(...$inlineToolCalls);
                 }
-                yield new ThinkingContent($thinking);
+                yield new ThinkingDelta($thinking);
             }
 
             // 3. Handle tool_calls deltas (accumulate independently)
@@ -118,20 +126,20 @@ final class ResultConverter extends BaseResultConverter
             }
 
             // 4. Handle content deltas (independent of tool_calls)
-            if (isset($data['choices'][0]['delta']['content'])) {
-                yield $data['choices'][0]['delta']['content'];
+            if (isset($data['choices'][0]['delta']['content']) && \is_string($data['choices'][0]['delta']['content'])) {
+                yield new TextDelta($data['choices'][0]['delta']['content']);
             }
         }
 
         // 5. After loop, flush any remaining inline tool calls (llama.cpp XML format)
         $inlineToolCalls = $this->extractToolCallsFromThinkingBuffer($thinkingToolCallBuffer, flush: true);
         if ([] !== $inlineToolCalls) {
-            yield new ToolCallResult(...$inlineToolCalls);
+            yield new ToolCallComplete(...$inlineToolCalls);
         }
 
         // 6. Yield accumulated tool calls at end (Z.AI format)
         if ([] !== $toolCalls) {
-            yield new ToolCallResult(...array_map([$this, 'convertToolCallFromArray'], $toolCalls));
+            yield new ToolCallComplete(...array_map([$this, 'convertToolCallFromArray'], $toolCalls));
         }
     }
 
@@ -160,7 +168,7 @@ final class ResultConverter extends BaseResultConverter
 
 ### Key Changes from Upstream
 
-1. **Removed early content skip**: Content chunks are now yielded independently of `tool_calls` presence
+1. **Typed stream deltas**: The converter now emits `TextDelta`, `ThinkingDelta`, and `ToolCallComplete`
 2. **Independent tool call accumulation**: Tool calls accumulated from `delta.tool_calls` are stored separately from inline XML-style calls from thinking
 3. **Multi-key thinking support**: Handles `reasoning_content` (Z.AI), `reasoning` (llama.cpp), and other variants
 4. **Dual tool call support**: Can return BOTH inline tool calls (from thinking) AND explicit tool calls (from delta)
@@ -185,13 +193,15 @@ private function normalizePlatformResult(ResultInterface $result, string $runId,
     $reasoningBuffer = '';
     $toolCalls = [];
 
-    foreach ($result->getContent() as $chunk) {
-        if (\is_string($chunk)) {
-            $assistantText .= $chunk;
-        } elseif ($chunk instanceof ThinkingContent) {
-            $reasoningBuffer .= $chunk->thinking;
-        } elseif ($chunk instanceof ToolCallResult) {
-            foreach ($chunk->getContent() as $toolCall) {
+    foreach ($result->getContent() as $delta) {
+        if ($delta instanceof TextDelta) {
+            $assistantText .= $delta->getText();
+        } elseif ($delta instanceof ThinkingComplete) {
+            $reasoningBuffer = $delta->getThinking();
+        } elseif ($delta instanceof ThinkingDelta) {
+            $reasoningBuffer .= $delta->getThinking();
+        } elseif ($delta instanceof ToolCallComplete) {
+            foreach ($delta->getToolCalls() as $toolCall) {
                 $toolCalls[] = $toolCall;
             }
         }
@@ -428,5 +438,5 @@ Expected: `websearch_search` (not empty/null).
 
 - [Z.AI Deep Thinking Documentation](https://docs.z.ai/guides/capabilities/thinking.md)
 - [Z.AI Tool Streaming Documentation](https://docs.z.ai/guides/capabilities/stream-tool.md)
-- [Symfony AI Platform Source](vendor/symfony/ai-generic-platform/Completions/ResultConverter.php)
+- [Symfony AI Platform Source](vendor/symfony/ai-platform/src/Bridge/Generic/Completions/CompletionsConversionTrait.php)
 - [Issue: GLM-4.7 tool calls not working](AGENTS.md - failed run d15482d2-5bbd-4d8f-88f5-ce293246f52c)

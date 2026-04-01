@@ -18,7 +18,7 @@ return static function (ContainerConfigurator $container): void {
     ;
 
     MateHelper::disableFeatures($container, [
-        // 'symfony/ai-mate' => ['php-version', 'operating-system', 'operating-system-family'],
+        // 'symfony/ai-mate' => ['server-info'],
     ]);
 
     $container->services()

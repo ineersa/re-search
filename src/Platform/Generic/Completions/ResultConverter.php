@@ -7,10 +7,11 @@ namespace App\Platform\Generic\Completions;
 use Symfony\AI\Platform\Bridge\Generic\Completions\ResultConverter as BaseResultConverter;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\AI\Platform\Result\RawResultInterface;
+use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
+use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
 use Symfony\AI\Platform\Result\StreamResult;
-use Symfony\AI\Platform\Result\ThinkingContent;
 use Symfony\AI\Platform\Result\ToolCall;
-use Symfony\AI\Platform\Result\ToolCallResult;
 use Symfony\AI\Platform\TokenUsage\TokenUsage;
 
 final class ResultConverter extends BaseResultConverter
@@ -47,10 +48,10 @@ final class ResultConverter extends BaseResultConverter
                 $thinkingToolCallBuffer .= $thinking;
                 $inlineToolCalls = $this->extractToolCallsFromThinkingBuffer($thinkingToolCallBuffer);
                 if ([] !== $inlineToolCalls) {
-                    yield new ToolCallResult(...$inlineToolCalls);
+                    yield new ToolCallComplete(...$inlineToolCalls);
                 }
 
-                yield new ThinkingContent($thinking);
+                yield new ThinkingDelta($thinking);
             }
 
             if (isset($data['choices'][0]['delta']['tool_calls'])) {
@@ -68,18 +69,18 @@ final class ResultConverter extends BaseResultConverter
                 }
             }
 
-            if (isset($data['choices'][0]['delta']['content'])) {
-                yield $data['choices'][0]['delta']['content'];
+            if (isset($data['choices'][0]['delta']['content']) && \is_string($data['choices'][0]['delta']['content'])) {
+                yield new TextDelta($data['choices'][0]['delta']['content']);
             }
         }
 
         $inlineToolCalls = $this->extractToolCallsFromThinkingBuffer($thinkingToolCallBuffer, flush: true);
         if ([] !== $inlineToolCalls) {
-            yield new ToolCallResult(...$inlineToolCalls);
+            yield new ToolCallComplete(...$inlineToolCalls);
         }
 
         if ([] !== $toolCalls) {
-            yield new ToolCallResult(...array_map([$this, 'convertToolCallFromArray'], $toolCalls));
+            yield new ToolCallComplete(...array_map([$this, 'convertToolCallFromArray'], $toolCalls));
         }
     }
 

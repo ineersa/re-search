@@ -22,9 +22,12 @@ use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
+use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
+use Symfony\AI\Platform\Result\Stream\Delta\ThinkingComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
-use Symfony\AI\Platform\Result\ThinkingContent;
 use Symfony\AI\Platform\Result\ToolCallResult;
 use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -295,10 +298,26 @@ final class ExecuteLlmOperationHandler
         $toolCallIndexesById = [];
         $textStreamBuffer = '';
         $streamChunkIndex = 0;
+        $streamTokenUsage = null;
 
         foreach ($result->getContent() as $chunk) {
             if ($this->isRunCancelled($runId)) {
                 throw new \RuntimeException('Run cancelled by user');
+            }
+
+            if ($chunk instanceof TokenUsageInterface) {
+                $streamTokenUsage = $chunk;
+
+                continue;
+            }
+
+            if ($chunk instanceof TextDelta) {
+                $text = $chunk->getText();
+                $assistantText .= $text;
+                $textStreamBuffer .= $text;
+                $this->flushAssistantStreamBuffer($runId, $turnNumber, $textStreamBuffer, $streamChunkIndex);
+
+                continue;
             }
 
             if (\is_string($chunk)) {
@@ -309,35 +328,61 @@ final class ExecuteLlmOperationHandler
                 continue;
             }
 
-            if ($chunk instanceof ThinkingContent) {
-                $reasoningBuffer .= $chunk->thinking;
+            if ($chunk instanceof ThinkingComplete) {
+                $reasoningBuffer = $chunk->getThinking();
+
+                continue;
+            }
+
+            if ($chunk instanceof ThinkingDelta) {
+                $reasoningBuffer .= $chunk->getThinking();
+
+                continue;
+            }
+
+            if ($chunk instanceof ToolCallComplete) {
+                $this->mergeToolCalls($chunk->getToolCalls(), $toolCalls, $toolCallIndexesById);
 
                 continue;
             }
 
             if ($chunk instanceof ToolCallResult) {
-                foreach ($chunk->getContent() as $toolCall) {
-                    $toolCallId = method_exists($toolCall, 'getId') ? $toolCall->getId() : null;
-                    if (\is_string($toolCallId) && '' !== trim($toolCallId)) {
-                        if (array_key_exists($toolCallId, $toolCallIndexesById)) {
-                            $toolCalls[$toolCallIndexesById[$toolCallId]] = $toolCall;
-
-                            continue;
-                        }
-
-                        $toolCallIndexesById[$toolCallId] = \count($toolCalls);
-                    }
-
-                    $toolCalls[] = $toolCall;
-                }
+                $this->mergeToolCalls($chunk->getContent(), $toolCalls, $toolCallIndexesById);
             }
         }
 
         $this->flushAssistantStreamBuffer($runId, $turnNumber, $textStreamBuffer, $streamChunkIndex, true);
 
+        if ($streamTokenUsage instanceof TokenUsageInterface) {
+            $result->getMetadata()->add('token_usage', $streamTokenUsage);
+        }
+
         $reasoningText = '' !== trim($reasoningBuffer) ? trim($reasoningBuffer) : null;
 
         return [new TextResult($assistantText), $result, $reasoningText, $toolCalls];
+    }
+
+    /**
+     * @param array<\Symfony\AI\Platform\Result\ToolCall> $incomingToolCalls
+     * @param array<\Symfony\AI\Platform\Result\ToolCall> $toolCalls
+     * @param array<string, int> $toolCallIndexesById
+     */
+    private function mergeToolCalls(array $incomingToolCalls, array &$toolCalls, array &$toolCallIndexesById): void
+    {
+        foreach ($incomingToolCalls as $toolCall) {
+            $toolCallId = method_exists($toolCall, 'getId') ? $toolCall->getId() : null;
+            if (\is_string($toolCallId) && '' !== trim($toolCallId)) {
+                if (array_key_exists($toolCallId, $toolCallIndexesById)) {
+                    $toolCalls[$toolCallIndexesById[$toolCallId]] = $toolCall;
+
+                    continue;
+                }
+
+                $toolCallIndexesById[$toolCallId] = \count($toolCalls);
+            }
+
+            $toolCalls[] = $toolCall;
+        }
     }
     
     private function flushAssistantStreamBuffer(
