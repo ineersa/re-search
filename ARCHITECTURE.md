@@ -83,7 +83,7 @@ Model calls go through Symfony AI’s `PlatformInterface`, resolved by **`App\Re
 
 | Platform | Service | Typical env vars | Notes |
 | :--- | :--- | :--- | :--- |
-| **llama** | `App\Platform\LlamaCpp\PlatformFactory` | `LLAMACPP_BASE_URL`, `LLAMACPP_API_KEY` | Local [llama.cpp](https://github.com/ggerganov/llama.cpp) server; uses the generic completions stack with a custom **`Contract`** / **`ToolCallNormalizer`** for tool-argument JSON shape. |
+| **llama** | `App\Platform\LlamaCpp\PlatformFactory` | `LLAMACPP_BASE_URL`, `LLAMACPP_API_KEY` | Local [llama.cpp](https://github.com/ggerganov/llama.cpp) server; uses the generic completions stack and the default Symfony AI **`Contract`** (same as when no custom contract is passed). |
 | **generic** | `App\Platform\Generic\PlatformFactory` | `GENERIC_BASE_URL` | OpenAI-compatible HTTP API (`/v1/chat/completions`). |
 | **zai** | `App\Platform\Zai\PlatformFactory` | `ZAI_BASE_URL` (default `https://api.z.ai/api/paas/v4/`), `ZAI_API_KEY` | Z.AI cloud; uses the same generic completions stack with Z.AI’s **`/chat/completions`** path, **`EventSourceHttpClient`** for streaming, and **`App\Platform\Zai\ModelCatalog`** for supported GLM models and capability flags. |
 

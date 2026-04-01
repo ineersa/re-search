@@ -11,10 +11,12 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * Enforces research submit rate limits per anonymous client IP.
+ * Enforces research submit rate limits per anonymous client fingerprint.
  */
 final class ResearchThrottle
 {
+    private const ANON_CLIENT_PREFIX = 'anon:';
+
     public function __construct(
         private readonly RateLimiterFactoryInterface $researchSubmitLimiter,
         private readonly Security $security,
@@ -31,7 +33,7 @@ final class ResearchThrottle
             return;
         }
 
-        $identifier = $this->clientIp($request);
+        $identifier = $this->anonymousLimiterIdentifierFromRequest($request);
         $limiter = $this->researchSubmitLimiter->create($identifier);
 
         $limit = $limiter->consume(1);
@@ -50,8 +52,8 @@ final class ResearchThrottle
             return;
         }
 
-        $ip = explode('|', $clientKey, 2)[0] ?? 'unknown';
-        $limiter = $this->researchSubmitLimiter->create($ip);
+        $identifier = $this->anonymousLimiterIdentifierFromClientKey($clientKey);
+        $limiter = $this->researchSubmitLimiter->create($identifier);
 
         $current = $limiter->consume(0);
         if ($current->getRemainingTokens() >= $current->getLimit()) {
@@ -61,8 +63,22 @@ final class ResearchThrottle
         $limiter->consume(-1);
     }
 
-    private function clientIp(Request $request): string
+    private function anonymousLimiterIdentifierFromRequest(Request $request): string
     {
-        return $request->getClientIp() ?? 'unknown';
+        $ip = $request->getClientIp() ?? 'unknown';
+        $userAgent = $request->headers->get('User-Agent', 'unknown');
+
+        return self::ANON_CLIENT_PREFIX.hash('sha256', $ip.'|'.$userAgent);
+    }
+
+    private function anonymousLimiterIdentifierFromClientKey(string $clientKey): string
+    {
+        if (str_starts_with($clientKey, self::ANON_CLIENT_PREFIX)) {
+            return $clientKey;
+        }
+
+        $identifier = explode('|', $clientKey, 2)[0] ?? 'unknown';
+
+        return '' !== trim($identifier) ? $identifier : 'unknown';
     }
 }

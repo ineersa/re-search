@@ -26,12 +26,14 @@ final class AssistantMessageNormalizer implements NormalizerInterface, Normalize
     }
 
     /**
-     * @param AssistantMessage $data
-     *
      * @return array{role: 'assistant', content: string|null, tool_calls?: array<array<string, mixed>>, reasoning_content?: string}
      */
     public function normalize(mixed $data, ?string $format = null, array $context = []): array
     {
+        if (!$data instanceof AssistantMessage) {
+            throw new \InvalidArgumentException(sprintf('Expected %s, got %s.', AssistantMessage::class, get_debug_type($data)));
+        }
+
         $array = [
             'role' => $data->getRole()->value,
             'content' => $data->getContent(),

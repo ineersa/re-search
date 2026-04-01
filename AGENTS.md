@@ -20,6 +20,7 @@ This project uses the Symfony UX frontend stack. Six agent skills are installed 
 - Turbo Frame IDs must match between the page and the server response
 - Use Turbo Streams when updating multiple page sections; use Frames for a single section
 - `<twig:Turbo:Stream:Append>` syntax is available since Symfony UX 2.22+
+- In PHPUnit tests, always use static assertion calls (`self::assert*`) instead of instance calls (`$this->assert*`) to keep PHPStan clean.
 - **MATE tools (mandatory)**: Logs, profiler, PHPStan, PHPUnit, and Composer MUST use the `mate-tools` skill and its wrapper script (`.cursor/skills/mate-tools/scripts/mate-tool-call.sh`). NEVER use `make test`, `make phpstan`, or direct `vendor/bin` commands for these.
 - Infrastructure operations (setup, up/down, console, doctrine) MUST use `make` targets (no direct `docker compose exec` for these)
 - **NEVER run Composer on the host** — Composer MUST run inside the Docker container only (via `make composer-*` or MATE `composer-*` tools)

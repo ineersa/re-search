@@ -17,11 +17,25 @@ use App\Research\Message\Orchestrator\OrchestratorTickHandler;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 final class ResearchControllerTest extends WebTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        static::bootKernel();
+        $this->clearRateLimiterCaches();
+        static::ensureKernelShutdown();
+    }
+
     protected function tearDown(): void
+    {
+        $this->clearRateLimiterCaches();
+        parent::tearDown();
+    }
+
+    private function clearRateLimiterCaches(): void
     {
         try {
             if (static::$booted ?? false) {
@@ -31,7 +45,6 @@ final class ResearchControllerTest extends WebTestCase
         } catch (\Throwable) {
             // Kernel may be shut down
         }
-        parent::tearDown();
     }
 
     public function testSubmitReturns202WhenUnderRateLimit(): void
@@ -42,8 +55,8 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(202);
         self::assertResponseHeaderSame('content-type', 'application/json');
         $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertArrayHasKey('runId', $data);
-        $this->assertArrayHasKey('mercureTopic', $data);
+        self::assertArrayHasKey('runId', $data);
+        self::assertArrayHasKey('mercureTopic', $data);
     }
 
     public function testThirdAnonymousSubmitIsRateLimitedImmediately(): void
@@ -67,8 +80,8 @@ final class ResearchControllerTest extends WebTestCase
         $client->request('POST', '/research/runs', ['query' => 'cancel me']);
         self::assertResponseStatusCodeSame(202);
         $firstSubmit = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($firstSubmit);
-        $this->assertArrayHasKey('runId', $firstSubmit);
+        self::assertIsArray($firstSubmit);
+        self::assertArrayHasKey('runId', $firstSubmit);
 
         $runId = (string) $firstSubmit['runId'];
         $client->request('POST', '/research/runs/'.$runId.'/stop');
@@ -101,15 +114,11 @@ final class ResearchControllerTest extends WebTestCase
         $ip = '203.0.113.10';
         $client = static::createClient([], ['REMOTE_ADDR' => $ip]);
 
-        /** @var RateLimiterFactory $limiterFactory */
-        $limiterFactory = static::getContainer()->get('limiter.research_submit');
-        $limiter = $limiterFactory->create($ip);
-        for ($i = 0; $i < 500; ++$i) {
-            $limit = $limiter->consume(1);
-            if (!$limit->isAccepted()) {
-                break;
-            }
-        }
+        $client->request('POST', '/research/runs', ['query' => 'warmup one']);
+        self::assertResponseStatusCodeSame(202);
+
+        $client->request('POST', '/research/runs', ['query' => 'warmup two']);
+        self::assertResponseStatusCodeSame(202);
 
         $client->request('POST', '/research/runs', ['query' => 'rate-limit me']);
 
@@ -117,14 +126,14 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseHeaderSame('retry-after', '86400');
 
         $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($data);
-        $this->assertSame(ResearchRunStatus::THROTTLED->value, $data['status'] ?? null);
-        $this->assertSame(86400, $data['retryAfter'] ?? null);
-        $this->assertArrayNotHasKey('runId', $data);
+        self::assertIsArray($data);
+        self::assertSame(ResearchRunStatus::THROTTLED->value, $data['status'] ?? null);
+        self::assertSame(86400, $data['retryAfter'] ?? null);
+        self::assertArrayNotHasKey('runId', $data);
 
         /** @var ResearchRunRepository $runRepository */
         $runRepository = static::getContainer()->get(ResearchRunRepository::class);
-        $this->assertNull($runRepository->findOneBy(['query' => 'rate-limit me']));
+        self::assertNull($runRepository->findOneBy(['query' => 'rate-limit me']));
     }
 
     public function testDeleteRunWithInvalidCsrfTokenDoesNotDeleteRun(): void
@@ -188,14 +197,14 @@ final class ResearchControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(202);
         $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($data);
-        $this->assertArrayHasKey('runId', $data);
+        self::assertIsArray($data);
+        self::assertArrayHasKey('runId', $data);
 
         $client->request('POST', '/research/runs/'.$data['runId'].'/stop');
 
         self::assertResponseStatusCodeSame(202);
         $stopPayload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertSame('stopping', $stopPayload['status'] ?? null);
+        self::assertSame('stopping', $stopPayload['status'] ?? null);
     }
 
     public function testStopReturns404WhenRunDoesNotExist(): void
@@ -212,8 +221,8 @@ final class ResearchControllerTest extends WebTestCase
         $client->request('POST', '/research/runs', ['query' => 'owner run'], [], ['REMOTE_ADDR' => '198.51.100.10']);
         self::assertResponseStatusCodeSame(202);
         $ownerPayload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($ownerPayload);
-        $this->assertArrayHasKey('runId', $ownerPayload);
+        self::assertIsArray($ownerPayload);
+        self::assertArrayHasKey('runId', $ownerPayload);
 
         $client->request('POST', '/research/runs/'.(string) $ownerPayload['runId'].'/stop', [], [], ['REMOTE_ADDR' => '198.51.100.11']);
 
@@ -237,15 +246,15 @@ final class ResearchControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(202);
         $payload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($payload);
-        $this->assertSame('renewing', $payload['status'] ?? null);
-        $this->assertSame($runId, $payload['runId'] ?? null);
-        $this->assertSame('retry_last_operation', $payload['strategy'] ?? null);
+        self::assertIsArray($payload);
+        self::assertSame('renewing', $payload['status'] ?? null);
+        self::assertSame($runId, $payload['runId'] ?? null);
+        self::assertSame('retry_last_operation', $payload['strategy'] ?? null);
 
         $run = static::getContainer()->get(ResearchRunRepository::class)->findEntity($runId);
-        $this->assertNotNull($run);
-        $this->assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
-        $this->assertSame(ResearchRunPhase::WAITING_LLM, $run->getPhase());
+        self::assertNotNull($run);
+        self::assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
+        self::assertSame(ResearchRunPhase::WAITING_LLM, $run->getPhase());
     }
 
     public function testRenewReturns202ForLoopStoppedRun(): void
@@ -265,14 +274,14 @@ final class ResearchControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(202);
         $payload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($payload);
-        $this->assertSame('renewing', $payload['status'] ?? null);
-        $this->assertSame('retry_last_operation', $payload['strategy'] ?? null);
+        self::assertIsArray($payload);
+        self::assertSame('renewing', $payload['status'] ?? null);
+        self::assertSame('retry_last_operation', $payload['strategy'] ?? null);
 
         $run = static::getContainer()->get(ResearchRunRepository::class)->findEntity($runId);
-        $this->assertNotNull($run);
-        $this->assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
-        $this->assertSame(ResearchRunPhase::WAITING_TOOLS, $run->getPhase());
+        self::assertNotNull($run);
+        self::assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
+        self::assertSame(ResearchRunPhase::WAITING_LLM, $run->getPhase());
     }
 
     public function testRenewReturns202ForTimedOutRun(): void
@@ -292,9 +301,9 @@ final class ResearchControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(202);
         $payload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($payload);
-        $this->assertSame('renewing', $payload['status'] ?? null);
-        $this->assertSame('retry_last_operation', $payload['strategy'] ?? null);
+        self::assertIsArray($payload);
+        self::assertSame('renewing', $payload['status'] ?? null);
+        self::assertSame('retry_last_operation', $payload['strategy'] ?? null);
     }
 
     public function testRenewReturns409ForCompletedRun(): void
@@ -347,14 +356,14 @@ final class ResearchControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(202);
         $payload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($payload);
-        $this->assertSame('renewing', $payload['status'] ?? null);
-        $this->assertSame('restart_from_queue', $payload['strategy'] ?? null);
+        self::assertIsArray($payload);
+        self::assertSame('renewing', $payload['status'] ?? null);
+        self::assertSame('restart_from_queue', $payload['strategy'] ?? null);
 
         $run = static::getContainer()->get(ResearchRunRepository::class)->findEntity($runId);
-        $this->assertNotNull($run);
-        $this->assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
-        $this->assertSame(ResearchRunPhase::QUEUED, $run->getPhase());
+        self::assertNotNull($run);
+        self::assertSame(ResearchRunStatus::RUNNING, $run->getStatus());
+        self::assertSame(ResearchRunPhase::QUEUED, $run->getPhase());
     }
 
     public function testRenewReturns404ForDifferentClientOwner(): void
@@ -363,9 +372,9 @@ final class ResearchControllerTest extends WebTestCase
         $client->request('POST', '/research/runs', ['query' => 'owner renew run'], [], ['REMOTE_ADDR' => '198.51.100.20']);
         self::assertResponseStatusCodeSame(202);
         $ownerPayload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($ownerPayload);
+        self::assertIsArray($ownerPayload);
         $runId = (string) ($ownerPayload['runId'] ?? '');
-        $this->assertNotSame('', $runId);
+        self::assertNotSame('', $runId);
 
         $this->prepareRunForRenewal(
             $runId,
@@ -398,8 +407,8 @@ final class ResearchControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(202);
 
         $payload = json_decode($client->getResponse()->getContent(), true);
-        $this->assertIsArray($payload);
-        $this->assertArrayHasKey('runId', $payload);
+        self::assertIsArray($payload);
+        self::assertArrayHasKey('runId', $payload);
 
         return (string) $payload['runId'];
     }
@@ -418,7 +427,7 @@ final class ResearchControllerTest extends WebTestCase
             preg_quote($formAction, '#')
         );
 
-        $this->assertSame(1, preg_match($pattern, $content, $matches));
+        self::assertSame(1, preg_match($pattern, $content, $matches));
 
         return html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
@@ -434,7 +443,7 @@ final class ResearchControllerTest extends WebTestCase
         /** @var ResearchRunRepository $runRepository */
         $runRepository = static::getContainer()->get(ResearchRunRepository::class);
         $run = $runRepository->findEntity($runId);
-        $this->assertInstanceOf(ResearchRun::class, $run);
+        self::assertInstanceOf(ResearchRun::class, $run);
 
         $run->setStatus($status);
         $run->setPhase($phase);

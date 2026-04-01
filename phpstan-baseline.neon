@@ -7,12 +7,6 @@ parameters:
 			path: src/Entity/ResearchOperation.php
 
 		-
-			message: '#^Unused App\\Entity\\ResearchOperation\:\:getCompletedAt$#'
-			identifier: shipmonk.deadMethod
-			count: 1
-			path: src/Entity/ResearchOperation.php
-
-		-
 			message: '#^Property App\\Entity\\ResearchRun\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
 			identifier: property.unusedType
 			count: 1
@@ -47,18 +41,6 @@ parameters:
 			identifier: shipmonk.deadMethod
 			count: 1
 			path: src/Entity/User.php
-
-		-
-			message: '#^Method App\\Platform\\LlamaCpp\\Contract\\ToolCallNormalizer\:\:normalize\(\) should return array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: array\<string, mixed\>\}\} but returns array\{id\: string, type\: ''function'', function\: array\{name\: string, arguments\: non\-empty\-string\|false\}\}\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Platform/LlamaCpp/Contract/ToolCallNormalizer.php
-
-		-
-			message: '#^Parameter \#1 \$data \(Symfony\\AI\\Platform\\Result\\ToolCall\) of method App\\Platform\\LlamaCpp\\Contract\\ToolCallNormalizer\:\:normalize\(\) should be contravariant with parameter \$data \(mixed\) of method Symfony\\Component\\Serializer\\Normalizer\\NormalizerInterface\:\:normalize\(\)$#'
-			identifier: method.childParameterType
-			count: 1
-			path: src/Platform/LlamaCpp/Contract/ToolCallNormalizer.php
 
 		-
 			message: '#^Unused App\\Research\\History\\HistoryLoader\:\:loadRecent$#'

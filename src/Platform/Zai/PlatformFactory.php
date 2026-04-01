@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace App\Platform\Zai;
 
 use App\Platform\Generic\PlatformFactory as CustomGenericPlatformFactory;
-use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\AI\Platform\Contract;
 use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Platform;
 use Symfony\Component\HttpClient\EventSourceHttpClient;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class PlatformFactory
 {
+    /** @phpstan-ignore shipmonk.deadMethod */
     public static function create(
         string $baseUrl = 'https://api.z.ai/api/paas/v4/',
         #[\SensitiveParameter] ?string $apiKey = null,

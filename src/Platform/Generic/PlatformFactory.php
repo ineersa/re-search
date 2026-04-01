@@ -6,13 +6,13 @@ namespace App\Platform\Generic;
 
 use App\Platform\Generic\Completions\ModelClient as CustomCompletionsModelClient;
 use App\Platform\Generic\Completions\ResultConverter as CustomCompletionsResultConverter;
-use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\AI\Platform\Bridge\Generic\Embeddings;
 use Symfony\AI\Platform\Bridge\Generic\FallbackModelCatalog;
 use Symfony\AI\Platform\Contract;
 use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Platform;
 use Symfony\Component\HttpClient\EventSourceHttpClient;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class PlatformFactory
